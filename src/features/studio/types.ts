@@ -15,12 +15,6 @@ export enum ImageQuality {
   UHD = "4K"
 }
 
-export enum VideoStyle {
-  FREE = "Free",
-  CINEMATIC = "Cinematic",
-  ADVERTISING = "Advertising"
-}
-
 export interface GenerationResult {
   id: string;
   type: 'image' | 'video' | 'analysis';

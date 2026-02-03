@@ -56,7 +56,7 @@ export default function SignInForm() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="z-50 my-8 flex w-full flex-col gap-5"
+        className="flex w-full flex-col gap-4"
       >
         <FormField
           control={form.control}
@@ -98,8 +98,16 @@ export default function SignInForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={isPending} className="mt-5 w-full">
-          Sign In
+        <Button
+          type="submit"
+          disabled={isPending}
+          className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-5"
+        >
+          {isPending ? (
+            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+          ) : (
+            "Sign In"
+          )}
         </Button>
       </form>
     </Form>

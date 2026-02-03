@@ -1,30 +1,46 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
-export interface TaskStatus {
-  id: string;
+export type TaskType = "video" | "image";
+
+export interface BaseTaskStatus {
   status: "pending" | "running" | "succeeded" | "error";
+  errorMessage?: string;
+}
+
+export interface VideoTaskStatus extends BaseTaskStatus {
+  id: string;
   progress: number;
   videoUrl?: string;
-  errorMessage?: string;
   prompt: string;
   createdAt: string;
   completedAt?: string;
 }
 
-interface UseTaskPollingOptions {
-  taskId: string | null;
-  interval?: number;
-  onComplete?: (task: TaskStatus) => void;
-  onError?: (task: TaskStatus) => void;
+export interface ImageTaskStatus extends BaseTaskStatus {
+  taskId: string;
+  imageUrl?: string;
 }
 
-export function useTaskPolling({
+interface UseTaskPollingOptions<T extends BaseTaskStatus> {
+  taskId: string | null;
+  taskType: TaskType;
+  interval?: number;
+  onComplete?: (task: T) => void;
+  onError?: (task: T) => void;
+}
+
+function getApiEndpoint(taskType: TaskType, taskId: string): string {
+  return `/api/${taskType}/status/${taskId}`;
+}
+
+export function useTaskPolling<T extends BaseTaskStatus>({
   taskId,
+  taskType,
   interval = 3000,
   onComplete,
   onError,
-}: UseTaskPollingOptions) {
-  const [task, setTask] = useState<TaskStatus | null>(null);
+}: UseTaskPollingOptions<T>) {
+  const [task, setTask] = useState<T | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -33,13 +49,13 @@ export function useTaskPolling({
     if (!taskId) return;
 
     try {
-      const response = await fetch(`/api/video/status/${taskId}`);
+      const response = await fetch(getApiEndpoint(taskType, taskId));
 
       if (!response.ok) {
         throw new Error("Failed to fetch task status");
       }
 
-      const data: TaskStatus = await response.json();
+      const data: T = await response.json();
       setTask(data);
       setError(null);
 
@@ -57,7 +73,7 @@ export function useTaskPolling({
       setError(message);
       return null;
     }
-  }, [taskId, onComplete, onError]);
+  }, [taskId, taskType, onComplete, onError]);
 
   const startPolling = useCallback(() => {
     if (!taskId) return;
@@ -103,4 +119,17 @@ export function useTaskPolling({
     stopPolling,
     refetch: fetchStatus,
   };
+}
+
+// Convenience hooks for backward compatibility
+export function useVideoTaskPolling(
+  options: Omit<UseTaskPollingOptions<VideoTaskStatus>, "taskType">
+) {
+  return useTaskPolling<VideoTaskStatus>({ ...options, taskType: "video" });
+}
+
+export function useImageTaskPolling(
+  options: Omit<UseTaskPollingOptions<ImageTaskStatus>, "taskType">
+) {
+  return useTaskPolling<ImageTaskStatus>({ ...options, taskType: "image" });
 }
