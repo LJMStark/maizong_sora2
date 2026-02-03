@@ -1,0 +1,19 @@
+import { StudioProvider } from "@/features/studio/context/studio-context";
+import Sidebar from "@/features/studio/components/sidebar";
+
+export default function StudioLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <StudioProvider>
+      <div className="flex h-screen bg-[#faf9f6] text-[#1a1a1a] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <Sidebar />
+        <main className="flex-1 h-full overflow-hidden relative">
+          {children}
+        </main>
+      </div>
+    </StudioProvider>
+  );
+}
