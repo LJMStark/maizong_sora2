@@ -1,19 +1,30 @@
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET_NAME = "studio-assets";
 
+let supabaseClient: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient {
+  if (!supabaseClient) {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error("Supabase environment variables are not configured");
+    }
+
+    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+  }
+  return supabaseClient;
+}
+
 export const storageService = {
   async ensureBucketExists(): Promise<void> {
-    const { data: buckets } = await supabase.storage.listBuckets();
+    const { data: buckets } = await getSupabase().storage.listBuckets();
     const bucketExists = buckets?.some((b) => b.name === BUCKET_NAME);
 
     if (!bucketExists) {
-      await supabase.storage.createBucket(BUCKET_NAME, {
+      await getSupabase().storage.createBucket(BUCKET_NAME, {
         public: true,
         fileSizeLimit: 104857600,
       });
@@ -31,7 +42,7 @@ export const storageService = {
     const timestamp = Date.now();
     const path = `users/${userId}/images/${timestamp}-${filename}`;
 
-    const { error } = await supabase.storage
+    const { error } = await getSupabase().storage
       .from(BUCKET_NAME)
       .upload(path, file, {
         contentType,
@@ -44,7 +55,7 @@ export const storageService = {
 
     const {
       data: { publicUrl },
-    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
+    } = getSupabase().storage.from(BUCKET_NAME).getPublicUrl(path);
 
     return publicUrl;
   },
@@ -65,7 +76,7 @@ export const storageService = {
     const videoBuffer = Buffer.from(await response.arrayBuffer());
     const path = `users/${userId}/videos/${taskId}.mp4`;
 
-    const { error } = await supabase.storage
+    const { error } = await getSupabase().storage
       .from(BUCKET_NAME)
       .upload(path, videoBuffer, {
         contentType: "video/mp4",
@@ -78,13 +89,13 @@ export const storageService = {
 
     const {
       data: { publicUrl },
-    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
+    } = getSupabase().storage.from(BUCKET_NAME).getPublicUrl(path);
 
     return publicUrl;
   },
 
   async deleteFile(path: string): Promise<void> {
-    const { error } = await supabase.storage.from(BUCKET_NAME).remove([path]);
+    const { error } = await getSupabase().storage.from(BUCKET_NAME).remove([path]);
 
     if (error) {
       throw new Error(`Failed to delete file: ${error.message}`);
@@ -94,7 +105,7 @@ export const storageService = {
   getPublicUrl(path: string): string {
     const {
       data: { publicUrl },
-    } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
+    } = getSupabase().storage.from(BUCKET_NAME).getPublicUrl(path);
     return publicUrl;
   },
 };
