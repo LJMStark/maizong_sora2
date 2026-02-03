@@ -34,16 +34,35 @@ export interface GenerationResult {
 
 export interface CreditTransaction {
   id: string;
-  type: 'deduction' | 'addition';
+  type: 'deduction' | 'addition' | 'refund';
   amount: number;
   reason: string;
   date: Date;
+  balanceBefore?: number;
+  balanceAfter?: number;
+}
+
+export interface VideoTask {
+  id: string;
+  status: 'pending' | 'running' | 'succeeded' | 'error';
+  progress: number;
+  prompt: string;
+  aspectRatio: string;
+  duration: number;
+  model: string;
+  videoUrl?: string;
+  sourceImageUrl?: string;
+  errorMessage?: string;
+  creditCost: number;
+  createdAt: Date;
+  completedAt?: Date;
 }
 
 export interface AppState {
   credits: number;
   history: GenerationResult[];
   creditHistory: CreditTransaction[];
+  videoTasks: VideoTask[];
 }
 
 export interface StudioContextType {
@@ -51,4 +70,7 @@ export interface StudioContextType {
   deductCredits: (amount: number, reason?: string) => void;
   addCredits: (amount: number, reason?: string) => void;
   addToHistory: (item: GenerationResult) => void;
+  refreshCredits: () => Promise<void>;
+  refreshVideoTasks: () => Promise<void>;
+  refreshCreditHistory: () => Promise<void>;
 }

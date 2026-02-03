@@ -1,11 +1,23 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useSession, signOut } from '@/lib/auth/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session, isPending } = useSession();
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
 
   const isActive = (path: string) => pathname === path;
 
@@ -15,6 +27,25 @@ const Sidebar: React.FC = () => {
     { path: '/studio/assets', icon: 'grid_view', label: 'Collections' },
     { path: '/studio/subscription', icon: 'payments', label: 'Subscription' },
   ];
+
+  const handleNavigation = (path: string) => {
+    setLoginDialogOpen(false);
+    router.push(path);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.refresh();
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
     <aside className="w-64 border-r border-[#e5e5e1] bg-white flex flex-col justify-between shrink-0 h-full">
@@ -50,16 +81,77 @@ const Sidebar: React.FC = () => {
       </div>
 
       <div className="p-8 border-t border-[#e5e5e1]">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-[10px] font-medium tracking-widest">
-            AS
+        {isPending ? (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#e5e5e1] animate-pulse" />
+            <div className="flex flex-col gap-1">
+              <div className="h-3 w-20 bg-[#e5e5e1] rounded animate-pulse" />
+              <div className="h-2 w-14 bg-[#e5e5e1] rounded animate-pulse" />
+            </div>
           </div>
-          <div className="flex flex-col min-w-0">
-            <p className="text-xs font-semibold text-[#1a1a1a] truncate">Alex Seller</p>
-            <p className="text-[10px] text-[#6b7280] uppercase tracking-tighter">Pro Partner</p>
+        ) : session?.user ? (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-[10px] font-medium tracking-widest">
+              {getInitials(session.user.name || 'U')}
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <p className="text-xs font-semibold text-[#1a1a1a] truncate">{session.user.name}</p>
+              <button
+                onClick={handleSignOut}
+                className="text-[10px] text-[#6b7280] uppercase tracking-tighter text-left hover:text-[#1a1a1a] transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <button
+            onClick={() => setLoginDialogOpen(true)}
+            className="flex items-center gap-3 w-full group"
+          >
+            <div className="w-9 h-9 rounded-full border-2 border-dashed border-[#e5e5e1] text-[#6b7280] flex items-center justify-center group-hover:border-[#1a1a1a] group-hover:text-[#1a1a1a] transition-colors">
+              <span className="material-symbols-outlined text-lg">person</span>
+            </div>
+            <div className="flex flex-col min-w-0">
+              <p className="text-xs font-semibold text-[#1a1a1a]">Sign In</p>
+              <p className="text-[10px] text-[#6b7280] uppercase tracking-tighter">Get Started</p>
+            </div>
+          </button>
+        )}
       </div>
+
+      <Dialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen}>
+        <DialogContent className="sm:max-w-md border-[#e5e5e1] bg-white">
+          <DialogHeader className="text-center sm:text-center">
+            <div className="flex justify-center mb-4">
+              <span className="material-symbols-outlined text-5xl text-[#1a1a1a]">filter_vintage</span>
+            </div>
+            <DialogTitle className="font-serif text-2xl text-[#1a1a1a]">
+              Welcome to Little Elephant
+            </DialogTitle>
+            <DialogDescription className="text-[#6b7280]">
+              Sign in to access your creative studio and manage your e-commerce assets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-6">
+            <Button
+              onClick={() => handleNavigation('/signin')}
+              className="w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-6"
+            >
+              <span className="material-symbols-outlined mr-2">mail</span>
+              Sign In with Email
+            </Button>
+            <Button
+              onClick={() => handleNavigation('/signup')}
+              variant="outline"
+              className="w-full border-[#e5e5e1] hover:bg-[#faf9f6] text-[#1a1a1a] py-6"
+            >
+              <span className="material-symbols-outlined mr-2">person_add</span>
+              Create Account
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 };

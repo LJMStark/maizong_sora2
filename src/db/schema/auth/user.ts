@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -10,6 +10,7 @@ export const user = pgTable("user", {
   image: text("image"),
   role: text("role").default("member").notNull(),
   gender: boolean("gender").notNull(),
+  credits: integer("credits").notNull().default(50),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
