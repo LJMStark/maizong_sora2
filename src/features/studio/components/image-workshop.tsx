@@ -2,18 +2,20 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { AspectRatio, ImageQuality, GenerationResult } from '../types';
-import { geminiService, fileToBase64, urlToBase64 } from '../services/gemini-service';
+import { AspectRatio, ImageQuality } from '../types';
 import { IMAGE_PROMPTS, EDIT_PROMPTS, ANALYZE_PROMPTS } from '../utils/prompt-library';
 import Lightbox from './lightbox';
 import AssetPicker from './asset-picker';
 import { useStudio } from '../context/studio-context';
+import { useImageTaskPolling } from '../hooks/use-image-task-polling';
 
 type Mode = 'generate' | 'edit' | 'analyze';
 
+const IMAGE_CREDIT_COST = 10;
+
 const ImageWorkshop: React.FC = () => {
   const router = useRouter();
-  const { state, deductCredits, addToHistory } = useStudio();
+  const { state, refreshCredits, refreshImageTasks, addToHistory } = useStudio();
   const { credits, history } = state;
 
   const [mode, setMode] = useState<Mode>('generate');
@@ -23,12 +25,35 @@ const ImageWorkshop: React.FC = () => {
   const [refImage, setRefImage] = useState<File | null>(null);
   const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Polling for image task status
+  useImageTaskPolling({
+    taskId: currentTaskId,
+    interval: 3000,
+    onComplete: (task) => {
+      setLoading(false);
+      setCurrentTaskId(null);
+      if (task.imageUrl) {
+        setGeneratedImage(task.imageUrl);
+        refreshCredits();
+        refreshImageTasks();
+      }
+    },
+    onError: (task) => {
+      setLoading(false);
+      setCurrentTaskId(null);
+      alert(task.errorMessage || "Image generation failed. Credits have been refunded.");
+      refreshCredits();
+      refreshImageTasks();
+    },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -64,10 +89,23 @@ const ImageWorkshop: React.FC = () => {
     }
   };
 
+  const fileToBase64 = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
+
   const handleAction = async () => {
     if (!prompt && mode !== 'analyze') return;
-    if (mode === 'analyze' && !refImage && !refImagePreview) {
-      alert("Image required for analysis");
+    if (mode === 'analyze') {
+      alert("Analysis mode is not supported with Duomi API yet.");
       return;
     }
     if (mode === 'edit' && !refImage && !refImagePreview) {
@@ -75,14 +113,7 @@ const ImageWorkshop: React.FC = () => {
       return;
     }
 
-    const costMap = {
-      'generate': quality === ImageQuality.UHD ? 20 : 10,
-      'edit': 5,
-      'analyze': 2
-    };
-
-    const cost = costMap[mode];
-    if (credits < cost) {
+    if (credits < IMAGE_CREDIT_COST) {
       alert("Insufficient credits");
       return;
     }
@@ -91,51 +122,43 @@ const ImageWorkshop: React.FC = () => {
     setGeneratedImage(null);
     setAnalysisResult(null);
 
-    const reason = mode === 'analyze' ? 'Image Analysis' :
-      mode === 'edit' ? 'Image Editing' :
-        `Image Generation (${quality})`;
-    deductCredits(cost, reason);
-
     try {
-      let base64Ref = undefined;
+      let imageBase64: string | undefined;
+      let imageMimeType: string | undefined;
 
       if (refImage) {
-        base64Ref = await fileToBase64(refImage);
-      } else if (refImagePreview) {
-        base64Ref = await urlToBase64(refImagePreview);
+        imageBase64 = await fileToBase64(refImage);
+        imageMimeType = refImage.type;
       }
 
-      if (mode === 'analyze') {
-        if (!base64Ref) throw new Error("No image");
-        const text = await geminiService.analyzeImage(prompt, base64Ref);
-        setAnalysisResult(text);
-        addToHistory({
-          id: Date.now().toString(),
-          type: 'analysis',
-          text: text,
-          url: refImagePreview || undefined,
-          prompt: prompt || "Analysis",
-          createdAt: new Date(),
-          status: 'completed'
-        });
-      } else {
-        const resultBase64 = await geminiService.generateImage(prompt, aspectRatio, quality, base64Ref, mode as 'generate' | 'edit');
-        setGeneratedImage(resultBase64);
+      const model = quality === ImageQuality.UHD ? "gemini-3-pro-image-preview" : "gemini-2.5-flash-image";
+      const endpoint = mode === 'edit' ? '/api/image/edit' : '/api/image/generate';
 
-        addToHistory({
-          id: Date.now().toString(),
-          type: 'image',
-          url: resultBase64,
-          prompt: prompt,
-          createdAt: new Date(),
-          status: 'completed'
-        });
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          model,
+          aspectRatio,
+          imageBase64,
+          imageMimeType,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create image task');
       }
+
+      const data = await response.json();
+      setCurrentTaskId(data.taskId);
     } catch (e) {
       console.error(e);
-      alert("Operation failed. Please try again.");
-    } finally {
       setLoading(false);
+      alert(e instanceof Error ? e.message : "Operation failed. Please try again.");
     }
   };
 
@@ -158,7 +181,7 @@ const ImageWorkshop: React.FC = () => {
 
         {/* Mode Switcher */}
         <div className="flex p-1 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
-          {(['generate', 'edit', 'analyze'] as Mode[]).map(m => (
+          {(['generate', 'edit'] as Mode[]).map(m => (
             <button
               key={m}
               onClick={() => { setMode(m); setGeneratedImage(null); setAnalysisResult(null); }}
@@ -174,7 +197,7 @@ const ImageWorkshop: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <label className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">
-                {mode === 'analyze' ? 'Question (Optional)' : mode === 'edit' ? 'Edit Instructions' : 'Descriptive Prompt'}
+                {mode === 'edit' ? 'Edit Instructions' : 'Descriptive Prompt'}
               </label>
               <button
                 onClick={handleRandomPrompt}
@@ -191,9 +214,8 @@ const ImageWorkshop: React.FC = () => {
               <textarea
                 className="w-full h-32 p-5 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm text-sm text-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] transition-all placeholder:text-[#6b7280]/40 leading-relaxed resize-none focus:outline-none"
                 placeholder={
-                  mode === 'analyze' ? "Ask about the image (e.g., 'Describe the lighting')..." :
-                    mode === 'edit' ? "Tell AI how to change the image (e.g., 'Add a retro filter', 'Remove background')..." :
-                      "Describe product, aesthetic, lighting..."
+                  mode === 'edit' ? "Tell AI how to change the image (e.g., 'Add a retro filter', 'Remove background')..." :
+                    "Describe product, aesthetic, lighting..."
                 }
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -266,7 +288,7 @@ const ImageWorkshop: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">Resolution</span>
+              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">Quality</span>
               <div className="flex border border-[#e5e5e1] p-1 bg-[#faf9f6]">
                 {Object.values(ImageQuality).map(q => (
                   <button
@@ -277,6 +299,14 @@ const ImageWorkshop: React.FC = () => {
                     {q}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Credit Cost Info */}
+            <div className="p-4 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-[#6b7280] uppercase tracking-widest">Cost</span>
+                <span className="text-sm font-bold text-[#1a1a1a]">{IMAGE_CREDIT_COST} Credits</span>
               </div>
             </div>
           </div>
@@ -291,8 +321,9 @@ const ImageWorkshop: React.FC = () => {
             <div className="flex flex-col items-center text-center animate-soft-pulse">
               <span className="material-symbols-outlined text-4xl text-[#6b7280]/50 mb-4 animate-spin">blur_on</span>
               <p className="font-serif text-xl text-[#1a1a1a] italic">
-                {mode === 'analyze' ? 'Analyzing visual data...' : 'Synthesizing...'}
+                Generating with Duomi AI...
               </p>
+              <p className="text-xs text-[#6b7280] mt-2">This may take a moment</p>
             </div>
           ) : analysisResult ? (
             <div className="max-w-2xl w-full h-full overflow-y-auto custom-scrollbar">
@@ -332,16 +363,15 @@ const ImageWorkshop: React.FC = () => {
             <div className="flex flex-col items-center text-center max-w-sm gap-6 p-8">
               <div className="w-16 h-16 border border-[#e5e5e1] flex items-center justify-center mb-2 rounded-full">
                 <span className="material-symbols-outlined text-3xl text-[#6b7280] font-light">
-                  {mode === 'analyze' ? 'search_check' : mode === 'edit' ? 'auto_fix_high' : 'shutter_speed'}
+                  {mode === 'edit' ? 'auto_fix_high' : 'shutter_speed'}
                 </span>
               </div>
               <h4 className="font-serif text-2xl text-[#1a1a1a] italic">
-                {mode === 'analyze' ? 'Ready to Analyze' : mode === 'edit' ? 'Ready to Edit' : 'Awaiting Composition'}
+                {mode === 'edit' ? 'Ready to Edit' : 'Awaiting Composition'}
               </h4>
               <p className="text-xs text-[#6b7280] leading-relaxed max-w-[280px]">
-                {mode === 'analyze' ? 'Upload an image to extract insights.' :
-                  mode === 'edit' ? 'Upload an image and describe desired changes.' :
-                    'Refine your vision in the control panel to generate sophisticated e-commerce imagery.'}
+                {mode === 'edit' ? 'Upload an image and describe desired changes.' :
+                  'Refine your vision in the control panel to generate sophisticated e-commerce imagery.'}
               </p>
             </div>
           )}
@@ -351,11 +381,11 @@ const ImageWorkshop: React.FC = () => {
         <div className="absolute bottom-12 right-12 flex items-center gap-10">
           <button
             onClick={handleAction}
-            disabled={loading || (mode === 'generate' && !prompt) || (mode !== 'generate' && !refImage && !refImagePreview)}
+            disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
             className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-12 py-5 text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
           >
             <span className="material-symbols-outlined text-lg">auto_awesome</span>
-            {loading ? 'Processing...' : mode === 'analyze' ? 'Analyze Image' : mode === 'edit' ? 'Apply Edits' : 'Generate'}
+            {loading ? 'Processing...' : mode === 'edit' ? 'Apply Edits' : 'Generate'}
           </button>
         </div>
       </div>

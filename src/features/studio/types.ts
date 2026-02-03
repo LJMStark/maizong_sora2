@@ -58,11 +58,27 @@ export interface VideoTask {
   completedAt?: Date;
 }
 
+export interface ImageTask {
+  id: string;
+  mode: 'generate' | 'edit';
+  model: string;
+  prompt: string;
+  aspectRatio?: string;
+  status: 'pending' | 'running' | 'succeeded' | 'error';
+  errorMessage?: string;
+  sourceImageUrl?: string;
+  imageUrl?: string;
+  creditCost: number;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
 export interface AppState {
   credits: number;
   history: GenerationResult[];
   creditHistory: CreditTransaction[];
   videoTasks: VideoTask[];
+  imageTasks: ImageTask[];
 }
 
 export interface StudioContextType {
@@ -72,5 +88,6 @@ export interface StudioContextType {
   addToHistory: (item: GenerationResult) => void;
   refreshCredits: () => Promise<void>;
   refreshVideoTasks: () => Promise<void>;
+  refreshImageTasks: () => Promise<void>;
   refreshCreditHistory: () => Promise<void>;
 }

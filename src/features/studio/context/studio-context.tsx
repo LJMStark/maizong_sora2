@@ -14,6 +14,7 @@ import {
   StudioContextType,
   CreditTransaction,
   VideoTask,
+  ImageTask,
 } from "../types";
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     history: [],
     creditHistory: [],
     videoTasks: [],
+    imageTasks: [],
   });
 
   const refreshCredits = useCallback(async () => {
@@ -128,11 +130,70 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const refreshImageTasks = useCallback(async () => {
+    try {
+      const response = await fetch("/api/image/tasks");
+      if (response.ok) {
+        const data = await response.json();
+        const formattedTasks: ImageTask[] = data.tasks.map(
+          (task: {
+            id: string;
+            mode: "generate" | "edit";
+            model: string;
+            prompt: string;
+            aspectRatio?: string;
+            status: "pending" | "running" | "succeeded" | "error";
+            errorMessage?: string;
+            sourceImageUrl?: string;
+            imageUrl?: string;
+            creditCost: number;
+            createdAt: string;
+            completedAt?: string;
+          }) => ({
+            ...task,
+            createdAt: new Date(task.createdAt),
+            completedAt: task.completedAt
+              ? new Date(task.completedAt)
+              : undefined,
+          })
+        );
+        setAppState((prev) => ({ ...prev, imageTasks: formattedTasks }));
+
+        const completedImages = formattedTasks.filter(
+          (task: ImageTask) => task.status === "succeeded" && task.imageUrl
+        );
+        const imageHistory: GenerationResult[] = completedImages.map(
+          (task: ImageTask) => ({
+            id: task.id,
+            type: "image" as const,
+            url: task.imageUrl,
+            prompt: task.prompt,
+            createdAt: task.createdAt,
+            status: "completed" as const,
+          })
+        );
+
+        setAppState((prev) => {
+          const existingNonImageHistory = prev.history.filter(
+            (item) => item.type !== "image"
+          );
+          return {
+            ...prev,
+            history: [...imageHistory, ...existingNonImageHistory],
+          };
+        });
+      }
+    } catch {
+      // Silently fail
+    }
+  }, []);
+
   useEffect(() => {
     refreshCredits();
     refreshCreditHistory();
     refreshVideoTasks();
-  }, [refreshCredits, refreshCreditHistory, refreshVideoTasks]);
+    refreshImageTasks();
+  }, [refreshCredits, refreshCreditHistory, refreshVideoTasks, refreshImageTasks]);
 
   const deductCredits = (amount: number, reason: string = "Service Usage") => {
     setAppState((prev) => ({
@@ -184,6 +245,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         addToHistory,
         refreshCredits,
         refreshVideoTasks,
+        refreshImageTasks,
         refreshCreditHistory,
       }}
     >

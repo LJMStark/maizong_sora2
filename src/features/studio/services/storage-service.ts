@@ -94,6 +94,42 @@ export const storageService = {
     return publicUrl;
   },
 
+  async uploadImageFromUrl(
+    userId: string,
+    taskId: string,
+    imageUrl: string
+  ): Promise<string> {
+    await this.ensureBucketExists();
+
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image from URL: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "image/png";
+    const extension = contentType.split("/")[1] || "png";
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const path = `users/${userId}/images/${taskId}.${extension}`;
+
+    const { error } = await getSupabase().storage
+      .from(BUCKET_NAME)
+      .upload(path, imageBuffer, {
+        contentType,
+        upsert: true,
+      });
+
+    if (error) {
+      throw new Error(`Failed to upload image: ${error.message}`);
+    }
+
+    const {
+      data: { publicUrl },
+    } = getSupabase().storage.from(BUCKET_NAME).getPublicUrl(path);
+
+    return publicUrl;
+  },
+
   async deleteFile(path: string): Promise<void> {
     const { error } = await getSupabase().storage.from(BUCKET_NAME).remove([path]);
 
