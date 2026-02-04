@@ -1,3 +1,4 @@
+import "dotenv/config";
 import postgres from "postgres";
 import { readFile } from "fs/promises";
 

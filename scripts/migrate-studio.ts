@@ -1,3 +1,4 @@
+import "dotenv/config";
 import postgres from "postgres";
 
 const directUrl = process.env.DIRECT_URL;
