@@ -19,6 +19,15 @@ pnpm db:migrate       # Push schema to database (has known bug, see below)
 pnpm db:studio        # Open Drizzle Studio
 ```
 
+## Testing
+
+### Production Environment
+- **URL**: https://sora2.681023.xyz
+- **Test Account**:
+  - Username: `demon1235`
+  - Password: `Aa1235813!`
+- **Purpose**: For testing video generation, download functionality, and full user flow
+
 ## Architecture
 
 ### Tech Stack
@@ -232,3 +241,51 @@ pnpm db:studio
 - Video generation (Quality/sora-2-pro): 100 credits
 - Credits are deducted before task creation
 - Automatic refund on task failure
+
+## Known Issues
+
+### Video Generation - Callback Delay
+
+**Issue**: Video tasks may show "处理中 0% 完成" for extended periods (10-30+ minutes)
+
+**Root Cause**:
+- Video generation uses callback-only mode (no polling support)
+- Frontend polls database status, not Duomi API
+- Database status only updates when Duomi sends webhook to `/api/callback`
+- Duomi processing time varies significantly based on:
+  - Video complexity and duration
+  - Model selection (sora-2-temporary vs sora-2-pro)
+  - API queue load
+
+**Expected Behavior**:
+1. Task created with status "pending"
+2. Duomi API called with callback URL: `https://sora2.681023.xyz/api/callback`
+3. Task status updated to "running" with 0% progress
+4. **Long wait period** - Duomi processes video (10-30+ minutes)
+5. Duomi sends webhook to `/api/callback` when complete
+6. Callback endpoint updates database with final status and video URL
+7. Frontend polling detects update and displays completed video
+
+**Verification Steps**:
+1. Check task was created in database (积分已扣除)
+2. Verify Duomi API call succeeded (duomiTaskId exists)
+3. Wait for Duomi callback (check server logs for "[Callback] Received callback request")
+4. Confirm video URL saved to Supabase Storage
+
+**Workaround**: None - must wait for Duomi to complete processing and send callback
+
+**Configuration**:
+- Callback URL configured in `src/app/api/video/generate/route.ts:82-83`
+- Callback endpoint: `src/app/api/callback/route.ts` (public, no auth required)
+- Callback verification temporarily disabled (line 52-60) for debugging
+
+**Environment Variables**:
+- `NEXT_PUBLIC_BASE_URL` - Must be set to production URL for correct callback URL
+- `BETTER_AUTH_URL` - Should be set to avoid "Base URL could not be determined" warning
+- Both should be `https://sora2.681023.xyz` in production
+
+**Related Files**:
+- `src/app/api/video/generate/route.ts` - Video generation endpoint
+- `src/app/api/callback/route.ts` - Duomi webhook handler
+- `src/features/studio/services/duomi-service.ts` - Duomi API client
+- `src/features/studio/services/video-task-service.ts` - Database operations
