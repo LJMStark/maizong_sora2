@@ -12,7 +12,7 @@ export async function GET(
   const session = await getServerSession();
 
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
   const { taskId } = await params;
@@ -21,11 +21,11 @@ export async function GET(
     const task = await imageTaskService.getTaskById(taskId);
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      return NextResponse.json({ error: "任务未找到" }, { status: 404 });
     }
 
     if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: "禁止访问" }, { status: 403 });
     }
 
     // If task is already completed or has an error, return current state
@@ -43,7 +43,7 @@ export async function GET(
       return NextResponse.json({
         taskId: task.id,
         status: task.status,
-        errorMessage: task.errorMessage || "Task creation pending",
+        errorMessage: task.errorMessage || "任务创建中",
       });
     }
 
@@ -78,7 +78,7 @@ export async function GET(
           imageUrl: finalImageUrl,
         });
       } else if (duomiStatus.state === "error") {
-        const errorMessage = duomiStatus.error || "Image generation failed";
+        const errorMessage = duomiStatus.error || "图片生成失败";
         await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
 
         // Refund credits on error
@@ -108,7 +108,7 @@ export async function GET(
       }
     } catch (pollError) {
       const errorMessage =
-        pollError instanceof Error ? pollError.message : "Failed to poll status";
+        pollError instanceof Error ? pollError.message : "获取状态失败";
       return NextResponse.json({
         taskId: task.id,
         status: task.status,
@@ -116,7 +116,7 @@ export async function GET(
       });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

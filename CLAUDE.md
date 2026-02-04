@@ -27,6 +27,48 @@ pnpm db:studio        # Open Drizzle Studio
 - Drizzle ORM + PostgreSQL (Supabase)
 - Supabase Storage (file uploads)
 - Tailwind CSS 4 + Radix UI
+- next-intl (internationalization, Chinese as default)
+
+### Internationalization (i18n)
+
+**Current Setup**: Chinese (zh-CN) as default language using next-intl v4.8.2
+
+**Implemented**:
+- ✅ UI components (auth, studio, sidebar, workshops)
+- ✅ API error messages (all routes)
+- ✅ Zod validation messages
+- ✅ Better Auth error mapping
+
+**Database Content Strategy**:
+- **Decision**: Store content directly in Chinese (not translation keys)
+- **Rationale**:
+  - Single language application (no multi-language requirement)
+  - Simpler implementation, better performance
+  - Follows YAGNI principle (You Aren't Gonna Need It)
+- **Affected Fields**:
+  - `credit_transaction.reason` - e.g., "视频生成（快速模式）"
+  - `video_task.errorMessage` - e.g., "生成失败"
+  - `image_task.errorMessage` - e.g., "图像生成失败"
+- **Future Migration Path** (if multi-language needed):
+  1. Add `reason_key` field for translation keys
+  2. Keep `reason` field for Chinese display
+  3. Gradually migrate historical data
+  4. Add translation lookup in display layer
+
+**Translation Files**:
+- `src/i18n/locales/zh-CN/common.json` - Shared UI text
+- `src/i18n/locales/zh-CN/auth.json` - Authentication
+- `src/i18n/locales/zh-CN/studio.json` - Studio interface
+- `src/i18n/locales/zh-CN/errors.json` - Error messages
+
+**Usage**:
+```typescript
+// Server components
+const t = await getTranslations('auth.signin');
+
+// Client components
+const t = useTranslations('studio.image');
+```
 
 ### Project Structure
 
@@ -53,10 +95,15 @@ src/
 │   ├── context/           # StudioContext (credits, tasks state)
 │   ├── hooks/             # use-task-polling, use-image-task-polling, use-simulated-progress
 │   └── services/          # duomi, duomi-image, credit, storage, video-task, image-task
+├── i18n/
+│   ├── config.ts          # i18n configuration (locales, default locale)
+│   ├── request.ts         # Server-side i18n request handler
+│   ├── types.ts           # TypeScript type definitions for translations
+│   └── locales/zh-CN/     # Chinese translation files
 ├── lib/
 │   ├── auth/              # Better Auth config and helpers
 │   ├── security/          # SSRF protection, error sanitization
-│   ├── validations/       # Zod schemas
+│   ├── validations/       # Zod schemas (with Chinese error messages)
 │   └── rate-limit.ts      # Rate limiting (Upstash Redis + memory fallback)
 ├── middleware.ts          # Auth middleware (route protection)
 ├── routes.ts              # Route definitions (public, auth, API routes)

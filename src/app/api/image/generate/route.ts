@@ -13,19 +13,19 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession();
 
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
   const userId = session.user.id;
 
   const { success } = await rateLimiter.limit(userId);
   if (!success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
 
   try {
     const body = await request.json();
-    
+
     // Validation
     const validation = GenerateImageSchema.safeParse(body);
     if (!validation.success) {
@@ -38,14 +38,14 @@ export async function POST(request: NextRequest) {
       selectedModel !== "gemini-3-pro-image-preview" &&
       selectedModel !== "gemini-2.5-flash-image"
     ) {
-      return NextResponse.json({ error: "Invalid model" }, { status: 400 });
+      return NextResponse.json({ error: "无效的模型" }, { status: 400 });
     }
 
     const currentCredits = await creditService.getUserCredits(userId);
     if (currentCredits < IMAGE_CREDIT_COST) {
       return NextResponse.json(
         {
-          error: "Insufficient credits",
+          error: "积分不足",
           required: IMAGE_CREDIT_COST,
           current: currentCredits,
         },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
         await imageTaskService.updateTaskStatus(
           task.id,
           "error",
-          "Failed to create Duomi task"
+          "创建 Duomi 任务失败"
         );
         await creditService.refundCredits({
           userId,
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (duomiError) {
       const errorMessage =
-        duomiError instanceof Error ? duomiError.message : "Unknown error";
+        duomiError instanceof Error ? duomiError.message : "未知错误";
       await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
       await creditService.refundCredits({
         userId,

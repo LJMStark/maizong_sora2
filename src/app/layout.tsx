@@ -18,8 +18,49 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Little Elephant Studio",
-  description: "AI E-commerce Studio - Generate professional product images and videos",
+  title: {
+    default: "Little Elephant Studio - AI 驱动的创意工作室",
+    template: "%s | Little Elephant Studio",
+  },
+  description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频，提升您的品牌视觉效果",
+  keywords: ["AI 图像生成", "AI 视频生成", "电商工作室", "产品摄影", "视频创作", "Sora", "图像编辑"],
+  authors: [{ name: "Little Elephant Studio" }],
+  creator: "Little Elephant Studio",
+  publisher: "Little Elephant Studio",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+  openGraph: {
+    type: "website",
+    locale: "zh_CN",
+    url: "/",
+    siteName: "Little Elephant Studio",
+    title: "Little Elephant Studio - AI 驱动的创意工作室",
+    description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Little Elephant Studio",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Little Elephant Studio - AI 驱动的创意工作室",
+    description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default async function RootLayout({

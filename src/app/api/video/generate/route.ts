@@ -17,19 +17,19 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession();
 
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
   const userId = session.user.id;
 
   const { success } = await rateLimiter.limit(userId);
   if (!success) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
 
   try {
     const body = await request.json();
-    
+
     const validation = GenerateVideoSchema.safeParse(body);
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const currentCredits = await creditService.getUserCredits(userId);
     if (currentCredits < creditCost) {
       return NextResponse.json(
-        { error: "Insufficient credits", required: creditCost, current: currentCredits },
+        { error: "积分不足", required: creditCost, current: currentCredits },
         { status: 400 }
       );
     }
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           task.id,
           "error",
           0,
-          "Failed to create Duomi task"
+          "创建 Duomi 任务失败"
         );
         await creditService.refundCredits({
           userId,
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (duomiError) {
       const errorMessage =
-        duomiError instanceof Error ? duomiError.message : "Unknown error";
+        duomiError instanceof Error ? duomiError.message : "未知错误";
       await videoTaskService.updateTaskStatus(task.id, "error", 0, errorMessage);
       await creditService.refundCredits({
         userId,

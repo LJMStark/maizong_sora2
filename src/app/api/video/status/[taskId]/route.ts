@@ -9,7 +9,7 @@ export async function GET(
   const session = await getServerSession();
 
   if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
   }
 
   const { taskId } = await params;
@@ -18,11 +18,11 @@ export async function GET(
     const task = await videoTaskService.getTaskById(taskId);
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      return NextResponse.json({ error: "任务未找到" }, { status: 404 });
     }
 
     if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "禁止访问" }, { status: 403 });
     }
 
     // Return current state from database (updated via callback)
@@ -37,7 +37,7 @@ export async function GET(
       completedAt: task.completedAt,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
