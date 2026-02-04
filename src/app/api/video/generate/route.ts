@@ -77,7 +77,11 @@ export async function POST(request: NextRequest) {
       creditTransactionId: transactionId,
     });
 
-    // 使用轮询模式，不再依赖回调
+    // 同时使用回调和轮询模式
+    // 回调 URL 用于 Duomi 主动通知完成状态
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
+    const callbackUrl = `${baseUrl}/api/callback`;
+
     try {
       const duomiResponse = await duomiService.createVideoTask({
         prompt,
@@ -85,6 +89,7 @@ export async function POST(request: NextRequest) {
         aspectRatio: aspectRatio === "9:16" ? "9:16" : "16:9",
         duration: duration || 10,
         imageUrl: sourceImageUrl,
+        callbackUrl,
       });
 
       if (duomiResponse.id) {

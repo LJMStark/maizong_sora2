@@ -55,9 +55,10 @@ export async function GET(
       });
     }
 
-    // Poll Duomi API for status
+    // Try to poll Duomi API for status (may not be supported for all models)
     try {
       const duomiStatus = await duomiService.getVideoStatus(task.duomiTaskId);
+      console.log(`[Video Status] Duomi response for ${task.duomiTaskId}:`, JSON.stringify(duomiStatus));
 
       if (duomiStatus.status === "completed" && duomiStatus.video_url) {
         // Upload to Supabase for permanent storage
@@ -128,7 +129,9 @@ export async function GET(
         });
       }
     } catch (pollError) {
-      // If polling fails, return current database state
+      // Polling failed - Duomi Sora API may not support status query
+      // Fall back to database state (updated via callback)
+      console.log(`[Video Status] Polling failed for ${task.duomiTaskId}:`, pollError instanceof Error ? pollError.message : 'Unknown error');
       return NextResponse.json({
         id: task.id,
         status: task.status,
