@@ -12,6 +12,21 @@ export interface DuomiCreateTaskResponse {
   id: string;
 }
 
+export interface DuomiVideoResult {
+  url: string;
+}
+
+export interface DuomiVideoTaskStatusResponse {
+  id?: string;
+  state: "pending" | "running" | "succeeded" | "error";
+  data?: {
+    videos?: DuomiVideoResult[];
+  };
+  progress?: number;
+  message?: string;
+  error?: string;
+}
+
 const DUOMI_API_BASE = "https://duomiapi.com/v1";
 
 export const duomiService = {
@@ -53,5 +68,38 @@ export const duomiService = {
     }
 
     return response.json();
+  },
+
+  async getVideoTaskStatus(
+    taskId: string
+  ): Promise<DuomiVideoTaskStatusResponse> {
+    const apiKey = process.env.DUOMI_API;
+
+    if (!apiKey) {
+      throw new Error("DUOMI_API environment variable is not set");
+    }
+
+    const response = await fetch(`${DUOMI_API_BASE}/videos/tasks/${taskId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Duomi API error: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (
+      result?.data &&
+      typeof result.data === "object" &&
+      "state" in result.data
+    ) {
+      return result.data as DuomiVideoTaskStatusResponse;
+    }
+
+    return result as DuomiVideoTaskStatusResponse;
   },
 };

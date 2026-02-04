@@ -60,29 +60,56 @@ export async function POST(request: NextRequest) {
     // }
 
     const body = JSON.parse(bodyText);
-    const { task_id, status, progress, video_url, error_message } = body;
+    const taskId = body.task_id ?? body.id;
+    const statusRaw = body.status ?? body.state;
+    const progress = body.progress ?? 0;
+    const videoUrl = body.video_url ?? body?.data?.videos?.[0]?.url;
+    const errorMessage = body.error_message ?? body.message ?? body.error;
 
-    if (!task_id) {
+    if (!taskId) {
       return NextResponse.json(
         { error: "task_id is required" },
         { status: 400 }
       );
     }
 
-    const task = await videoTaskService.getTaskByDuomiId(task_id);
+    if (!statusRaw) {
+      return NextResponse.json(
+        { error: "status is required" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedStatus = statusRaw === "failed" ? "error" : statusRaw;
+
+    const task = await videoTaskService.getTaskByDuomiId(taskId);
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    if (status === "succeeded" && video_url) {
-      let finalVideoUrl = video_url;
+    if (task.status === "succeeded" || task.status === "error") {
+      return NextResponse.json({ success: true });
+    }
+
+    if (normalizedStatus === "succeeded") {
+      if (!videoUrl) {
+        await videoTaskService.updateTaskStatus(
+          task.id,
+          "error",
+          progress,
+          "Missing video URL in callback"
+        );
+        return NextResponse.json({ success: true });
+      }
+
+      let finalVideoUrl = videoUrl;
 
       try {
         finalVideoUrl = await storageService.uploadVideoFromUrl(
           task.userId,
           task.id,
-          video_url
+          videoUrl
         );
       } catch {
         // If upload fails, use the original Duomi URL
@@ -90,15 +117,15 @@ export async function POST(request: NextRequest) {
 
       await videoTaskService.updateTaskVideoUrls(
         task.id,
-        video_url,
+        videoUrl,
         finalVideoUrl
       );
-    } else if (status === "failed") {
+    } else if (normalizedStatus === "error") {
       await videoTaskService.updateTaskStatus(
         task.id,
         "error",
         progress || 0,
-        error_message || "Video generation failed"
+        errorMessage || "Video generation failed"
       );
 
       await creditService.refundCredits({
@@ -108,8 +135,8 @@ export async function POST(request: NextRequest) {
         referenceType: "video_task",
         referenceId: task.id,
       });
-    } else if (status === "running" || status === "pending") {
-      const mappedStatus = status === "running" ? "running" : "pending";
+    } else if (normalizedStatus === "running" || normalizedStatus === "pending") {
+      const mappedStatus = normalizedStatus === "running" ? "running" : "pending";
       await videoTaskService.updateTaskStatus(
         task.id,
         mappedStatus,
