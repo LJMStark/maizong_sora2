@@ -77,7 +77,7 @@ export default async function SignInPage() {
           </div>
 
           <p className="text-center text-xs text-[#9ca3af] mt-8">
-            By signing in, you agree to our Terms of Service and Privacy Policy
+            登录即表示您同意我们的服务条款和隐私政策
           </p>
         </div>
       </div>

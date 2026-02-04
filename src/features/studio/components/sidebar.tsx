@@ -59,7 +59,7 @@ const Sidebar: React.FC = () => {
             <span className="material-symbols-outlined text-3xl">filter_vintage</span>
             {tCommon('name')}
           </h1>
-          <p className="text-[10px] font-medium tracking-[0.2em] text-[#6b7280] uppercase mt-2 ml-1">{tCommon('description')}</p>
+          <p className="text-xs font-medium tracking-[0.2em] text-[#4b5563] uppercase mt-2 ml-1">{tCommon('description')}</p>
         </div>
         <nav className="flex flex-col">
           {navItems.map((item) => (
@@ -69,16 +69,16 @@ const Sidebar: React.FC = () => {
               className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
                 ${isActive(item.path)
                   ? 'text-[#1a1a1a] bg-[#faf9f6]'
-                  : 'text-[#6b7280] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50'
+                  : 'text-[#4b5563] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50'
                 }`}
             >
               {isActive(item.path) && (
                 <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#1a1a1a]" />
               )}
-              <span className={`material-symbols-outlined text-xl ${isActive(item.path) ? 'font-medium' : 'font-light'}`}>
+              <span className={`material-symbols-outlined text-2xl ${isActive(item.path) ? 'font-medium' : 'font-normal'}`}>
                 {item.icon}
               </span>
-              <p className="text-sm font-medium tracking-tight">{item.label}</p>
+              <p className="text-base font-medium tracking-tight">{item.label}</p>
             </Link>
           ))}
         </nav>
@@ -95,14 +95,14 @@ const Sidebar: React.FC = () => {
           </div>
         ) : session?.user ? (
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-[10px] font-medium tracking-widest">
+            <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-xs font-medium tracking-widest">
               {getInitials(session.user.name || 'U')}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[#1a1a1a] truncate">{session.user.name}</p>
+              <p className="text-sm font-semibold text-[#1a1a1a] truncate">{session.user.name}</p>
               <button
                 onClick={handleSignOut}
-                className="text-[10px] text-[#6b7280] uppercase tracking-tighter text-left hover:text-[#1a1a1a] transition-colors"
+                className="text-xs text-[#4b5563] uppercase tracking-tighter text-left hover:text-[#1a1a1a] transition-colors"
               >
                 {tAuth('signOut') || '退出登录'}
               </button>
@@ -113,12 +113,12 @@ const Sidebar: React.FC = () => {
             onClick={() => setLoginDialogOpen(true)}
             className="flex items-center gap-3 w-full group"
           >
-            <div className="w-9 h-9 rounded-full border-2 border-dashed border-[#e5e5e1] text-[#6b7280] flex items-center justify-center group-hover:border-[#1a1a1a] group-hover:text-[#1a1a1a] transition-colors">
+            <div className="w-9 h-9 rounded-full border-2 border-dashed border-[#e5e5e1] text-[#4b5563] flex items-center justify-center group-hover:border-[#1a1a1a] group-hover:text-[#1a1a1a] transition-colors">
               <span className="material-symbols-outlined text-lg">person</span>
             </div>
             <div className="flex flex-col min-w-0">
               <p className="text-xs font-semibold text-[#1a1a1a]">{tAuth('title')}</p>
-              <p className="text-[10px] text-[#6b7280] uppercase tracking-tighter">{tAuth('getStarted')}</p>
+              <p className="text-xs text-[#4b5563] uppercase tracking-tighter">{tAuth('getStarted')}</p>
             </div>
           </button>
         )}

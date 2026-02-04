@@ -29,7 +29,7 @@ export const creditService = {
       .limit(1);
 
     if (result.length === 0) {
-      throw new Error("User not found");
+      throw new Error("用户不存在");
     }
 
     return result[0].credits;
@@ -56,7 +56,7 @@ export const creditService = {
         });
 
       if (updateResult.length === 0) {
-        throw new Error("User not found");
+        throw new Error("用户不存在");
       }
 
       const newBalance = updateResult[0].newBalance;
@@ -64,7 +64,7 @@ export const creditService = {
       // 检查更新后余额是否为负（说明原余额不足）
       if (newBalance < 0) {
         // 回滚事务
-        throw new Error("Insufficient credits");
+        throw new Error("积分不足");
       }
 
       const balanceBefore = newBalance + amount;
@@ -107,7 +107,7 @@ export const creditService = {
         });
 
       if (updateResult.length === 0) {
-        throw new Error("User not found");
+        throw new Error("用户不存在");
       }
 
       const newBalance = updateResult[0].newBalance;
@@ -154,7 +154,7 @@ export const creditService = {
         });
 
       if (updateResult.length === 0) {
-        throw new Error("User not found");
+        throw new Error("用户不存在");
       }
 
       const newBalance = updateResult[0].newBalance;

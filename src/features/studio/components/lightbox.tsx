@@ -45,7 +45,7 @@ const Lightbox: React.FC<Props> = ({ src, type, onClose }) => {
         ) : (
           <img
             src={src}
-            alt="Fullscreen Preview"
+            alt="全屏预览"
             className="max-w-full max-h-full object-contain shadow-2xl rounded-sm select-none"
           />
         )}

@@ -32,7 +32,7 @@ export function useImageTaskPolling({
       const response = await fetch(`/api/image/status/${taskId}`);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch task status");
+        throw new Error("获取任务状态失败");
       }
 
       const data: ImageTaskStatus = await response.json();

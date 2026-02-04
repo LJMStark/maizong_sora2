@@ -25,23 +25,23 @@ export function validateUrl(urlString: string): void {
   try {
     url = new URL(urlString);
   } catch {
-    throw new Error("Invalid URL format");
+    throw new Error("无效的 URL 格式");
   }
 
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Invalid protocol: only http and https are allowed");
+    throw new Error("无效的协议：仅允许 http 和 https");
   }
 
   const hostname = url.hostname;
 
   if (hostname === "localhost") {
-    throw new Error("Access to localhost is forbidden");
+    throw new Error("禁止访问 localhost");
   }
 
   // Check for private IPs
   for (const range of PRIVATE_IP_RANGES) {
     if (range.test(hostname)) {
-      throw new Error("Access to private network addresses is forbidden");
+      throw new Error("禁止访问私有网络地址");
     }
   }
 }

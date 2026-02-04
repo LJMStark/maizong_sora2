@@ -41,6 +41,11 @@
       "historyAssets": "历史资源",
       "clear": "清除"
     },
+    "assetPicker": {
+      "title": "资源库",
+      "subtitle": "从生成的历史内容中选择",
+      "empty": "未找到有效的历史资源"
+    },
     "dimensions": {
       "label": "尺寸"
     },
@@ -247,5 +252,45 @@
       "image": "图像",
       "analysis": "分析"
     }
+  },
+  "subscription": {
+    "title": "投资计划",
+    "subtitle": "为现代电商美学打造的精致生成工具。",
+    "plans": {
+      "basic": {
+        "eyebrow": "入门",
+        "name": "基础版",
+        "features": {
+          "credits": "10 月度积分",
+          "quality": "标准质量",
+          "gallery": "公开画廊"
+        },
+        "button": "当前计划"
+      },
+      "pro": {
+        "eyebrow": "成长",
+        "name": "专业版",
+        "selected": "精选",
+        "features": {
+          "credits": "500 月度积分",
+          "quality": "4K 超高清",
+          "gallery": "私有画廊",
+          "priority": "优先队列"
+        },
+        "button": "升级到专业版"
+      },
+      "enterprise": {
+        "eyebrow": "规模",
+        "name": "企业版",
+        "features": {
+          "credits": "2,500 月度积分",
+          "storage": "无限存储",
+          "whitelabel": "白标交付",
+          "api": "API 访问"
+        },
+        "button": "联系销售"
+      }
+    },
+    "period": "/月"
   }
 }

@@ -68,14 +68,14 @@ export async function POST(request: NextRequest) {
 
     if (!taskId) {
       return NextResponse.json(
-        { error: "task_id is required" },
+        { error: "缺少 task_id 参数" },
         { status: 400 }
       );
     }
 
     if (!statusRaw) {
       return NextResponse.json(
-        { error: "status is required" },
+        { error: "缺少 status 参数" },
         { status: 400 }
       );
     }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     const task = await videoTaskService.getTaskByDuomiId(taskId);
 
     if (!task) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      return NextResponse.json({ error: "任务不存在" }, { status: 404 });
     }
 
     if (task.status === "succeeded" || task.status === "error") {
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
           task.id,
           "error",
           progress,
-          "Missing video URL in callback"
+          "回调中缺少视频 URL"
         );
         return NextResponse.json({ success: true });
       }
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         task.id,
         "error",
         progress || 0,
-        errorMessage || "Video generation failed"
+        errorMessage || "视频生成失败"
       );
 
       await creditService.refundCredits({
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

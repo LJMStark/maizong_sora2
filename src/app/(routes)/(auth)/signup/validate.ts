@@ -5,13 +5,13 @@ import { z } from "zod";
 export const SignUpSchema = z
   .object({
     email: z
-    .email({ message: "Invalid email address" })
-    .min(1, { message: "Email is required" }),
-    name: z.string().min(4, { message: "Must be at least 4 characters" }),
+    .email({ message: "邮箱格式不正确" })
+    .min(1, { message: "请输入邮箱" }),
+    name: z.string().min(4, { message: "至少需要 4 个字符" }),
     username: z
     .string()
-    .min(4, { message: "Must be at least 4 characters" })
-    .regex(/^[a-zA-Z0-9]+$/, "Only letters and numbers allowed")
+    .min(4, { message: "至少需要 4 个字符" })
+    .regex(/^[a-zA-Z0-9]+$/, "只允许字母和数字")
     .refine(
       (username) => {
         for (const pattern of restrictedUsernames) {
@@ -21,16 +21,16 @@ export const SignUpSchema = z
         }
         return true;
       },
-      { message: "Username contains disallowed words" }
+      { message: "用户名包含不允许的词汇" }
     ),
     password: passwordSchema,
     confirmPassword: z.string().min(8, {
-      message: "Must be at least 8 characters",
+      message: "至少需要 8 个字符",
     }),
     gender: z.boolean().nonoptional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: "两次输入的密码不一致",
     path: ["confirmPassword"],
   });
 

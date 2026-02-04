@@ -10,7 +10,7 @@ function getSupabase(): SupabaseClient {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Supabase environment variables are not configured");
+      throw new Error("Supabase 环境变量未配置");
     }
 
     supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
@@ -50,7 +50,7 @@ export const storageService = {
       });
 
     if (error) {
-      throw new Error(`Failed to upload image: ${error.message}`);
+      throw new Error(`上传图片失败: ${error.message}`);
     }
 
     const {
@@ -74,7 +74,7 @@ export const storageService = {
     const response = await fetch(videoUrl);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch video from URL: ${response.status}`);
+      throw new Error(`从 URL 获取视频失败: ${response.status}`);
     }
 
     const videoBuffer = Buffer.from(await response.arrayBuffer());
@@ -88,7 +88,7 @@ export const storageService = {
       });
 
     if (error) {
-      throw new Error(`Failed to upload video: ${error.message}`);
+      throw new Error(`上传视频失败: ${error.message}`);
     }
 
     const {
@@ -112,7 +112,7 @@ export const storageService = {
     const response = await fetch(imageUrl);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch image from URL: ${response.status}`);
+      throw new Error(`从 URL 获取图片失败: ${response.status}`);
     }
 
     const contentType = response.headers.get("content-type") || "image/png";
@@ -128,7 +128,7 @@ export const storageService = {
       });
 
     if (error) {
-      throw new Error(`Failed to upload image: ${error.message}`);
+      throw new Error(`上传图片失败: ${error.message}`);
     }
 
     const {
@@ -142,7 +142,7 @@ export const storageService = {
     const { error } = await getSupabase().storage.from(BUCKET_NAME).remove([path]);
 
     if (error) {
-      throw new Error(`Failed to delete file: ${error.message}`);
+      throw new Error(`删除文件失败: ${error.message}`);
     }
   },
 

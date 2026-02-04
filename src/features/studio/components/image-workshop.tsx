@@ -203,7 +203,7 @@ const ImageWorkshop: React.FC = () => {
             <button
               key={m}
               onClick={() => { setMode(m); setGeneratedImage(null); setAnalysisResult(null); }}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-sm ${mode === m ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#6b7280] hover:text-[#1a1a1a]'}`}
+              className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-all rounded-sm ${mode === m ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#4b5563] hover:text-[#1a1a1a]'}`}
             >
               {t(`mode.${m}`)}
             </button>
@@ -214,23 +214,23 @@ const ImageWorkshop: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <label className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">
+              <label className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">
                 {mode === 'edit' ? t('prompt.labelEdit') : t('prompt.labelGenerate')}
               </label>
               <button
                 onClick={handleRandomPrompt}
-                className="text-[#6b7280] hover:text-[#1a1a1a] transition-colors flex items-center justify-center p-1 rounded-full hover:bg-[#faf9f6]"
+                className="text-[#4b5563] hover:text-[#1a1a1a] transition-colors flex items-center justify-center p-1 rounded-full hover:bg-[#faf9f6]"
                 title={t('prompt.randomTitle')}
               >
                 <span className="material-symbols-outlined text-sm">casino</span>
               </button>
             </div>
-            <span className="text-[10px] text-[#6b7280] tabular-nums">{prompt.length} / 3000</span>
+            <span className="text-xs text-[#4b5563] tabular-nums">{prompt.length} / 3000</span>
           </div>
           <div className="flex flex-col gap-3">
             <div className="group relative">
               <textarea
-                className="w-full h-32 p-5 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm text-sm text-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] transition-all placeholder:text-[#6b7280]/40 leading-relaxed resize-none focus:outline-none"
+                className="w-full h-32 p-5 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm text-base text-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] transition-all placeholder:text-[#4b5563]/60 leading-relaxed resize-none focus:outline-none"
                 placeholder={
                   mode === 'edit' ? t('prompt.placeholderEdit') : t('prompt.placeholder')
                 }
@@ -250,7 +250,7 @@ const ImageWorkshop: React.FC = () => {
                   <button
                     key={tag.key}
                     onClick={() => addTag(tag.label)}
-                    className="text-[10px] font-semibold text-[#1a1a1a] bg-[#faf9f6] border border-[#e5e5e1] px-3 py-1.5 rounded-sm tracking-wide hover:border-[#1a1a1a] transition-colors"
+                    className="text-xs font-semibold text-[#1a1a1a] bg-[#faf9f6] border border-[#e5e5e1] px-3 py-1.5 rounded-sm tracking-wide hover:border-[#1a1a1a] transition-colors"
                   >
                     {tag.label}
                   </button>
@@ -263,13 +263,13 @@ const ImageWorkshop: React.FC = () => {
         {/* Input Image */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">
+            <h3 className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">
               {mode === 'generate' ? t('inputImage.labelOptional') : t('inputImage.labelRequired')}
             </h3>
             <div className="flex gap-4">
-              <button onClick={() => setPickerOpen(true)} className="text-[10px] text-[#1a1a1a] hover:text-[#2d3436] underline font-medium">{t('inputImage.historyAssets')}</button>
+              <button onClick={() => setPickerOpen(true)} className="text-xs text-[#1a1a1a] hover:text-[#2d3436] underline font-medium">{t('inputImage.historyAssets')}</button>
               {refImagePreview && (
-                <button onClick={() => { setRefImage(null); setRefImagePreview(null); }} className="text-[10px] text-[#6b7280] hover:text-[#1a1a1a] underline">{t('inputImage.clear')}</button>
+                <button onClick={() => { setRefImage(null); setRefImagePreview(null); }} className="text-xs text-[#4b5563] hover:text-[#1a1a1a] underline">{t('inputImage.clear')}</button>
               )}
             </div>
           </div>
@@ -286,7 +286,7 @@ const ImageWorkshop: React.FC = () => {
                 onClick={() => fileInputRef.current?.click()}
                 className={`aspect-square border border-dashed border-[#e5e5e1] hover:border-[#1a1a1a] bg-[#faf9f6] flex flex-col items-center justify-center cursor-pointer transition-all ${mode !== 'generate' && !refImage ? 'border-[#1a1a1a]/50 bg-[#1a1a1a]/5' : ''}`}
               >
-                <span className="material-symbols-outlined text-[#6b7280] text-lg">add</span>
+                <span className="material-symbols-outlined text-[#4b5563] text-lg">add</span>
               </div>
             )}
           </div>
@@ -296,28 +296,28 @@ const ImageWorkshop: React.FC = () => {
         {mode === 'generate' && (
           <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">{t('dimensions.label')}</span>
+              <span className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">{t('dimensions.label')}</span>
               <div className="grid grid-cols-4 gap-2">
                 {Object.values(AspectRatio).map((ratio) => (
                   <button
                     key={ratio}
                     onClick={() => setAspectRatio(ratio)}
-                    className={`flex flex-col items-center justify-center py-2 border transition-all ${aspectRatio === ratio ? 'border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-sm' : 'border-[#e5e5e1] bg-[#faf9f6] text-[#6b7280] hover:border-[#1a1a1a]'}`}
+                    className={`flex flex-col items-center justify-center py-2 border transition-all ${aspectRatio === ratio ? 'border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-sm' : 'border-[#e5e5e1] bg-[#faf9f6] text-[#4b5563] hover:border-[#1a1a1a]'}`}
                   >
-                    <span className="text-[9px] font-bold tracking-widest">{t(`aspectRatio.${ratio.toLowerCase()}`)}</span>
+                    <span className="text-[10px] font-bold tracking-widest">{t(`aspectRatio.${ratio.toLowerCase()}`)}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">{t('quality.label')}</span>
+              <span className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">{t('quality.label')}</span>
               <div className="flex border border-[#e5e5e1] p-1 bg-[#faf9f6]">
                 {Object.values(ImageQuality).map(q => (
                   <button
                     key={q}
                     onClick={() => setQuality(q)}
-                    className={`flex-1 py-1.5 text-[10px] font-bold tracking-widest transition-colors ${quality === q ? 'bg-white text-[#1a1a1a] border border-[#e5e5e1] shadow-sm' : 'text-[#6b7280] hover:text-[#1a1a1a]'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold tracking-widest transition-colors ${quality === q ? 'bg-white text-[#1a1a1a] border border-[#e5e5e1] shadow-sm' : 'text-[#4b5563] hover:text-[#1a1a1a]'}`}
                   >
                     {t(`quality.${q.toLowerCase()}`)}
                   </button>
@@ -328,7 +328,7 @@ const ImageWorkshop: React.FC = () => {
             {/* Credit Cost Info */}
             <div className="p-4 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[#6b7280] uppercase tracking-widest">{t('cost.label')}</span>
+                <span className="text-xs text-[#4b5563] uppercase tracking-widest">{t('cost.label')}</span>
                 <span className="text-sm font-bold text-[#1a1a1a]">{IMAGE_CREDIT_COST} {t('cost.credits')}</span>
               </div>
             </div>
@@ -342,13 +342,13 @@ const ImageWorkshop: React.FC = () => {
         <div className="flex-1 border border-[#e5e5e1] bg-white flex items-center justify-center relative overflow-hidden shadow-sm p-8">
           {loading ? (
             <div className="flex flex-col items-center text-center animate-soft-pulse">
-              <span className="material-symbols-outlined text-4xl text-[#6b7280]/50 mb-4 animate-spin">blur_on</span>
+              <span className="material-symbols-outlined text-4xl text-[#4b5563]/50 mb-4 animate-spin">blur_on</span>
               <p className="font-serif text-xl text-[#1a1a1a] italic">
                 {t('canvas.generating')}
               </p>
 
               <div className="w-64 mt-6">
-                <div className="flex justify-between text-[10px] text-[#6b7280] mb-2">
+                <div className="flex justify-between text-xs text-[#4b5563] mb-2">
                   <span>{t('canvas.progress')}</span>
                   <span>{progress}%</span>
                 </div>
@@ -360,35 +360,35 @@ const ImageWorkshop: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-[#6b7280] mt-4">{t('canvas.waitMessage')}</p>
+              <p className="text-xs text-[#4b5563] mt-4">{t('canvas.waitMessage')}</p>
             </div>
           ) : analysisResult ? (
             <div className="max-w-2xl w-full h-full overflow-y-auto custom-scrollbar">
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#e5e5e1]">
-                {refImagePreview && <img src={refImagePreview} className="w-16 h-16 object-cover border border-[#e5e5e1]" alt="Analyzed" />}
+                {refImagePreview && <img src={refImagePreview} className="w-16 h-16 object-cover border border-[#e5e5e1]" alt="已分析" />}
                 <div>
                   <h4 className="font-serif text-2xl text-[#1a1a1a] italic">{t('canvas.analysisReport')}</h4>
-                  <p className="text-xs text-[#6b7280]">Gemini 3 Pro Vision</p>
+                  <p className="text-sm text-[#4b5563]">Gemini 3 Pro Vision</p>
                 </div>
               </div>
-              <p className="text-sm leading-relaxed text-[#1a1a1a] whitespace-pre-wrap font-light">
+              <p className="text-base leading-relaxed text-[#1a1a1a] whitespace-pre-wrap font-normal">
                 {analysisResult}
               </p>
             </div>
           ) : generatedImage ? (
             <div className="relative group cursor-zoom-in h-full flex items-center justify-center" onClick={() => setLightboxOpen(true)}>
-              <img src={generatedImage} alt="Generated" className="max-w-full max-h-full object-contain shadow-lg" />
+              <img src={generatedImage} alt="已生成" className="max-w-full max-h-full object-contain shadow-lg" />
 
               {/* Actions Overlay */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-center pb-8 opacity-0 group-hover:opacity-100">
                 <div className="flex gap-4">
-                  <button className="bg-white/90 text-[#1a1a1a] px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-white transition-all">
+                  <button className="bg-white/90 text-[#1a1a1a] px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-white transition-all">
                     <span className="material-symbols-outlined text-base">open_in_full</span>
                     {t('canvas.expand')}
                   </button>
                   <button
                     onClick={handleToVideo}
-                    className="bg-[#1a1a1a]/90 text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-[#1a1a1a] transition-all"
+                    className="bg-[#1a1a1a]/90 text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-[#1a1a1a] transition-all"
                   >
                     <span className="material-symbols-outlined text-base">movie</span>
                     {t('canvas.animate')}
@@ -399,14 +399,14 @@ const ImageWorkshop: React.FC = () => {
           ) : (
             <div className="flex flex-col items-center text-center max-w-sm gap-6 p-8">
               <div className="w-16 h-16 border border-[#e5e5e1] flex items-center justify-center mb-2 rounded-full">
-                <span className="material-symbols-outlined text-3xl text-[#6b7280] font-light">
+                <span className="material-symbols-outlined text-3xl text-[#4b5563] font-light">
                   {mode === 'edit' ? 'auto_fix_high' : 'shutter_speed'}
                 </span>
               </div>
               <h4 className="font-serif text-2xl text-[#1a1a1a] italic">
                 {mode === 'edit' ? t('canvas.readyToEdit') : t('canvas.awaitingComposition')}
               </h4>
-              <p className="text-xs text-[#6b7280] leading-relaxed max-w-[280px]">
+              <p className="text-sm text-[#4b5563] leading-relaxed max-w-[280px]">
                 {mode === 'edit' ? t('canvas.editDescription') : t('canvas.generateDescription')}
               </p>
             </div>
@@ -418,7 +418,7 @@ const ImageWorkshop: React.FC = () => {
           <button
             onClick={handleAction}
             disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
-            className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-12 py-5 text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
+            className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-12 py-5 text-sm font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
           >
             <span className="material-symbols-outlined text-lg">auto_awesome</span>
             {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}

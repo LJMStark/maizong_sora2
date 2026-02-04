@@ -71,13 +71,13 @@ export async function GET(
             task.id,
             "error",
             progress,
-            "Missing video URL in Duomi status"
+            "Duomi 状态中缺少视频 URL"
           );
           return NextResponse.json({
             id: task.id,
             status: "error",
             progress,
-            errorMessage: "Missing video URL in Duomi status",
+            errorMessage: "Duomi 状态中缺少视频 URL",
             prompt: task.prompt,
             createdAt: task.createdAt,
             completedAt: new Date(),
@@ -111,7 +111,7 @@ export async function GET(
           completedAt: new Date(),
         });
       } else if (state === "error") {
-        const errorMessage = duomiStatus.message || duomiStatus.error || "Video generation failed";
+        const errorMessage = duomiStatus.message || duomiStatus.error || "视频生成失败";
         await videoTaskService.updateTaskStatus(
           task.id,
           "error",

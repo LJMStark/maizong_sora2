@@ -36,7 +36,7 @@ export const duomiService = {
     const apiKey = process.env.DUOMI_API;
 
     if (!apiKey) {
-      throw new Error("DUOMI_API environment variable is not set");
+      throw new Error("DUOMI_API 环境变量未设置");
     }
 
     const requestBody: Record<string, unknown> = {
@@ -64,7 +64,7 @@ export const duomiService = {
     });
 
     if (!response.ok) {
-      throw new Error(`Duomi API error: ${response.status}`);
+      throw new Error(`Duomi API 错误: ${response.status}`);
     }
 
     return response.json();
@@ -76,7 +76,7 @@ export const duomiService = {
     const apiKey = process.env.DUOMI_API;
 
     if (!apiKey) {
-      throw new Error("DUOMI_API environment variable is not set");
+      throw new Error("DUOMI_API 环境变量未设置");
     }
 
     const response = await fetch(`${DUOMI_API_BASE}/videos/tasks/${taskId}`, {
@@ -87,7 +87,7 @@ export const duomiService = {
     });
 
     if (!response.ok) {
-      throw new Error(`Duomi API error: ${response.status}`);
+      throw new Error(`Duomi API 错误: ${response.status}`);
     }
 
     const result = await response.json();

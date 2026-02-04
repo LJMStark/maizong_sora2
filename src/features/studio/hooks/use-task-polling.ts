@@ -52,7 +52,7 @@ export function useTaskPolling<T extends BaseTaskStatus>({
       const response = await fetch(getApiEndpoint(taskType, taskId));
 
       if (!response.ok) {
-        throw new Error("Failed to fetch task status");
+        throw new Error("获取任务状态失败");
       }
 
       const data: T = await response.json();

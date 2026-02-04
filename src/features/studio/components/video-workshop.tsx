@@ -226,20 +226,20 @@ const VideoWorkshop: React.FC = () => {
           <h1 className="text-2xl font-serif italic mb-1 text-[#1a1a1a]">
             {t("creationSuite")}
           </h1>
-          <p className="text-[#6b7280]/60 text-[11px] uppercase tracking-wider">
+          <p className="text-gray-500 text-xs uppercase tracking-wider">
             {t("subtitle")}
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
               {t("sections.sourceMaterial")}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setPickerOpen(true)}
-                className="text-[9px] underline text-[#1a1a1a] font-bold"
+                className="text-xs underline text-[#1a1a1a] font-bold"
               >
                 {t("sourceMaterial.history")}
               </button>
@@ -249,7 +249,7 @@ const VideoWorkshop: React.FC = () => {
                     setSourceImage(null);
                     setSourcePreview(null);
                   }}
-                  className="text-[9px] underline text-[#6b7280]"
+                  className="text-xs underline text-gray-500 hover:text-gray-800"
                 >
                   {t("sourceMaterial.clear")}
                 </button>
@@ -265,11 +265,11 @@ const VideoWorkshop: React.FC = () => {
           />
 
           {sourcePreview ? (
-            <div className="relative group border border-[#e5e5e1] aspect-[16/9] overflow-hidden bg-[#faf9f6]">
+            <div className="relative group border border-[#e5e5e1] aspect-video overflow-hidden bg-[#faf9f6]">
               <img
                 src={sourcePreview}
                 className="w-full h-full object-cover"
-                alt="Source"
+                alt="源素材"
               />
               <button
                 onClick={() => {
@@ -302,23 +302,23 @@ const VideoWorkshop: React.FC = () => {
         </div>
 
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
             {t("sections.frameFormat")}
           </p>
           <div className="grid grid-cols-2 gap-px bg-[#e5e5e1] border border-[#e5e5e1]">
             <button
               onClick={() => setAspectRatio(AspectRatio.SOCIAL)}
-              className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.SOCIAL ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-[#6b7280]"}`}
+              className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.SOCIAL ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
             >
-              <span className="text-[10px] uppercase tracking-tighter">
+              <span className="text-xs uppercase tracking-tighter">
                 {t("aspectRatio.portrait")}
               </span>
             </button>
             <button
               onClick={() => setAspectRatio(AspectRatio.LANDSCAPE)}
-              className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.LANDSCAPE ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-[#6b7280]"}`}
+              className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.LANDSCAPE ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
             >
-              <span className="text-[10px] uppercase tracking-tighter">
+              <span className="text-xs uppercase tracking-tighter">
                 {t("aspectRatio.cinema")}
               </span>
             </button>
@@ -327,13 +327,13 @@ const VideoWorkshop: React.FC = () => {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
               {t("sections.narrativePrompt")}
             </p>
             <button
               onClick={handleRandomPrompt}
               title={t("prompt.randomTitle")}
-              className="text-[#6b7280] hover:text-[#1a1a1a] p-1 rounded-full hover:bg-[#faf9f6] transition-colors"
+              className="text-gray-500 hover:text-[#1a1a1a] p-1 rounded-full hover:bg-[#faf9f6] transition-colors"
             >
               <span className="material-symbols-outlined text-sm">casino</span>
             </button>
@@ -341,31 +341,31 @@ const VideoWorkshop: React.FC = () => {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="w-full h-32 bg-[#faf9f6] border border-[#e5e5e1] focus:ring-1 focus:ring-[#1a1a1a] focus:outline-none p-4 text-xs leading-relaxed placeholder:text-[#6b7280]/40 resize-none"
+            className="w-full h-32 bg-[#faf9f6] border border-[#e5e5e1] focus:ring-1 focus:ring-[#1a1a1a] focus:outline-none p-4 text-sm text-gray-800 leading-relaxed placeholder:text-gray-400 resize-none"
             placeholder={t("prompt.placeholder")}
           />
         </div>
 
         <div className="space-y-4">
-          <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
             {t("sections.renderMode")}
           </p>
           <div className="flex border border-[#e5e5e1]">
             <button
               onClick={() => setMode("Fast")}
-              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-[#6b7280] hover:bg-[#faf9f6]"}`}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
             >
               <span>{t("mode.fast")}</span>
-              <span className="text-[8px] opacity-70">
+              <span className="text-[10px] opacity-70">
                 {CREDIT_COSTS.Fast} {t("cost.credits")}
               </span>
             </button>
             <button
               onClick={() => setMode("Quality")}
-              className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-[#6b7280] hover:bg-[#faf9f6]"}`}
+              className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
             >
               <span>{t("mode.quality")}</span>
-              <span className="text-[8px] opacity-70">
+              <span className="text-[10px] opacity-70">
                 {CREDIT_COSTS.Quality} {t("cost.credits")}
               </span>
             </button>
@@ -376,7 +376,7 @@ const VideoWorkshop: React.FC = () => {
           <button
             onClick={handleGenerate}
             disabled={loading || (!prompt && !sourceImage && !sourcePreview)}
-            className="w-full bg-[#1a1a1a] text-white py-5 text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-[#2d3436] disabled:bg-gray-400 transition-all flex items-center justify-center gap-3"
+            className="w-full bg-[#1a1a1a] text-white py-5 text-sm font-bold uppercase tracking-[0.2em] hover:bg-[#2d3436] disabled:bg-gray-400 transition-all flex items-center justify-center gap-3"
           >
             <span className="material-symbols-outlined text-sm">
               movie_filter
@@ -390,7 +390,7 @@ const VideoWorkshop: React.FC = () => {
         <div className="max-w-4xl w-full flex flex-col items-center">
           {loading ? (
             <div
-              className={`bg-white border border-[#e5e5e1] p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-[9/16] h-[600px]" : "aspect-[16/9] w-full"}`}
+              className={`bg-white border border-[#e5e5e1] p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"}`}
             >
               <span className="material-symbols-outlined text-4xl animate-spin text-[#6b7280]/40 mb-6">
                 hourglass_empty
@@ -424,7 +424,7 @@ const VideoWorkshop: React.FC = () => {
           ) : generatedVideo ? (
             <div className="flex flex-col gap-6 w-full items-center">
               <div
-                className={`relative bg-black ${aspectRatio === AspectRatio.SOCIAL ? "aspect-[9/16] h-[600px]" : "aspect-[16/9] w-full"} shadow-2xl group`}
+                className={`relative bg-black ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"} shadow-2xl group`}
               >
                 <video
                   src={generatedVideo}
@@ -457,7 +457,7 @@ const VideoWorkshop: React.FC = () => {
             </div>
           ) : errorMessage ? (
             <div
-              className={`bg-white border border-red-200 p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-[9/16] h-[600px]" : "aspect-[16/9] w-full"}`}
+              className={`bg-white border border-red-200 p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"}`}
             >
               <span className="material-symbols-outlined text-4xl text-red-400 mb-6">
                 error
@@ -477,7 +477,7 @@ const VideoWorkshop: React.FC = () => {
             </div>
           ) : (
             <div
-              className={`bg-white border border-[#e5e5e1] p-1 shadow-sm flex flex-col items-center justify-center opacity-50 ${aspectRatio === AspectRatio.SOCIAL ? "aspect-[9/16] h-[600px]" : "aspect-[16/9] w-full"}`}
+              className={`bg-white border border-[#e5e5e1] p-1 shadow-sm flex flex-col items-center justify-center opacity-50 ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"}`}
             >
               <span className="material-symbols-outlined text-4xl text-[#6b7280]/20 mb-6">
                 movie

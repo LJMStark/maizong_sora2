@@ -1,53 +1,53 @@
 export const IMAGE_PROMPTS = [
-  "Minimalist skincare bottle on a white marble podium, soft morning sunlight, 4k resolution, high key photography",
-  "Luxury gold watch floating in splashing clear water, high speed photography, studio lighting, sharp focus",
-  "Cozy knitted wool sweater folded on a rustic wooden table with autumn leaves, warm bokeh background, lifestyle photography",
-  "Futuristic running shoe suspended in mid-air, neon blue and pink rim lighting, dark background, cyberpunk style",
-  "Organic green juice bottle surrounded by fresh mint leaves and ice cubes, condensation details, macro photography",
-  "Modern leather armchair in a sunlit industrial loft living room, interior design photography, wide angle",
-  "Gourmet burger on a slate plate with fries, dramatic side lighting, steam rising, appetizing food photography",
-  "Elegant diamond necklace on black velvet, spotlight, sparkle effects, macro shot, jewelry photography",
-  "Matte black headphones floating against a colorful abstract background, 3d render style, vibrant colors",
-  "Ceramic vase with dried flowers on a beige linen cloth, neutral tones, soft shadows, aesthetic visuals",
-  "Glass perfume bottle reflecting a sunset skyline, golden hour lighting, cinematic composition",
-  "Professional camera gear flat lay on a dark wooden desk, organized layout, overhead shot"
+  "白色大理石平台上极简护肤瓶，柔和晨光，4k分辨率，高调摄影",
+  "奢华金表悬浮在飞溅的清水中，高速摄影，影棚灯光，焦点清晰",
+  "舒适的针织羊毛衫折叠在质朴的木桌上，配有秋叶，温暖的背景虚化，生活方式摄影",
+  "悬浮在半空中的未来跑鞋，霓虹蓝粉色轮廓光，暗色背景，赛博朋克风格",
+  "有机绿色果汁瓶，周围是新鲜薄荷叶和冰块，凝结水珠细节，微距摄影",
+  "阳光充足的工业阁楼客厅里的现代皮革扶手椅，室内设计摄影，广角",
+  "石板盘上的美味汉堡配薯条，戏剧性侧光，热气腾腾，诱人的美食摄影",
+  "黑色天鹅绒上的优雅钻石项链，聚光灯，闪光效果，微距拍摄，珠宝摄影",
+  "漂浮在彩色抽象背景前的哑光黑色耳机，3D渲染风格，色彩鲜艳",
+  "米色亚麻布上的干花陶瓷花瓶，中性色调，柔和阴影，美学视觉",
+  "反映日落天际线的玻璃香水瓶，黄金时段光线，电影构图",
+  "深色木桌上的专业相机装备平铺，整洁布局，俯拍"
 ];
 
 export const EDIT_PROMPTS = [
-  "Change the background to a luxury beach resort at sunset",
-  "Add a soft shadow under the product to make it look grounded",
-  "Remove the background and replace it with a solid pastel pink color",
-  "Make the lighting warmer and more inviting, like golden hour",
-  "Add a festive Christmas theme with subtle ornaments in the background",
-  "Change the table surface to a rustic dark wood texture",
-  "Add steam rising from the coffee cup to simulate heat",
-  "Apply a vintage film grain filter to the entire image",
-  "Place the product on a reflective glass surface",
-  "Add a few fresh lemon slices next to the beverage bottle"
+  "将背景更改为日落时的豪华海滩度假村",
+  "在产品下方添加柔和阴影使其看起来更稳重",
+  "移除背景并替换为纯淡粉色",
+  "使灯光更温暖诱人，像黄金时段一样",
+  "添加带有微妙背景装饰的节日圣诞主题",
+  "将桌面表面更改为质朴的深色木纹",
+  "添加从咖啡杯升起的蒸汽以模拟热度",
+  "对整个图像应用复古胶片颗粒滤镜",
+  "将产品放置在反光玻璃表面上",
+  "在饮料瓶旁边添加几片新鲜柠檬片"
 ];
 
 export const ANALYZE_PROMPTS = [
-  "Analyze this image and generate a compelling Instagram caption for a product launch.",
-  "Describe the lighting, color palette, and composition of this image in detail.",
-  "Identify the main product and list 5 potential SEO keywords for an e-commerce listing.",
-  "Evaluate the visual appeal of this product photo and suggest improvements.",
-  "Generate a short marketing description for this product targeting Gen Z consumers.",
-  "What is the mood of this image? Describe the feelings it evokes.",
-  "List all the visible objects and materials in the scene.",
-  "Critique the image quality and focus sharpness for a professional print ad."
+  "分析此图片并为产品发布生成引人注目的小红书文案。",
+  "详细描述此图片的灯光、调色板和构图。",
+  "识别主要产品并列出5个潜在的电商SEO关键词。",
+  "评估此产品照片的视觉吸引力并提出改进建议。",
+  "针对Z世代消费者生成此产品的简短营销描述。",
+  "这张图片的情绪是什么？描述它唤起的感觉。",
+  "列出场景中所有可见的物体和材质。",
+  "从专业平面广告的角度评价图片质量和焦点清晰度。"
 ];
 
 export const VIDEO_PROMPTS = [
-  "Slow motion rotating shot of the product, sparkling studio lights, cinematic 4k",
-  "Camera slowly pans right revealing the item in a cozy sunlit living room environment",
-  "Extreme close up zoom in on the texture details, macro lens, shallow depth of field",
-  "360 degree orbit around the object suspended in mid-air, dynamic motion background",
-  "Soft focus fade in, steam rising gently, warm and inviting atmosphere",
-  "Fast paced editing cuts showing the product in different lifestyle scenarios",
-  "Cinematic dolly zoom effect focusing on the logo, dramatic lighting change",
-  "Water splash slow motion impact hitting the product, refreshing and energetic vibe",
-  "Time lapse of shadows moving across the product placed on a window sill",
-  "Hand holding the product and turning it to show reflections, first person point of view",
-  "Low angle shot looking up at the product, making it look majestic and imposing",
-  "Rack focus starting from the background and shifting sharply to the product in the foreground"
+  "产品的慢动作旋转镜头，闪烁的影棚灯光，电影级4k",
+  "相机缓慢向右平移，展示舒适阳光客厅环境中的物品",
+  "极致特写放大纹理细节，微距镜头，浅景深",
+  "围绕悬浮半空物体的360度轨道拍摄，动态运动背景",
+  "柔焦淡入，蒸汽轻轻升起，温暖诱人的氛围",
+  "快节奏剪辑展示产品在不同生活场景中的应用",
+  "电影级滑动变焦效果聚焦Logo，戏剧性光线变化",
+  "水花慢动作冲击产品，清爽充满活力的氛围",
+  "阴影在窗台上放置的产品上移动的延时摄影",
+  "手持产品转动展示反射，第一人称视角",
+  "低角度仰拍产品，使其看起来宏伟壮观",
+  "焦点从背景清晰地转移到前景产品的变焦拍摄"
 ];
