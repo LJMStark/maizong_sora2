@@ -3,12 +3,40 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { AspectRatio } from "../types";
-import { fileToBase64, urlToBase64 } from "../services/gemini-service";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import { useStudio } from "../context/studio-context";
-import { useTaskPolling, TaskStatus } from "../hooks/use-task-polling";
+import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
+
+// 工具函数
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+};
+
+const urlToBase64 = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+  });
+};
 
 const CREDIT_COSTS = {
   Fast: 30,
@@ -35,7 +63,7 @@ const VideoWorkshop: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleTaskComplete = useCallback(
-    (task: TaskStatus) => {
+    (task: VideoTaskStatus) => {
       setLoading(false);
       if (task.videoUrl) {
         setGeneratedVideo(task.videoUrl);
@@ -48,7 +76,7 @@ const VideoWorkshop: React.FC = () => {
   );
 
   const handleTaskError = useCallback(
-    (task: TaskStatus) => {
+    (task: VideoTaskStatus) => {
       setLoading(false);
       setErrorMessage(task.errorMessage || "Video generation failed");
       setCurrentTaskId(null);
@@ -58,8 +86,9 @@ const VideoWorkshop: React.FC = () => {
     [refreshCredits, refreshVideoTasks]
   );
 
-  const { task: pollingTask } = useTaskPolling({
+  const { task: pollingTask } = useTaskPolling<VideoTaskStatus>({
     taskId: currentTaskId,
+    taskType: "video",
     interval: 3000,
     onComplete: handleTaskComplete,
     onError: handleTaskError,

@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { creditTransaction, user } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export type CreditOperationType = "deduction" | "addition" | "refund";
 
@@ -40,36 +40,51 @@ export const creditService = {
     newBalance: number;
   }> {
     const { userId, amount, reason, referenceType, referenceId } = params;
-
-    const currentCredits = await this.getUserCredits(userId);
-
-    if (currentCredits < amount) {
-      throw new Error("Insufficient credits");
-    }
-
-    const newBalance = currentCredits - amount;
     const transactionId = crypto.randomUUID();
 
-    await db.transaction(async (tx) => {
-      await tx
+    // 使用原子操作防止竞态条件
+    const result = await db.transaction(async (tx) => {
+      // 使用 SQL 原子更新，只有余额足够时才扣除
+      const updateResult = await tx
         .update(user)
-        .set({ credits: newBalance })
-        .where(eq(user.id, userId));
+        .set({
+          credits: sql`${user.credits} - ${amount}`,
+        })
+        .where(eq(user.id, userId))
+        .returning({
+          newBalance: user.credits,
+        });
+
+      if (updateResult.length === 0) {
+        throw new Error("User not found");
+      }
+
+      const newBalance = updateResult[0].newBalance;
+
+      // 检查更新后余额是否为负（说明原余额不足）
+      if (newBalance < 0) {
+        // 回滚事务
+        throw new Error("Insufficient credits");
+      }
+
+      const balanceBefore = newBalance + amount;
 
       await tx.insert(creditTransaction).values({
         id: transactionId,
         userId,
         type: "deduction",
         amount,
-        balanceBefore: currentCredits,
+        balanceBefore,
         balanceAfter: newBalance,
         reason,
         referenceType,
         referenceId,
       });
+
+      return { transactionId, newBalance };
     });
 
-    return { transactionId, newBalance };
+    return result;
   },
 
   async refundCredits(params: RefundCreditsParams): Promise<{
@@ -77,31 +92,43 @@ export const creditService = {
     newBalance: number;
   }> {
     const { userId, amount, reason, referenceType, referenceId } = params;
-
-    const currentCredits = await this.getUserCredits(userId);
-    const newBalance = currentCredits + amount;
     const transactionId = crypto.randomUUID();
 
-    await db.transaction(async (tx) => {
-      await tx
+    // 使用原子操作防止竞态条件
+    const result = await db.transaction(async (tx) => {
+      const updateResult = await tx
         .update(user)
-        .set({ credits: newBalance })
-        .where(eq(user.id, userId));
+        .set({
+          credits: sql`${user.credits} + ${amount}`,
+        })
+        .where(eq(user.id, userId))
+        .returning({
+          newBalance: user.credits,
+        });
+
+      if (updateResult.length === 0) {
+        throw new Error("User not found");
+      }
+
+      const newBalance = updateResult[0].newBalance;
+      const balanceBefore = newBalance - amount;
 
       await tx.insert(creditTransaction).values({
         id: transactionId,
         userId,
         type: "refund",
         amount,
-        balanceBefore: currentCredits,
+        balanceBefore,
         balanceAfter: newBalance,
         reason,
         referenceType,
         referenceId,
       });
+
+      return { transactionId, newBalance };
     });
 
-    return { transactionId, newBalance };
+    return result;
   },
 
   async addCredits(params: {
@@ -112,31 +139,43 @@ export const creditService = {
     referenceId?: string;
   }): Promise<{ transactionId: string; newBalance: number }> {
     const { userId, amount, reason, referenceType, referenceId } = params;
-
-    const currentCredits = await this.getUserCredits(userId);
-    const newBalance = currentCredits + amount;
     const transactionId = crypto.randomUUID();
 
-    await db.transaction(async (tx) => {
-      await tx
+    // 使用原子操作防止竞态条件
+    const result = await db.transaction(async (tx) => {
+      const updateResult = await tx
         .update(user)
-        .set({ credits: newBalance })
-        .where(eq(user.id, userId));
+        .set({
+          credits: sql`${user.credits} + ${amount}`,
+        })
+        .where(eq(user.id, userId))
+        .returning({
+          newBalance: user.credits,
+        });
+
+      if (updateResult.length === 0) {
+        throw new Error("User not found");
+      }
+
+      const newBalance = updateResult[0].newBalance;
+      const balanceBefore = newBalance - amount;
 
       await tx.insert(creditTransaction).values({
         id: transactionId,
         userId,
         type: "addition",
         amount,
-        balanceBefore: currentCredits,
+        balanceBefore,
         balanceAfter: newBalance,
         reason,
         referenceType,
         referenceId,
       });
+
+      return { transactionId, newBalance };
     });
 
-    return { transactionId, newBalance };
+    return result;
   },
 
   async getCreditHistory(
