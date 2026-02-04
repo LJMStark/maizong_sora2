@@ -77,7 +77,7 @@ export async function GET(
 
 **External APIs**:
 - Video generation: `duomi-service.ts` - callback-based via `DUOMI_API`
-- Image generation: `duomi-image-service.ts` - polling-based via `DUOMI_KEY`
+- Image generation: `duomi-image-service.ts` - polling-based via `DUOMI_API`
 
 **Task Flow**: Create task → Deduct credits → Call Duomi API → Poll status (image) or wait for callback (video) → Save to Supabase Storage → Refund on error
 
@@ -122,7 +122,6 @@ Required in `.env`:
 - `DIRECT_URL` - Supabase direct connection (migrations)
 - `BETTER_AUTH_SECRET`
 - `NEXT_PUBLIC_BASE_URL`
-- `DUOMI_API` - Video generation API key
-- `DUOMI_KEY` - Image generation API key
+- `DUOMI_API` - Duomi API key (for both video and image generation)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`

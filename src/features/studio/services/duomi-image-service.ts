@@ -36,10 +36,10 @@ export const duomiImageService = {
   async createTextToImageTask(
     params: DuomiTextToImageParams
   ): Promise<DuomiCreateImageResponse> {
-    const apiKey = process.env.DUOMI_KEY;
+    const apiKey = process.env.DUOMI_API;
 
     if (!apiKey) {
-      throw new Error("DUOMI_KEY environment variable is not set");
+      throw new Error("DUOMI_API environment variable is not set");
     }
 
     const requestBody: Record<string, unknown> = {
@@ -68,16 +68,21 @@ export const duomiImageService = {
       throw new Error(`Duomi API error: ${response.status}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    // Duomi API 返回格式: { code: 200, data: { task_id: "..." } }
+    if (result.data?.task_id) {
+      return { task_id: result.data.task_id };
+    }
+    return result;
   },
 
   async createImageToImageTask(
     params: DuomiImageToImageParams
   ): Promise<DuomiCreateImageResponse> {
-    const apiKey = process.env.DUOMI_KEY;
+    const apiKey = process.env.DUOMI_API;
 
     if (!apiKey) {
-      throw new Error("DUOMI_KEY environment variable is not set");
+      throw new Error("DUOMI_API environment variable is not set");
     }
 
     const requestBody: Record<string, unknown> = {
@@ -110,14 +115,19 @@ export const duomiImageService = {
       throw new Error(`Duomi API error: ${response.status}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    // Duomi API 返回格式: { code: 200, data: { task_id: "..." } }
+    if (result.data?.task_id) {
+      return { task_id: result.data.task_id };
+    }
+    return result;
   },
 
   async getTaskStatus(taskId: string): Promise<DuomiTaskStatusResponse> {
-    const apiKey = process.env.DUOMI_KEY;
+    const apiKey = process.env.DUOMI_API;
 
     if (!apiKey) {
-      throw new Error("DUOMI_KEY environment variable is not set");
+      throw new Error("DUOMI_API environment variable is not set");
     }
 
     const response = await fetch(
@@ -134,6 +144,15 @@ export const duomiImageService = {
       throw new Error(`Duomi API error: ${response.status}`);
     }
 
-    return response.json();
+    const result = await response.json();
+    // Duomi API 返回格式: { code: 200, data: { state: "...", data: {...} } }
+    if (result.data) {
+      return {
+        state: result.data.state,
+        data: result.data.data,
+        error: result.data.msg || result.data.error,
+      };
+    }
+    return result;
   },
 };
