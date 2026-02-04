@@ -8,6 +8,7 @@ import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import { useStudio } from "../context/studio-context";
 import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
+import { useSimulatedProgress } from "../hooks/use-simulated-progress";
 
 // 工具函数
 const fileToBase64 = (file: File): Promise<string> => {
@@ -93,6 +94,17 @@ const VideoWorkshop: React.FC = () => {
     onComplete: handleTaskComplete,
     onError: handleTaskError,
   });
+
+  // 模拟进度：5分钟，最多到92%
+  const simulatedProgress = useSimulatedProgress({
+    isRunning: loading,
+    actualStatus: pollingTask?.status,
+    estimatedDuration: 300000, // 5分钟
+    maxProgress: 92,
+  });
+
+  const progress = pollingTask?.status === "succeeded" ? 100 : simulatedProgress;
+  const taskStatus = pollingTask?.status || "pending";
 
   useEffect(() => {
     const imageParam = searchParams.get("image");
@@ -183,9 +195,6 @@ const VideoWorkshop: React.FC = () => {
       alert(message);
     }
   };
-
-  const progress = pollingTask?.progress || 0;
-  const taskStatus = pollingTask?.status || "pending";
 
   return (
     <div className="flex h-full overflow-hidden font-sans">

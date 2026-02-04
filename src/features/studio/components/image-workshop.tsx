@@ -8,6 +8,7 @@ import Lightbox from './lightbox';
 import AssetPicker from './asset-picker';
 import { useStudio } from '../context/studio-context';
 import { useImageTaskPolling } from '../hooks/use-image-task-polling';
+import { useSimulatedProgress } from '../hooks/use-simulated-progress';
 
 type Mode = 'generate' | 'edit' | 'analyze';
 
@@ -30,6 +31,7 @@ const ImageWorkshop: React.FC = () => {
   const [analysisResult, setAnalysisResult] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [taskStatus, setTaskStatus] = useState<"pending" | "running" | "succeeded" | "error">("pending");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +42,7 @@ const ImageWorkshop: React.FC = () => {
     onComplete: (task) => {
       setLoading(false);
       setCurrentTaskId(null);
+      setTaskStatus("succeeded");
       if (task.imageUrl) {
         setGeneratedImage(task.imageUrl);
         refreshCredits();
@@ -49,11 +52,22 @@ const ImageWorkshop: React.FC = () => {
     onError: (task) => {
       setLoading(false);
       setCurrentTaskId(null);
+      setTaskStatus("error");
       alert(task.errorMessage || "Image generation failed. Credits have been refunded.");
       refreshCredits();
       refreshImageTasks();
     },
   });
+
+  // 模拟进度：30秒，最多到95%
+  const simulatedProgress = useSimulatedProgress({
+    isRunning: loading,
+    actualStatus: taskStatus,
+    estimatedDuration: 30000, // 30秒
+    maxProgress: 95,
+  });
+
+  const progress = taskStatus === "succeeded" ? 100 : simulatedProgress;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -121,6 +135,7 @@ const ImageWorkshop: React.FC = () => {
     setLoading(true);
     setGeneratedImage(null);
     setAnalysisResult(null);
+    setTaskStatus("pending");
 
     try {
       let imageBase64: string | undefined;
@@ -155,6 +170,7 @@ const ImageWorkshop: React.FC = () => {
 
       const data = await response.json();
       setCurrentTaskId(data.taskId);
+      setTaskStatus("running");
     } catch (e) {
       console.error(e);
       setLoading(false);
@@ -323,7 +339,21 @@ const ImageWorkshop: React.FC = () => {
               <p className="font-serif text-xl text-[#1a1a1a] italic">
                 Generating with Duomi AI...
               </p>
-              <p className="text-xs text-[#6b7280] mt-2">This may take a moment</p>
+
+              <div className="w-64 mt-6">
+                <div className="flex justify-between text-[10px] text-[#6b7280] mb-2">
+                  <span>Progress</span>
+                  <span>{progress}%</span>
+                </div>
+                <div className="h-2 bg-[#e5e5e1] rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#1a1a1a] transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-[#6b7280] mt-4">This may take a few minutes...</p>
             </div>
           ) : analysisResult ? (
             <div className="max-w-2xl w-full h-full overflow-y-auto custom-scrollbar">
