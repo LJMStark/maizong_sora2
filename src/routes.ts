@@ -11,4 +11,7 @@ export const authRoutes: string[] = ["/signin", "/signup", "/forgot-password"];
 
 export const apiAuthPrefix: string = "/api/auth";
 
+// API routes that should be publicly accessible (webhooks, callbacks)
+export const publicApiRoutes: string[] = ["/api/callback"];
+
 export const DEFAULT_LOGIN_REDIRECT: string = "/";

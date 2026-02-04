@@ -6,20 +6,28 @@ import {
   authRoutes,
   DEFAULT_LOGIN_REDIRECT,
   publicRoutes,
+  publicApiRoutes,
 } from "./routes";
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const session = getSessionCookie(request);
+  const pathname = request.nextUrl.pathname;
 
-  const isApiAuth = request.nextUrl.pathname.startsWith(apiAuthPrefix);
-
-  const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname);
+  const isApiAuth = pathname.startsWith(apiAuthPrefix);
+  const isPublicRoute = publicRoutes.includes(pathname);
+  const isPublicApiRoute = publicApiRoutes.some((route) => pathname.startsWith(route));
 
   const isAuthRoute = () => {
-    return authRoutes.some((path) => request.nextUrl.pathname.startsWith(path));
+    return authRoutes.some((path) => pathname.startsWith(path));
   };
 
+  // Allow Better Auth API routes
   if (isApiAuth) {
+    return NextResponse.next();
+  }
+
+  // Allow public API routes (webhooks, callbacks)
+  if (isPublicApiRoute) {
     return NextResponse.next();
   }
 
