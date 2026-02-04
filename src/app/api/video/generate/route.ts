@@ -36,13 +36,6 @@ export async function POST(request: NextRequest) {
     }
     const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType } = validation.data;
 
-    if (!prompt) {
-      return NextResponse.json(
-        { error: "Prompt is required" },
-        { status: 400 }
-      );
-    }
-
     const model = mode === "Quality" ? "sora-2-pro" : "sora-2";
     const creditCost = CREDIT_COSTS[model];
 

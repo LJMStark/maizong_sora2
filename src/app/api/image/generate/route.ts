@@ -33,13 +33,6 @@ export async function POST(request: NextRequest) {
     }
     const { prompt, model, aspectRatio, imageSize } = validation.data;
 
-    if (!prompt) {
-      return NextResponse.json(
-        { error: "Prompt is required" },
-        { status: 400 }
-      );
-    }
-
     const selectedModel = model || "gemini-2.5-flash-image";
     if (
       selectedModel !== "gemini-3-pro-image-preview" &&
