@@ -1,7 +1,7 @@
 import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
 
-export const videoModelEnum = pgEnum("video_model", ["sora-2", "sora-2-pro"]);
+export const videoModelEnum = pgEnum("video_model", ["sora-2", "sora-2-temporary", "sora-2-pro"]);
 
 export const videoTaskStatusEnum = pgEnum("video_task_status", [
   "pending",

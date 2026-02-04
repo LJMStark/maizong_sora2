@@ -4,7 +4,7 @@ import { eq, desc } from "drizzle-orm";
 
 export interface CreateVideoTaskParams {
   userId: string;
-  model: "sora-2" | "sora-2-pro";
+  model: "sora-2" | "sora-2-temporary" | "sora-2-pro";
   prompt: string;
   aspectRatio: string;
   duration: number;

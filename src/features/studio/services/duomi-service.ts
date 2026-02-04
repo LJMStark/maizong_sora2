@@ -1,6 +1,6 @@
 export interface DuomiCreateTaskParams {
   prompt: string;
-  model: "sora-2" | "sora-2-pro";
+  model: "sora-2-temporary" | "sora-2-pro";
   aspectRatio: "16:9" | "9:16";
   duration: number;
   imageUrl?: string;

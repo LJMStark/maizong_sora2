@@ -1,0 +1,1 @@
+ALTER TYPE "public"."video_model" ADD VALUE 'sora-2-temporary' BEFORE 'sora-2-pro';

@@ -9,7 +9,7 @@ import { GenerateVideoSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
 
 const CREDIT_COSTS = {
-  "sora-2": 30,
+  "sora-2-temporary": 30,
   "sora-2-pro": 100,
 } as const;
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
     const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType } = validation.data;
 
-    const model = mode === "Quality" ? "sora-2-pro" : "sora-2";
+    const model = mode === "Quality" ? "sora-2-pro" : "sora-2-temporary";
     const creditCost = CREDIT_COSTS[model];
 
     const currentCredits = await creditService.getUserCredits(userId);
