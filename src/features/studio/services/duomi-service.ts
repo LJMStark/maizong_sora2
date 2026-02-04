@@ -4,12 +4,19 @@ export interface DuomiCreateTaskParams {
   aspectRatio: "16:9" | "9:16";
   duration: number;
   imageUrl?: string;
-  callbackUrl: string;
+  callbackUrl?: string;
 }
 
 // Duomi API 直接返回 { id: "..." }
 export interface DuomiCreateTaskResponse {
   id: string;
+}
+
+export interface DuomiVideoStatusResponse {
+  id: string;
+  status: "pending" | "in_progress" | "completed" | "failed";
+  video_url?: string;
+  error?: string;
 }
 
 const DUOMI_API_BASE = "https://duomiapi.com/v1";
@@ -29,8 +36,11 @@ export const duomiService = {
       prompt: params.prompt,
       aspect_ratio: params.aspectRatio,
       duration: params.duration,
-      callback_url: params.callbackUrl,
     };
+
+    if (params.callbackUrl) {
+      requestBody.callback_url = params.callbackUrl;
+    }
 
     if (params.imageUrl) {
       requestBody.image_url = params.imageUrl;
@@ -47,6 +57,27 @@ export const duomiService = {
 
     if (!response.ok) {
       // Only include status code, hide upstream details
+      throw new Error(`Duomi API error: ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  async getVideoStatus(taskId: string): Promise<DuomiVideoStatusResponse> {
+    const apiKey = process.env.DUOMI_API;
+
+    if (!apiKey) {
+      throw new Error("DUOMI_API environment variable is not set");
+    }
+
+    const response = await fetch(`${DUOMI_API_BASE}/videos/generations/${taskId}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
       throw new Error(`Duomi API error: ${response.status}`);
     }
 

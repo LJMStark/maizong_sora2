@@ -77,9 +77,7 @@ export async function POST(request: NextRequest) {
       creditTransactionId: transactionId,
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const callbackUrl = `${baseUrl}/api/callback`;
-
+    // 使用轮询模式，不再依赖回调
     try {
       const duomiResponse = await duomiService.createVideoTask({
         prompt,
@@ -87,7 +85,6 @@ export async function POST(request: NextRequest) {
         aspectRatio: aspectRatio === "9:16" ? "9:16" : "16:9",
         duration: duration || 10,
         imageUrl: sourceImageUrl,
-        callbackUrl,
       });
 
       if (duomiResponse.id) {
