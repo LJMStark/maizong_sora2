@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AspectRatio, ImageQuality } from '../types';
 import { IMAGE_PROMPTS, EDIT_PROMPTS, ANALYZE_PROMPTS } from '../utils/prompt-library';
 import Lightbox from './lightbox';
@@ -16,6 +17,7 @@ const IMAGE_CREDIT_COST = 10;
 
 const ImageWorkshop: React.FC = () => {
   const router = useRouter();
+  const t = useTranslations('studio.image');
   const { state, refreshCredits, refreshImageTasks, addToHistory } = useStudio();
   const { credits, history } = state;
 
@@ -53,7 +55,7 @@ const ImageWorkshop: React.FC = () => {
       setLoading(false);
       setCurrentTaskId(null);
       setTaskStatus("error");
-      alert(task.errorMessage || "Image generation failed. Credits have been refunded.");
+      alert(task.errorMessage || t('errors.generationFailed'));
       refreshCredits();
       refreshImageTasks();
     },
@@ -119,16 +121,16 @@ const ImageWorkshop: React.FC = () => {
   const handleAction = async () => {
     if (!prompt && mode !== 'analyze') return;
     if (mode === 'analyze') {
-      alert("Analysis mode is not supported with Duomi API yet.");
+      alert(t('errors.analysisNotSupported'));
       return;
     }
     if (mode === 'edit' && !refImage && !refImagePreview) {
-      alert("Image required for editing");
+      alert(t('errors.imageRequired'));
       return;
     }
 
     if (credits < IMAGE_CREDIT_COST) {
-      alert("Insufficient credits");
+      alert(t('errors.insufficientCredits'));
       return;
     }
 
@@ -165,7 +167,7 @@ const ImageWorkshop: React.FC = () => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create image task');
+        throw new Error(error.error || t('errors.taskCreationFailed'));
       }
 
       const data = await response.json();
@@ -174,7 +176,7 @@ const ImageWorkshop: React.FC = () => {
     } catch (e) {
       console.error(e);
       setLoading(false);
-      alert(e instanceof Error ? e.message : "Operation failed. Please try again.");
+      alert(e instanceof Error ? e.message : t('errors.operationFailed'));
     }
   };
 
@@ -203,7 +205,7 @@ const ImageWorkshop: React.FC = () => {
               onClick={() => { setMode(m); setGeneratedImage(null); setAnalysisResult(null); }}
               className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-all rounded-sm ${mode === m ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#6b7280] hover:text-[#1a1a1a]'}`}
             >
-              {m}
+              {t(`mode.${m}`)}
             </button>
           ))}
         </div>
@@ -213,12 +215,12 @@ const ImageWorkshop: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <label className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">
-                {mode === 'edit' ? 'Edit Instructions' : 'Descriptive Prompt'}
+                {mode === 'edit' ? t('prompt.labelEdit') : t('prompt.labelGenerate')}
               </label>
               <button
                 onClick={handleRandomPrompt}
                 className="text-[#6b7280] hover:text-[#1a1a1a] transition-colors flex items-center justify-center p-1 rounded-full hover:bg-[#faf9f6]"
-                title="Surprise me with a prompt"
+                title={t('prompt.randomTitle')}
               >
                 <span className="material-symbols-outlined text-sm">casino</span>
               </button>
@@ -230,8 +232,7 @@ const ImageWorkshop: React.FC = () => {
               <textarea
                 className="w-full h-32 p-5 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm text-sm text-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] transition-all placeholder:text-[#6b7280]/40 leading-relaxed resize-none focus:outline-none"
                 placeholder={
-                  mode === 'edit' ? "Tell AI how to change the image (e.g., 'Add a retro filter', 'Remove background')..." :
-                    "Describe product, aesthetic, lighting..."
+                  mode === 'edit' ? t('prompt.placeholderEdit') : t('prompt.placeholder')
                 }
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
@@ -239,13 +240,19 @@ const ImageWorkshop: React.FC = () => {
             </div>
             {mode === 'generate' && (
               <div className="flex flex-wrap gap-2">
-                {['Studio Lighting', 'Minimalist', 'Nature', 'Luxury', 'Bokeh'].map(tag => (
+                {[
+                  { key: 'studioLighting', label: t('tags.studioLighting') },
+                  { key: 'minimalist', label: t('tags.minimalist') },
+                  { key: 'nature', label: t('tags.nature') },
+                  { key: 'luxury', label: t('tags.luxury') },
+                  { key: 'bokeh', label: t('tags.bokeh') }
+                ].map(tag => (
                   <button
-                    key={tag}
-                    onClick={() => addTag(tag)}
+                    key={tag.key}
+                    onClick={() => addTag(tag.label)}
                     className="text-[10px] font-semibold text-[#1a1a1a] bg-[#faf9f6] border border-[#e5e5e1] px-3 py-1.5 rounded-sm tracking-wide hover:border-[#1a1a1a] transition-colors"
                   >
-                    {tag}
+                    {tag.label}
                   </button>
                 ))}
               </div>
@@ -257,12 +264,12 @@ const ImageWorkshop: React.FC = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h3 className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">
-              {mode === 'generate' ? 'Reference (Optional)' : 'Input Image (Required)'}
+              {mode === 'generate' ? t('inputImage.labelOptional') : t('inputImage.labelRequired')}
             </h3>
             <div className="flex gap-4">
-              <button onClick={() => setPickerOpen(true)} className="text-[10px] text-[#1a1a1a] hover:text-[#2d3436] underline font-medium">History Assets</button>
+              <button onClick={() => setPickerOpen(true)} className="text-[10px] text-[#1a1a1a] hover:text-[#2d3436] underline font-medium">{t('inputImage.historyAssets')}</button>
               {refImagePreview && (
-                <button onClick={() => { setRefImage(null); setRefImagePreview(null); }} className="text-[10px] text-[#6b7280] hover:text-[#1a1a1a] underline">Clear</button>
+                <button onClick={() => { setRefImage(null); setRefImagePreview(null); }} className="text-[10px] text-[#6b7280] hover:text-[#1a1a1a] underline">{t('inputImage.clear')}</button>
               )}
             </div>
           </div>
@@ -289,7 +296,7 @@ const ImageWorkshop: React.FC = () => {
         {mode === 'generate' && (
           <div className="flex flex-col gap-8">
             <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">Dimensions</span>
+              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">{t('dimensions.label')}</span>
               <div className="grid grid-cols-4 gap-2">
                 {Object.values(AspectRatio).map((ratio) => (
                   <button
@@ -297,14 +304,14 @@ const ImageWorkshop: React.FC = () => {
                     onClick={() => setAspectRatio(ratio)}
                     className={`flex flex-col items-center justify-center py-2 border transition-all ${aspectRatio === ratio ? 'border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-sm' : 'border-[#e5e5e1] bg-[#faf9f6] text-[#6b7280] hover:border-[#1a1a1a]'}`}
                   >
-                    <span className="text-[9px] font-bold tracking-widest">{ratio}</span>
+                    <span className="text-[9px] font-bold tracking-widest">{t(`aspectRatio.${ratio.toLowerCase()}`)}</span>
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">Quality</span>
+              <span className="text-[#1a1a1a] text-[10px] font-bold uppercase tracking-[0.15em]">{t('quality.label')}</span>
               <div className="flex border border-[#e5e5e1] p-1 bg-[#faf9f6]">
                 {Object.values(ImageQuality).map(q => (
                   <button
@@ -312,7 +319,7 @@ const ImageWorkshop: React.FC = () => {
                     onClick={() => setQuality(q)}
                     className={`flex-1 py-1.5 text-[10px] font-bold tracking-widest transition-colors ${quality === q ? 'bg-white text-[#1a1a1a] border border-[#e5e5e1] shadow-sm' : 'text-[#6b7280] hover:text-[#1a1a1a]'}`}
                   >
-                    {q}
+                    {t(`quality.${q.toLowerCase()}`)}
                   </button>
                 ))}
               </div>
@@ -321,8 +328,8 @@ const ImageWorkshop: React.FC = () => {
             {/* Credit Cost Info */}
             <div className="p-4 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[#6b7280] uppercase tracking-widest">Cost</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">{IMAGE_CREDIT_COST} Credits</span>
+                <span className="text-[10px] text-[#6b7280] uppercase tracking-widest">{t('cost.label')}</span>
+                <span className="text-sm font-bold text-[#1a1a1a]">{IMAGE_CREDIT_COST} {t('cost.credits')}</span>
               </div>
             </div>
           </div>
@@ -337,12 +344,12 @@ const ImageWorkshop: React.FC = () => {
             <div className="flex flex-col items-center text-center animate-soft-pulse">
               <span className="material-symbols-outlined text-4xl text-[#6b7280]/50 mb-4 animate-spin">blur_on</span>
               <p className="font-serif text-xl text-[#1a1a1a] italic">
-                Generating with Duomi AI...
+                {t('canvas.generating')}
               </p>
 
               <div className="w-64 mt-6">
                 <div className="flex justify-between text-[10px] text-[#6b7280] mb-2">
-                  <span>Progress</span>
+                  <span>{t('canvas.progress')}</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 bg-[#e5e5e1] rounded-full overflow-hidden">
@@ -353,14 +360,14 @@ const ImageWorkshop: React.FC = () => {
                 </div>
               </div>
 
-              <p className="text-xs text-[#6b7280] mt-4">This may take a few minutes...</p>
+              <p className="text-xs text-[#6b7280] mt-4">{t('canvas.waitMessage')}</p>
             </div>
           ) : analysisResult ? (
             <div className="max-w-2xl w-full h-full overflow-y-auto custom-scrollbar">
               <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#e5e5e1]">
                 {refImagePreview && <img src={refImagePreview} className="w-16 h-16 object-cover border border-[#e5e5e1]" alt="Analyzed" />}
                 <div>
-                  <h4 className="font-serif text-2xl text-[#1a1a1a] italic">Analysis Report</h4>
+                  <h4 className="font-serif text-2xl text-[#1a1a1a] italic">{t('canvas.analysisReport')}</h4>
                   <p className="text-xs text-[#6b7280]">Gemini 3 Pro Vision</p>
                 </div>
               </div>
@@ -377,14 +384,14 @@ const ImageWorkshop: React.FC = () => {
                 <div className="flex gap-4">
                   <button className="bg-white/90 text-[#1a1a1a] px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-white transition-all">
                     <span className="material-symbols-outlined text-base">open_in_full</span>
-                    Expand
+                    {t('canvas.expand')}
                   </button>
                   <button
                     onClick={handleToVideo}
                     className="bg-[#1a1a1a]/90 text-white px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-[#1a1a1a] transition-all"
                   >
                     <span className="material-symbols-outlined text-base">movie</span>
-                    Animate
+                    {t('canvas.animate')}
                   </button>
                 </div>
               </div>
@@ -397,11 +404,10 @@ const ImageWorkshop: React.FC = () => {
                 </span>
               </div>
               <h4 className="font-serif text-2xl text-[#1a1a1a] italic">
-                {mode === 'edit' ? 'Ready to Edit' : 'Awaiting Composition'}
+                {mode === 'edit' ? t('canvas.readyToEdit') : t('canvas.awaitingComposition')}
               </h4>
               <p className="text-xs text-[#6b7280] leading-relaxed max-w-[280px]">
-                {mode === 'edit' ? 'Upload an image and describe desired changes.' :
-                  'Refine your vision in the control panel to generate sophisticated e-commerce imagery.'}
+                {mode === 'edit' ? t('canvas.editDescription') : t('canvas.generateDescription')}
               </p>
             </div>
           )}
@@ -415,7 +421,7 @@ const ImageWorkshop: React.FC = () => {
             className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-12 py-5 text-[11px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
           >
             <span className="material-symbols-outlined text-lg">auto_awesome</span>
-            {loading ? 'Processing...' : mode === 'edit' ? 'Apply Edits' : 'Generate'}
+            {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}
           </button>
         </div>
       </div>

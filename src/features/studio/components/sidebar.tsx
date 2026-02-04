@@ -12,20 +12,24 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
 
 const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const t = useTranslations('studio.nav');
+  const tCommon = useTranslations('common.app');
+  const tAuth = useTranslations('auth.signin');
 
   const isActive = (path: string) => pathname === path;
 
   const navItems = [
-    { path: '/studio', icon: 'image', label: 'Image Workshop' },
-    { path: '/studio/video', icon: 'video_camera_back', label: 'Video Workshop' },
-    { path: '/studio/assets', icon: 'grid_view', label: 'Collections' },
-    { path: '/studio/subscription', icon: 'payments', label: 'Subscription' },
+    { path: '/studio', icon: 'image', label: t('imageWorkshop') },
+    { path: '/studio/video', icon: 'video_camera_back', label: t('videoWorkshop') },
+    { path: '/studio/assets', icon: 'grid_view', label: t('collections') },
+    { path: '/studio/subscription', icon: 'payments', label: t('subscription') },
   ];
 
   const handleNavigation = (path: string) => {
@@ -53,9 +57,9 @@ const Sidebar: React.FC = () => {
         <div className="p-8 pb-10">
           <h1 className="font-serif text-2xl tracking-tight text-[#1a1a1a] flex items-center gap-2">
             <span className="material-symbols-outlined text-3xl">filter_vintage</span>
-            Little Elephant
+            {tCommon('name')}
           </h1>
-          <p className="text-[10px] font-medium tracking-[0.2em] text-[#6b7280] uppercase mt-2 ml-1">E-Commerce Studio</p>
+          <p className="text-[10px] font-medium tracking-[0.2em] text-[#6b7280] uppercase mt-2 ml-1">{tCommon('description')}</p>
         </div>
         <nav className="flex flex-col">
           {navItems.map((item) => (
@@ -100,7 +104,7 @@ const Sidebar: React.FC = () => {
                 onClick={handleSignOut}
                 className="text-[10px] text-[#6b7280] uppercase tracking-tighter text-left hover:text-[#1a1a1a] transition-colors"
               >
-                Sign Out
+                {tAuth('signOut') || '退出登录'}
               </button>
             </div>
           </div>
@@ -113,8 +117,8 @@ const Sidebar: React.FC = () => {
               <span className="material-symbols-outlined text-lg">person</span>
             </div>
             <div className="flex flex-col min-w-0">
-              <p className="text-xs font-semibold text-[#1a1a1a]">Sign In</p>
-              <p className="text-[10px] text-[#6b7280] uppercase tracking-tighter">Get Started</p>
+              <p className="text-xs font-semibold text-[#1a1a1a]">{tAuth('title')}</p>
+              <p className="text-[10px] text-[#6b7280] uppercase tracking-tighter">{tAuth('getStarted')}</p>
             </div>
           </button>
         )}
@@ -127,10 +131,10 @@ const Sidebar: React.FC = () => {
               <span className="material-symbols-outlined text-5xl text-[#1a1a1a]">filter_vintage</span>
             </div>
             <DialogTitle className="font-serif text-2xl text-[#1a1a1a]">
-              Welcome to Little Elephant
+              {tAuth('welcomeDialog.title')}
             </DialogTitle>
             <DialogDescription className="text-[#6b7280]">
-              Sign in to access your creative studio and manage your e-commerce assets.
+              {tAuth('welcomeDialog.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 mt-6">
@@ -139,7 +143,7 @@ const Sidebar: React.FC = () => {
               className="w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-6"
             >
               <span className="material-symbols-outlined mr-2">mail</span>
-              Sign In with Email
+              {tAuth('signInWithEmail')}
             </Button>
             <Button
               onClick={() => handleNavigation('/signup')}
@@ -147,7 +151,7 @@ const Sidebar: React.FC = () => {
               className="w-full border-[#e5e5e1] hover:bg-[#faf9f6] text-[#1a1a1a] py-6"
             >
               <span className="material-symbols-outlined mr-2">person_add</span>
-              Create Account
+              {useTranslations('auth.signup')('submit')}
             </Button>
           </div>
         </DialogContent>

@@ -1,11 +1,7 @@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-const options = [
-  { id: "male", label: "Male", value: false },
-  { id: "female", label: "Female", value: true },
-];
+import { useTranslations } from 'next-intl';
 
 export function GenderRadioGroup({
   value,
@@ -14,6 +10,13 @@ export function GenderRadioGroup({
   value: boolean;
   onChange: (val: boolean) => void;
 }) {
+  const t = useTranslations('auth.signup.genderOptions');
+
+  const options = [
+    { id: "male", label: t('male'), value: false },
+    { id: "female", label: t('female'), value: true },
+  ];
+
   return (
     <RadioGroup
       value={String(value)}

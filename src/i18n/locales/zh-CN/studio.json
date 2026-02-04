@@ -1,0 +1,251 @@
+{
+  "nav": {
+    "imageWorkshop": "图像工作室",
+    "videoWorkshop": "视频工作室",
+    "collections": "作品集",
+    "subscription": "订阅"
+  },
+  "image": {
+    "title": "图像工作室",
+    "mode": {
+      "label": "模式",
+      "generate": "生成",
+      "edit": "编辑",
+      "analyze": "分析"
+    },
+    "prompt": {
+      "label": "提示词",
+      "labelEdit": "编辑指令",
+      "labelGenerate": "描述性提示词",
+      "placeholder": "描述产品、美学、光线...",
+      "placeholderEdit": "告诉 AI 如何修改图像（例如：'添加复古滤镜'、'移除背景'）...",
+      "random": "随机提示词",
+      "randomTitle": "给我一个惊喜提示词",
+      "examples": {
+        "landscape": "美丽的山景,日落时分,温暖的色调",
+        "portrait": "专业人像照片,柔和光线,浅景深",
+        "abstract": "抽象艺术,鲜艳的色彩,几何形状"
+      }
+    },
+    "tags": {
+      "studioLighting": "工作室光线",
+      "minimalist": "极简主义",
+      "nature": "自然",
+      "luxury": "奢华",
+      "bokeh": "散景"
+    },
+    "inputImage": {
+      "label": "输入图像",
+      "labelOptional": "参考图（可选）",
+      "labelRequired": "输入图像（必需）",
+      "historyAssets": "历史资源",
+      "clear": "清除"
+    },
+    "dimensions": {
+      "label": "尺寸"
+    },
+    "aspectRatio": {
+      "label": "宽高比",
+      "square": "正方形",
+      "landscape": "横向",
+      "portrait": "纵向",
+      "wide": "宽屏",
+      "1:1": "正方形 (1:1)",
+      "2:3": "纵向 (2:3)",
+      "3:2": "横向 (3:2)",
+      "3:4": "纵向 (3:4)",
+      "4:3": "横向 (4:3)",
+      "9:16": "纵向 (9:16)",
+      "16:9": "横向 (16:9)",
+      "21:9": "宽屏 (21:9)"
+    },
+    "quality": {
+      "label": "质量",
+      "standard": "标准",
+      "uhd": "超高清",
+      "1k": "标准 (1K)",
+      "2k": "高清 (2K)",
+      "4k": "超高清 (4K)"
+    },
+    "cost": {
+      "label": "消耗",
+      "credits": "积分"
+    },
+    "canvas": {
+      "generating": "使用 Duomi AI 生成中...",
+      "progress": "进度",
+      "waitMessage": "这可能需要几分钟...",
+      "analysisReport": "分析报告",
+      "readyToEdit": "准备编辑",
+      "awaitingComposition": "等待构图",
+      "editDescription": "上传图像并描述所需的更改。",
+      "generateDescription": "在控制面板中完善您的愿景，以生成精致的电商图像。",
+      "expand": "展开",
+      "animate": "动画化"
+    },
+    "actions": {
+      "generate": "生成",
+      "generating": "生成中...",
+      "processing": "处理中...",
+      "applyEdits": "应用编辑",
+      "regenerate": "重新生成",
+      "toVideo": "转为视频",
+      "download": "下载",
+      "delete": "删除"
+    },
+    "errors": {
+      "analysisNotSupported": "Duomi API 暂不支持分析模式。",
+      "imageRequired": "编辑需要图像",
+      "insufficientCredits": "积分不足",
+      "operationFailed": "操作失败。请重试。",
+      "taskCreationFailed": "创建图像任务失败",
+      "generationFailed": "图像生成失败。积分已退还。"
+    },
+    "status": {
+      "pending": "等待中",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败"
+    }
+  },
+  "video": {
+    "title": "视频工作室",
+    "subtitle": "高级视频合成 (Sora)",
+    "creationSuite": "创作套件",
+    "sections": {
+      "sourceMaterial": "01. 源素材（可选）",
+      "frameFormat": "02. 画幅格式",
+      "narrativePrompt": "03. 叙事提示词",
+      "renderMode": "04. 渲染模式"
+    },
+    "mode": {
+      "label": "模式",
+      "fast": "快速",
+      "quality": "高质量"
+    },
+    "aspectRatio": {
+      "portrait": "9:16 竖屏",
+      "cinema": "16:9 影院"
+    },
+    "prompt": {
+      "label": "运动参数",
+      "placeholder": "定义运动参数（例如：慢速平移,柔和光线,10秒时长...）",
+      "randomTitle": "给我一个惊喜运动提示词",
+      "examples": {
+        "pan": "慢速向右平移,平滑过渡",
+        "zoom": "缓慢放大,聚焦中心",
+        "static": "静态镜头,轻微抖动"
+      }
+    },
+    "sourceMaterial": {
+      "history": "历史记录",
+      "clear": "清除",
+      "changeSource": "更换源素材",
+      "imported": "已导入",
+      "uploadAsset": "上传产品素材"
+    },
+    "actions": {
+      "generate": "初始化生成",
+      "generating": "渲染中...",
+      "regenerate": "重新生成",
+      "download": "下载 MP4",
+      "delete": "删除",
+      "tryAgain": "重试",
+      "fullScreen": "全屏"
+    },
+    "canvas": {
+      "renderingProcess": "渲染进程",
+      "initializingEngine": "初始化神经引擎...",
+      "compilingFrames": "使用神经引擎编译最终帧",
+      "progress": "进度",
+      "waitMessage": "这可能需要几分钟...",
+      "previewWindow": "预览窗口",
+      "generationFailed": "生成失败"
+    },
+    "status": {
+      "pending": "等待中",
+      "processing": "处理中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "errors": {
+      "providePromptOrImage": "请提供提示词或图像。",
+      "insufficientCredits": "积分不足。需要：{required}，可用：{available}",
+      "taskCreationFailed": "创建视频任务失败",
+      "generationFailed": "视频生成失败。"
+    },
+    "cost": {
+      "credits": "积分"
+    }
+  },
+  "credits": {
+    "balance": "积分余额",
+    "cost": "消耗",
+    "insufficient": "积分不足",
+    "history": "积分历史",
+    "transaction": {
+      "signup_bonus": "注册奖励",
+      "image_generation": "图像生成",
+      "video_generation_fast": "视频生成（快速模式）",
+      "video_generation_quality": "视频生成（高质量模式）",
+      "refund": "退款"
+    }
+  },
+  "userCenter": {
+    "title": "用户中心",
+    "subtitle": "管理您的专业数字资产并监控资源分配。",
+    "header": "小象中心",
+    "searchPlaceholder": "搜索资源库...",
+    "profile": "个人资料",
+    "settings": "设置",
+    "logout": "退出登录",
+    "creditWallet": {
+      "title": "积分钱包",
+      "label": "资源分配",
+      "recharge": "充值",
+      "currentPlan": "标准计划",
+      "currentTier": "当前等级",
+      "nextRollover": "下次结算周期",
+      "rolloverDate": "2025年10月1日"
+    },
+    "redeem": {
+      "label": "兑换礼品卡/代码",
+      "placeholder": "输入代码（例如：NEWUSER）",
+      "button": "兑换",
+      "success": "成功！已兑换 {amount} 积分。",
+      "error": "无效或已过期的兑换码。",
+      "codePrefix": "兑换代码："
+    },
+    "tabs": {
+      "all": "全部资源",
+      "video": "视频",
+      "images": "图像",
+      "credits": "积分记录"
+    },
+    "table": {
+      "dateTime": "日期和时间",
+      "details": "详情",
+      "amount": "金额",
+      "noTransactions": "未找到交易记录。"
+    },
+    "status": {
+      "pending": "等待中",
+      "running": "处理中",
+      "succeeded": "已完成",
+      "error": "失败"
+    },
+    "tasks": {
+      "active": "活跃任务",
+      "complete": "{progress}% 完成"
+    },
+    "empty": {
+      "noVideos": "未找到视频。在工作室开始创作吧。",
+      "noAssets": "此类别中未找到资源。在工作室开始创作吧。"
+    },
+    "assetType": {
+      "video": "视频",
+      "image": "图像",
+      "analysis": "分析"
+    }
+  }
+}

@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { AspectRatio } from "../types";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
@@ -45,6 +46,7 @@ const CREDIT_COSTS = {
 } as const;
 
 const VideoWorkshop: React.FC = () => {
+  const t = useTranslations("studio.video");
   const searchParams = useSearchParams();
   const { state, refreshCredits, refreshVideoTasks } = useStudio();
   const { credits, history } = state;
@@ -79,12 +81,12 @@ const VideoWorkshop: React.FC = () => {
   const handleTaskError = useCallback(
     (task: VideoTaskStatus) => {
       setLoading(false);
-      setErrorMessage(task.errorMessage || "Video generation failed");
+      setErrorMessage(task.errorMessage || t("errors.generationFailed"));
       setCurrentTaskId(null);
       refreshCredits();
       refreshVideoTasks();
     },
-    [refreshCredits, refreshVideoTasks]
+    [refreshCredits, refreshVideoTasks, t]
   );
 
   const { task: pollingTask } = useTaskPolling<VideoTaskStatus>({
@@ -133,13 +135,18 @@ const VideoWorkshop: React.FC = () => {
 
   const handleGenerate = async () => {
     if (!prompt && !sourceImage && !sourcePreview) {
-      alert("Please provide a prompt or an image.");
+      alert(t("errors.providePromptOrImage"));
       return;
     }
 
     const cost = CREDIT_COSTS[mode];
     if (credits < cost) {
-      alert(`Insufficient credits. Required: ${cost}, Available: ${credits}`);
+      alert(
+        t("errors.insufficientCredits", {
+          required: cost.toString(),
+          available: credits.toString(),
+        })
+      );
       return;
     }
 
@@ -183,14 +190,14 @@ const VideoWorkshop: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to create video task");
+        throw new Error(data.error || t("errors.taskCreationFailed"));
       }
 
       setCurrentTaskId(data.taskId);
       refreshCredits();
     } catch (e) {
       setLoading(false);
-      const message = e instanceof Error ? e.message : "Video generation failed.";
+      const message = e instanceof Error ? e.message : t("errors.generationFailed");
       setErrorMessage(message);
       alert(message);
     }
@@ -217,24 +224,24 @@ const VideoWorkshop: React.FC = () => {
       <div className="w-[380px] border-r border-[#e5e5e1] flex flex-col bg-white overflow-y-auto custom-scrollbar p-8 gap-8">
         <div className="border-b border-[#e5e5e1] pb-6">
           <h1 className="text-2xl font-serif italic mb-1 text-[#1a1a1a]">
-            Creation Suite
+            {t("creationSuite")}
           </h1>
           <p className="text-[#6b7280]/60 text-[11px] uppercase tracking-wider">
-            Advanced video synthesis (Sora)
+            {t("subtitle")}
           </p>
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
-              01. Source Material (Optional)
+              {t("sections.sourceMaterial")}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setPickerOpen(true)}
                 className="text-[9px] underline text-[#1a1a1a] font-bold"
               >
-                History
+                {t("sourceMaterial.history")}
               </button>
               {sourcePreview && (
                 <button
@@ -244,7 +251,7 @@ const VideoWorkshop: React.FC = () => {
                   }}
                   className="text-[9px] underline text-[#6b7280]"
                 >
-                  Clear
+                  {t("sourceMaterial.clear")}
                 </button>
               )}
             </div>
@@ -271,11 +278,11 @@ const VideoWorkshop: React.FC = () => {
                 }}
                 className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-xs uppercase tracking-widest font-bold"
               >
-                Change Source
+                {t("sourceMaterial.changeSource")}
               </button>
               {!sourceImage && (
                 <div className="absolute top-2 right-2 bg-[#1a1a1a] text-white text-[8px] px-2 py-1 uppercase tracking-widest font-bold">
-                  Imported
+                  {t("sourceMaterial.imported")}
                 </div>
               )}
             </div>
@@ -288,7 +295,7 @@ const VideoWorkshop: React.FC = () => {
                 add_photo_alternate
               </span>
               <p className="text-[11px] uppercase tracking-widest text-[#6b7280] group-hover:text-[#1a1a1a]">
-                Upload Product Asset
+                {t("sourceMaterial.uploadAsset")}
               </p>
             </div>
           )}
@@ -296,7 +303,7 @@ const VideoWorkshop: React.FC = () => {
 
         <div className="space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
-            02. Frame Format
+            {t("sections.frameFormat")}
           </p>
           <div className="grid grid-cols-2 gap-px bg-[#e5e5e1] border border-[#e5e5e1]">
             <button
@@ -304,7 +311,7 @@ const VideoWorkshop: React.FC = () => {
               className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.SOCIAL ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-[#6b7280]"}`}
             >
               <span className="text-[10px] uppercase tracking-tighter">
-                9:16 Portrait
+                {t("aspectRatio.portrait")}
               </span>
             </button>
             <button
@@ -312,7 +319,7 @@ const VideoWorkshop: React.FC = () => {
               className={`flex items-center justify-center gap-2 py-4 transition-colors ${aspectRatio === AspectRatio.LANDSCAPE ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-[#6b7280]"}`}
             >
               <span className="text-[10px] uppercase tracking-tighter">
-                16:9 Cinema
+                {t("aspectRatio.cinema")}
               </span>
             </button>
           </div>
@@ -321,11 +328,11 @@ const VideoWorkshop: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
-              03. Narrative Prompt
+              {t("sections.narrativePrompt")}
             </p>
             <button
               onClick={handleRandomPrompt}
-              title="Surprise me with a motion prompt"
+              title={t("prompt.randomTitle")}
               className="text-[#6b7280] hover:text-[#1a1a1a] p-1 rounded-full hover:bg-[#faf9f6] transition-colors"
             >
               <span className="material-symbols-outlined text-sm">casino</span>
@@ -335,31 +342,31 @@ const VideoWorkshop: React.FC = () => {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             className="w-full h-32 bg-[#faf9f6] border border-[#e5e5e1] focus:ring-1 focus:ring-[#1a1a1a] focus:outline-none p-4 text-xs leading-relaxed placeholder:text-[#6b7280]/40 resize-none"
-            placeholder="Define motion parameters (e.g., Slow pan, soft lighting, 10s duration...)"
+            placeholder={t("prompt.placeholder")}
           />
         </div>
 
         <div className="space-y-4">
           <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#6b7280]/60">
-            04. Render Mode
+            {t("sections.renderMode")}
           </p>
           <div className="flex border border-[#e5e5e1]">
             <button
               onClick={() => setMode("Fast")}
               className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-[#6b7280] hover:bg-[#faf9f6]"}`}
             >
-              <span>Fast</span>
+              <span>{t("mode.fast")}</span>
               <span className="text-[8px] opacity-70">
-                {CREDIT_COSTS.Fast} credits
+                {CREDIT_COSTS.Fast} {t("cost.credits")}
               </span>
             </button>
             <button
               onClick={() => setMode("Quality")}
               className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-[#6b7280] hover:bg-[#faf9f6]"}`}
             >
-              <span>Quality</span>
+              <span>{t("mode.quality")}</span>
               <span className="text-[8px] opacity-70">
-                {CREDIT_COSTS.Quality} credits
+                {CREDIT_COSTS.Quality} {t("cost.credits")}
               </span>
             </button>
           </div>
@@ -374,7 +381,7 @@ const VideoWorkshop: React.FC = () => {
             <span className="material-symbols-outlined text-sm">
               movie_filter
             </span>
-            {loading ? "Rendering..." : "Initialize Generation"}
+            {loading ? t("actions.generating") : t("actions.generate")}
           </button>
         </div>
       </div>
@@ -389,17 +396,17 @@ const VideoWorkshop: React.FC = () => {
                 hourglass_empty
               </span>
               <h3 className="text-lg font-serif italic mb-2 text-[#1a1a1a]">
-                Rendering Process
+                {t("canvas.renderingProcess")}
               </h3>
               <p className="text-[#6b7280]/60 text-[11px] leading-relaxed uppercase tracking-widest">
                 {taskStatus === "pending"
-                  ? "Initializing neural engine..."
-                  : "Compiling final frames with neural engine"}
+                  ? t("canvas.initializingEngine")
+                  : t("canvas.compilingFrames")}
               </p>
 
               <div className="w-64 mt-6">
                 <div className="flex justify-between text-[10px] text-[#6b7280] mb-2">
-                  <span>Progress</span>
+                  <span>{t("canvas.progress")}</span>
                   <span>{progress}%</span>
                 </div>
                 <div className="h-2 bg-[#e5e5e1] rounded-full overflow-hidden">
@@ -411,7 +418,7 @@ const VideoWorkshop: React.FC = () => {
               </div>
 
               <p className="text-[10px] text-[#8C7355] mt-4 animate-pulse">
-                This may take a few minutes...
+                {t("canvas.waitMessage")}
               </p>
             </div>
           ) : generatedVideo ? (
@@ -430,7 +437,7 @@ const VideoWorkshop: React.FC = () => {
                   <button
                     onClick={() => setLightboxOpen(true)}
                     className="bg-black/60 text-white p-2 rounded-full hover:bg-black/80 backdrop-blur-sm transition-all"
-                    title="Full Screen"
+                    title={t("actions.fullScreen")}
                   >
                     <span className="material-symbols-outlined text-xl">
                       open_in_full
@@ -444,7 +451,7 @@ const VideoWorkshop: React.FC = () => {
                   download="generated_video.mp4"
                   className="px-8 py-3 bg-[#1a1a1a] text-white text-xs uppercase tracking-widest font-bold"
                 >
-                  Download MP4
+                  {t("actions.download")}
                 </a>
               </div>
             </div>
@@ -456,7 +463,7 @@ const VideoWorkshop: React.FC = () => {
                 error
               </span>
               <h3 className="text-lg font-serif italic mb-2 text-red-600">
-                Generation Failed
+                {t("canvas.generationFailed")}
               </h3>
               <p className="text-red-500/80 text-[11px] leading-relaxed text-center max-w-xs">
                 {errorMessage}
@@ -465,7 +472,7 @@ const VideoWorkshop: React.FC = () => {
                 onClick={() => setErrorMessage(null)}
                 className="mt-6 px-6 py-2 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest"
               >
-                Try Again
+                {t("actions.tryAgain")}
               </button>
             </div>
           ) : (
@@ -476,7 +483,7 @@ const VideoWorkshop: React.FC = () => {
                 movie
               </span>
               <p className="text-[#6b7280]/40 text-[11px] uppercase tracking-widest">
-                Preview Window
+                {t("canvas.previewWindow")}
               </p>
             </div>
           )}

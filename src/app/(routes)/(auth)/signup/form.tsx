@@ -22,9 +22,13 @@ import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
 import { AtSign, MailIcon, UserIcon } from "lucide-react";
 import { GenderRadioGroup } from "../components/gender-radio-group";
+import { useTranslations } from 'next-intl';
 
 export default function SignUpForm() {
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations('auth.signup');
+  const tErrors = useTranslations('auth.errors');
+
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
@@ -44,7 +48,11 @@ export default function SignUpForm() {
 
       if (response.error) {
         console.log("SIGN_UP:", response.error.status);
-        toast.error(response.error.message);
+        // 映射 Better Auth 错误消息
+        const errorKey = response.error.message === 'User already exists'
+          ? 'userExists'
+          : 'unknown';
+        toast.error(tErrors(errorKey));
       } else {
         redirect("/");
       }
@@ -71,7 +79,7 @@ export default function SignUpForm() {
               <FormControl>
                 <InputStartIcon icon={UserIcon}>
                   <Input
-                    placeholder="Name"
+                    placeholder={t('namePlaceholder')}
                     className={cn("peer ps-9", getInputClassName("name"))}
                     disabled={isPending}
                     {...field}
@@ -90,7 +98,7 @@ export default function SignUpForm() {
               <FormControl>
                 <InputStartIcon icon={MailIcon}>
                   <Input
-                    placeholder="Email"
+                    placeholder={t('emailPlaceholder')}
                     className={cn("peer ps-9", getInputClassName("email"))}
                     disabled={isPending}
                     {...field}
@@ -110,7 +118,7 @@ export default function SignUpForm() {
               <FormControl>
                 <InputStartIcon icon={AtSign}>
                   <Input
-                    placeholder="Username"
+                    placeholder={t('usernamePlaceholder')}
                     className={cn("peer ps-9", getInputClassName("username"))}
                     disabled={isPending}
                     {...field}
@@ -131,7 +139,7 @@ export default function SignUpForm() {
                 <InputPasswordContainer>
                   <Input
                     className={cn("pe-9", getInputClassName("password"))}
-                    placeholder="Password"
+                    placeholder={t('passwordPlaceholder')}
                     disabled={isPending}
                     {...field}
                   />
@@ -151,7 +159,7 @@ export default function SignUpForm() {
                 <InputPasswordContainer>
                   <Input
                     className={cn("pe-9", getInputClassName("confirmPassword"))}
-                    placeholder="Confirm Password"
+                    placeholder={t('confirmPasswordPlaceholder')}
                     disabled={isPending}
                     {...field}
                   />
@@ -168,7 +176,7 @@ export default function SignUpForm() {
           name="gender"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Gender</FormLabel>
+              <FormLabel>{t('gender')}</FormLabel>
               <GenderRadioGroup
                 value={field.value}
                 onChange={field.onChange}
@@ -186,7 +194,7 @@ export default function SignUpForm() {
           {isPending ? (
             <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
           ) : (
-            "Create Account"
+            t('submit')
           )}
         </Button>
       </form>

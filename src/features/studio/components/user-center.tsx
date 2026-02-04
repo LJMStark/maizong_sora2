@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslations } from "next-intl";
 import { GenerationResult, VideoTask } from "../types";
 import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
 
 type Tab = "all" | "video" | "image" | "credits";
 
-const getStatusBadge = (status: VideoTask["status"]) => {
+const getStatusBadge = (status: VideoTask["status"], t: any) => {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700",
     running: "bg-blue-100 text-blue-700",
@@ -16,10 +17,10 @@ const getStatusBadge = (status: VideoTask["status"]) => {
   };
 
   const labels = {
-    pending: "Pending",
-    running: "Processing",
-    succeeded: "Completed",
-    error: "Failed",
+    pending: t("status.pending"),
+    running: t("status.running"),
+    succeeded: t("status.succeeded"),
+    error: t("status.error"),
   };
 
   return (
@@ -32,6 +33,8 @@ const getStatusBadge = (status: VideoTask["status"]) => {
 };
 
 const UserCenter: React.FC = () => {
+  const t = useTranslations("studio.userCenter");
+  const tCredits = useTranslations("studio.credits");
   const { state, addCredits, refreshCredits } = useStudio();
   const [lightboxItem, setLightboxItem] = useState<GenerationResult | null>(
     null
@@ -57,17 +60,17 @@ const UserCenter: React.FC = () => {
 
     if (validCodes[code]) {
       const amount = validCodes[code];
-      addCredits(amount, `Redeemed Code: ${code}`);
+      addCredits(amount, `${t("redeem.codePrefix")}${code}`);
       setRedeemStatus({
         type: "success",
-        msg: `Success! Redeemed ${amount} credits.`,
+        msg: t("redeem.success", { amount }),
       });
       setRedeemCode("");
       refreshCredits();
     } else {
       setRedeemStatus({
         type: "error",
-        msg: "Invalid or expired redemption code.",
+        msg: t("redeem.error"),
       });
     }
 
@@ -96,7 +99,7 @@ const UserCenter: React.FC = () => {
 
       <header className="flex items-center justify-between border-b border-[#e5e5e1] px-10 py-6 bg-white sticky top-0 z-10">
         <h2 className="text-sm font-bold tracking-[0.2em] uppercase text-[#1a1a1a]">
-          Little Elephant Center
+          {t("header")}
         </h2>
         <div className="flex items-center gap-2 border-b border-[#e5e5e1] pb-1">
           <span className="material-symbols-outlined text-[18px] text-[#6b7280]">
@@ -104,7 +107,7 @@ const UserCenter: React.FC = () => {
           </span>
           <input
             className="bg-transparent border-none text-xs focus:outline-none placeholder:text-[#6b7280]/50 w-64 px-0"
-            placeholder="SEARCH ASSET LIBRARY..."
+            placeholder={t("searchPlaceholder")}
           />
         </div>
       </header>
@@ -112,11 +115,10 @@ const UserCenter: React.FC = () => {
       <div className="p-10 max-w-7xl mx-auto w-full flex flex-col gap-12">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-serif text-[#1a1a1a] italic">
-            User Center
+            {t("title")}
           </h1>
           <p className="text-[#6b7280] text-sm font-light tracking-wide max-w-xl">
-            Curate your professional digital assets and monitor resource
-            allocation.
+            {t("subtitle")}
           </p>
         </div>
 
@@ -129,7 +131,7 @@ const UserCenter: React.FC = () => {
                     {state.credits}
                   </span>
                   <span className="text-[9px] uppercase tracking-widest text-[#6b7280]">
-                    Credits
+                    {tCredits("balance")}
                   </span>
                 </div>
               </div>
@@ -138,45 +140,45 @@ const UserCenter: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[10px] uppercase tracking-[0.2em] text-[#6b7280] mb-1">
-                    Resource Allocation
+                    {t("creditWallet.label")}
                   </p>
                   <h3 className="text-xl font-medium tracking-tight text-[#1a1a1a]">
-                    Credit Wallet
+                    {t("creditWallet.title")}
                   </h3>
                 </div>
                 <button className="bg-[#8C7355] hover:bg-[#2d3436] text-white px-8 py-3 text-[11px] uppercase tracking-[0.2em] transition-all font-medium shadow-md">
-                  Recharge
+                  {t("creditWallet.recharge")}
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="flex flex-col">
                   <p className="text-sm font-medium text-[#1a1a1a]">
-                    Standard Plan
+                    {t("creditWallet.currentPlan")}
                   </p>
                   <p className="text-[11px] text-[#6b7280] uppercase tracking-wider mt-1">
-                    Current Tier
+                    {t("creditWallet.currentTier")}
                   </p>
                 </div>
                 <div className="flex flex-col">
                   <p className="text-sm font-medium text-[#1a1a1a]">
-                    October 1st, 2025
+                    {t("creditWallet.rolloverDate")}
                   </p>
                   <p className="text-[11px] text-[#6b7280] uppercase tracking-wider mt-1">
-                    Next rollover period
+                    {t("creditWallet.nextRollover")}
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-col gap-3 border-t border-[#e5e5e1] pt-6 mt-2">
                 <label className="text-[10px] uppercase tracking-[0.2em] text-[#6b7280]">
-                  Redeem Gift Card / Code
+                  {t("redeem.label")}
                 </label>
                 <div className="flex gap-2 max-w-md items-start">
                   <div className="flex-1 flex flex-col gap-1">
                     <input
                       value={redeemCode}
                       onChange={(e) => setRedeemCode(e.target.value)}
-                      placeholder="ENTER CODE (E.G. NEWUSER)"
+                      placeholder={t("redeem.placeholder")}
                       className="bg-[#faf9f6] border border-[#e5e5e1] p-3 text-xs tracking-wider w-full focus:outline-none focus:border-[#1a1a1a] transition-colors uppercase"
                     />
                     {redeemStatus.msg && (
@@ -191,7 +193,7 @@ const UserCenter: React.FC = () => {
                     onClick={handleRedeem}
                     className="bg-[#1a1a1a] text-white px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#2d3436] transition-colors whitespace-nowrap shadow-sm"
                   >
-                    Redeem
+                    {t("redeem.button")}
                   </button>
                 </div>
               </div>
@@ -206,25 +208,25 @@ const UserCenter: React.FC = () => {
                 onClick={() => setActiveTab("all")}
                 className={`pb-4 border-b-2 text-[11px] uppercase tracking-[0.2em] transition-colors ${activeTab === "all" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#6b7280] hover:text-[#1a1a1a]"}`}
               >
-                All Assets
+                {t("tabs.all")}
               </button>
               <button
                 onClick={() => setActiveTab("video")}
                 className={`pb-4 border-b-2 text-[11px] uppercase tracking-[0.2em] transition-colors ${activeTab === "video" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#6b7280] hover:text-[#1a1a1a]"}`}
               >
-                Video
+                {t("tabs.video")}
               </button>
               <button
                 onClick={() => setActiveTab("image")}
                 className={`pb-4 border-b-2 text-[11px] uppercase tracking-[0.2em] transition-colors ${activeTab === "image" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#6b7280] hover:text-[#1a1a1a]"}`}
               >
-                Images
+                {t("tabs.images")}
               </button>
               <button
                 onClick={() => setActiveTab("credits")}
                 className={`pb-4 border-b-2 text-[11px] uppercase tracking-[0.2em] transition-colors ${activeTab === "credits" ? "border-[#8C7355] text-[#8C7355] font-bold" : "border-transparent text-[#6b7280] hover:text-[#1a1a1a]"}`}
               >
-                Credit Records
+                {t("tabs.credits")}
               </button>
             </div>
           </div>
@@ -235,13 +237,13 @@ const UserCenter: React.FC = () => {
                 <thead className="bg-[#faf9f6] border-b border-[#e5e5e1]">
                   <tr>
                     <th className="py-4 px-6 text-[10px] uppercase tracking-[0.15em] font-bold text-[#6b7280]">
-                      Date & Time
+                      {t("table.dateTime")}
                     </th>
                     <th className="py-4 px-6 text-[10px] uppercase tracking-[0.15em] font-bold text-[#6b7280]">
-                      Details
+                      {t("table.details")}
                     </th>
                     <th className="py-4 px-6 text-[10px] uppercase tracking-[0.15em] font-bold text-[#6b7280] text-right">
-                      Amount
+                      {t("table.amount")}
                     </th>
                   </tr>
                 </thead>
@@ -252,7 +254,7 @@ const UserCenter: React.FC = () => {
                         colSpan={3}
                         className="py-12 text-center text-[#6b7280] text-sm font-light"
                       >
-                        No transaction history found.
+                        {t("table.noTransactions")}
                       </td>
                     </tr>
                   ) : (
@@ -294,7 +296,7 @@ const UserCenter: React.FC = () => {
               ).length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 p-6">
                   <h4 className="text-sm font-bold text-blue-800 mb-4">
-                    Active Tasks
+                    {t("tasks.active")}
                   </h4>
                   <div className="space-y-4">
                     {videoTasks
@@ -310,7 +312,7 @@ const UserCenter: React.FC = () => {
                             <p className="text-xs text-[#1a1a1a] truncate max-w-[200px]">
                               {task.prompt}
                             </p>
-                            {getStatusBadge(task.status)}
+                            {getStatusBadge(task.status, t)}
                           </div>
                           <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
                             <div
@@ -319,7 +321,7 @@ const UserCenter: React.FC = () => {
                             />
                           </div>
                           <p className="text-[10px] text-[#6b7280] mt-2">
-                            {task.progress}% complete
+                            {t("tasks.complete", { progress: task.progress })}
                           </p>
                         </div>
                       ))}
@@ -331,7 +333,7 @@ const UserCenter: React.FC = () => {
               videoTasks.filter((t) => t.status === "succeeded").length ===
                 0 ? (
                 <div className="py-20 text-center text-[#6b7280] text-sm font-light">
-                  No videos found. Start creating in the Workshop.
+                  {t("empty.noVideos")}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">
@@ -364,7 +366,7 @@ const UserCenter: React.FC = () => {
                           </a>
                         </div>
                         <div className="absolute top-4 left-4 text-[9px] uppercase tracking-[0.2em] bg-white/90 px-2 py-1 text-[#1a1a1a] shadow-sm">
-                          video
+                          {t("assetType.video")}
                         </div>
                       </div>
                       <div className="flex flex-col gap-0.5">
@@ -382,7 +384,7 @@ const UserCenter: React.FC = () => {
             </div>
           ) : filteredHistory.length === 0 ? (
             <div className="py-20 text-center text-[#6b7280] text-sm font-light">
-              No assets found in this category. Start creating in the Workshop.
+              {t("empty.noAssets")}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">
@@ -423,7 +425,11 @@ const UserCenter: React.FC = () => {
                       </a>
                     </div>
                     <div className="absolute top-4 left-4 text-[9px] uppercase tracking-[0.2em] bg-white/90 px-2 py-1 text-[#1a1a1a] shadow-sm">
-                      {item.type}
+                      {item.type === "video"
+                        ? t("assetType.video")
+                        : item.type === "image"
+                          ? t("assetType.image")
+                          : t("assetType.analysis")}
                     </div>
                   </div>
                   <div className="flex flex-col gap-0.5">

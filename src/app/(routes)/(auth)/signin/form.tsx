@@ -20,10 +20,13 @@ import InputStartIcon from "../components/input-start-icon";
 import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
 import { AtSign } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 export default function SignInForm() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const t = useTranslations('auth.signin');
+  const tErrors = useTranslations('auth.errors');
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(SignInSchema),
@@ -39,7 +42,11 @@ export default function SignInForm() {
 
       if (response.error) {
         console.log("SIGN_IN:", response.error.message);
-        toast.error(response.error.message);
+        // 映射 Better Auth 错误消息
+        const errorKey = response.error.message === 'Invalid credentials'
+          ? 'invalidCredentials'
+          : 'unknown';
+        toast.error(tErrors(errorKey));
       } else {
         router.push("/");
       }
@@ -66,7 +73,7 @@ export default function SignInForm() {
               <FormControl>
                 <InputStartIcon icon={AtSign}>
                   <Input
-                    placeholder="Username"
+                    placeholder={t('usernamePlaceholder')}
                     className={cn("peer ps-9", getInputClassName("username"))}
                     disabled={isPending}
                     {...field}
@@ -88,7 +95,7 @@ export default function SignInForm() {
                   <Input
                     id="input-23"
                     className={cn("pe-9", getInputClassName("password"))}
-                    placeholder="Password"
+                    placeholder={t('passwordPlaceholder')}
                     disabled={isPending}
                     {...field}
                   />
@@ -106,7 +113,7 @@ export default function SignInForm() {
           {isPending ? (
             <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
           ) : (
-            "Sign In"
+            t('submit')
           )}
         </Button>
       </form>
