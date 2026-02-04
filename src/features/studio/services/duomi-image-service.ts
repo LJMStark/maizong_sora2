@@ -65,8 +65,7 @@ export const duomiImageService = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Duomi API error: ${response.status} - ${errorText}`);
+      throw new Error(`Duomi API error: ${response.status}`);
     }
 
     return response.json();
@@ -108,8 +107,7 @@ export const duomiImageService = {
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Duomi API error: ${response.status} - ${errorText}`);
+      throw new Error(`Duomi API error: ${response.status}`);
     }
 
     return response.json();
@@ -133,8 +131,7 @@ export const duomiImageService = {
     );
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Duomi API error: ${response.status} - ${errorText}`);
+      throw new Error(`Duomi API error: ${response.status}`);
     }
 
     return response.json();

@@ -3,6 +3,9 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { creditService } from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
+import { rateLimiter } from "@/lib/rate-limit";
+import { GenerateImageSchema } from "@/lib/validations/schemas";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 const IMAGE_CREDIT_COST = 10;
 
@@ -15,9 +18,20 @@ export async function POST(request: NextRequest) {
 
   const userId = session.user.id;
 
+  const { success } = await rateLimiter.limit(userId);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const body = await request.json();
-    const { prompt, model, aspectRatio, imageSize } = body;
+    
+    // Validation
+    const validation = GenerateImageSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
+    }
+    const { prompt, model, aspectRatio, imageSize } = validation.data;
 
     if (!prompt) {
       return NextResponse.json(
@@ -107,7 +121,7 @@ export async function POST(request: NextRequest) {
       creditCost: IMAGE_CREDIT_COST,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = sanitizeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

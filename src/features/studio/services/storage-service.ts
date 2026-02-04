@@ -66,6 +66,10 @@ export const storageService = {
     videoUrl: string
   ): Promise<string> {
     await this.ensureBucketExists();
+    
+    // SSRF Check
+    const { validateUrl } = await import("@/lib/security/ssrf");
+    validateUrl(videoUrl);
 
     const response = await fetch(videoUrl);
 
@@ -100,6 +104,10 @@ export const storageService = {
     imageUrl: string
   ): Promise<string> {
     await this.ensureBucketExists();
+
+    // SSRF Check
+    const { validateUrl } = await import("@/lib/security/ssrf");
+    validateUrl(imageUrl);
 
     const response = await fetch(imageUrl);
 

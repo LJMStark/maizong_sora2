@@ -46,8 +46,8 @@ export const duomiService = {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Duomi API error: ${response.status} - ${errorText}`);
+      // Only include status code, hide upstream details
+      throw new Error(`Duomi API error: ${response.status}`);
     }
 
     return response.json();
