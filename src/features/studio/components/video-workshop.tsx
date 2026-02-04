@@ -469,7 +469,10 @@ const VideoWorkshop: React.FC = () => {
                 {errorMessage}
               </p>
               <button
-                onClick={() => setErrorMessage(null)}
+                onClick={() => {
+                  setErrorMessage(null);
+                  handleGenerate();
+                }}
                 className="mt-6 px-6 py-2 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest"
               >
                 {t("actions.tryAgain")}
