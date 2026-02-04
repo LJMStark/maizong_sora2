@@ -8,7 +8,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useTransition } from "react";
+import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUp } from "@/lib/auth/client";
@@ -20,7 +20,7 @@ import { SignUpSchema, SignUpValues } from "./validate";
 import InputStartIcon from "../components/input-start-icon";
 import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
-import { AtSign, MailIcon, UserIcon } from "lucide-react";
+import { AtSign, MailIcon } from "lucide-react";
 import { GenderRadioGroup } from "../components/gender-radio-group";
 import { useTranslations } from 'next-intl';
 
@@ -32,7 +32,6 @@ export default function SignUpForm() {
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
-      name: "",
       email: "",
       username: "",
       password: "",
@@ -40,6 +39,15 @@ export default function SignUpForm() {
       gender: false
     },
   });
+
+  const username = form.watch("username");
+
+  useEffect(() => {
+    const currentName = form.getValues("name");
+    if (currentName !== username) {
+      form.setValue("name", username || "");
+    }
+  }, [form, username]);
 
   function onSubmit(data: SignUpValues) {
     startTransition(async () => {
@@ -71,25 +79,6 @@ export default function SignUpForm() {
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex w-full flex-col gap-4"
       >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputStartIcon icon={UserIcon}>
-                  <Input
-                    placeholder={t('namePlaceholder')}
-                    className={cn("peer ps-9", getInputClassName("name"))}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <FormField
           control={form.control}
           name="email"

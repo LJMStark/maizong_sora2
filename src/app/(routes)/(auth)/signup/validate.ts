@@ -11,6 +11,7 @@ export const SignUpSchema = z
     username: z
     .string()
     .min(4, { message: "至少需要 4 个字符" })
+    .max(20, { message: "最多 20 个字符" })
     .regex(/^[a-zA-Z0-9]+$/, "只允许字母和数字")
     .refine(
       (username) => {
