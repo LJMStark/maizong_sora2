@@ -120,8 +120,9 @@
     "sections": {
       "sourceMaterial": "01. 源素材（可选）",
       "frameFormat": "02. 画幅格式",
-      "narrativePrompt": "03. 叙事提示词",
-      "renderMode": "04. 渲染模式"
+      "videoDuration": "03. 视频时长",
+      "narrativePrompt": "04. 叙事提示词",
+      "renderMode": "05. 渲染模式"
     },
     "mode": {
       "label": "模式",
@@ -131,6 +132,10 @@
     "aspectRatio": {
       "portrait": "9:16 竖屏",
       "cinema": "16:9 影院"
+    },
+    "duration": {
+      "10s": "10 秒",
+      "15s": "15 秒"
     },
     "prompt": {
       "label": "运动参数",

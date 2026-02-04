@@ -55,6 +55,7 @@ const VideoWorkshop: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.SOCIAL);
+  const [duration, setDuration] = useState<10 | 15>(10);
   const [mode, setMode] = useState<"Fast" | "Quality">("Fast");
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -181,7 +182,7 @@ const VideoWorkshop: React.FC = () => {
           prompt: prompt || "Product showcase, cinematic lighting, 4k",
           mode,
           aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-          duration: 10,
+          duration,
           imageBase64,
           imageMimeType,
         }),
@@ -320,6 +321,30 @@ const VideoWorkshop: React.FC = () => {
             >
               <span className="text-xs uppercase tracking-tighter">
                 {t("aspectRatio.cinema")}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
+            {t("sections.videoDuration")}
+          </p>
+          <div className="grid grid-cols-2 gap-px bg-[#e5e5e1] border border-[#e5e5e1]">
+            <button
+              onClick={() => setDuration(10)}
+              className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 10 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
+            >
+              <span className="text-xs uppercase tracking-tighter">
+                {t("duration.10s")}
+              </span>
+            </button>
+            <button
+              onClick={() => setDuration(15)}
+              className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 15 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
+            >
+              <span className="text-xs uppercase tracking-tighter">
+                {t("duration.15s")}
               </span>
             </button>
           </div>
