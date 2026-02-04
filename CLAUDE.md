@@ -81,6 +81,40 @@ export async function GET(
 
 **Task Flow**: Create task → Deduct credits → Call Duomi API → Poll status (image) or wait for callback (video) → Save to Supabase Storage → Refund on error
 
+### Security Layer
+
+```
+src/lib/
+├── rate-limit.ts              # Rate limiting (Upstash Redis + memory fallback)
+├── security/
+│   ├── ssrf.ts                # URL validation, blocks private IPs/localhost
+│   └── error-handler.ts       # Sanitizes error messages for clients
+└── validations/
+    └── schemas.ts             # Zod schemas for API input validation
+```
+
+**API Route Pattern**: All generation APIs follow this security flow:
+```typescript
+// 1. Auth check
+const session = await getServerSession();
+if (!session?.user) return 401;
+
+// 2. Rate limit check
+const { success } = await rateLimiter.limit(userId);
+if (!success) return 429;
+
+// 3. Input validation (Zod)
+const validation = Schema.safeParse(body);
+if (!validation.success) return 400;
+
+// 4. Business logic...
+
+// 5. Error handling (sanitized)
+catch (error) {
+  return { error: sanitizeError(error) };
+}
+```
+
 ## Environment Variables
 
 Required in `.env`:
