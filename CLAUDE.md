@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 pnpm dev              # Start dev server with Turbopack
 pnpm build            # Production build
+pnpm start            # Start production server
 pnpm lint             # ESLint
 pnpm db:generate      # Generate Drizzle migrations
 pnpm db:migrate       # Push schema to database
@@ -50,12 +51,13 @@ src/
 ├── features/studio/
 │   ├── components/        # image-workshop, video-workshop, user-center, sidebar
 │   ├── context/           # StudioContext (credits, tasks state)
-│   ├── hooks/             # use-task-polling, use-image-task-polling
+│   ├── hooks/             # use-task-polling, use-image-task-polling, use-simulated-progress
 │   └── services/          # duomi, duomi-image, credit, storage, video-task, image-task
-├── lib/auth/
-│   ├── server.ts          # Better Auth config
-│   ├── client.ts          # Client auth hooks
-│   └── get-session.ts     # Server-side session helper
+├── lib/
+│   ├── auth/              # Better Auth config and helpers
+│   ├── security/          # SSRF protection, error sanitization
+│   ├── validations/       # Zod schemas
+│   └── rate-limit.ts      # Rate limiting (Upstash Redis + memory fallback)
 └── components/ui/         # shadcn/ui components
 ```
 
@@ -78,8 +80,39 @@ export async function GET(
 **External APIs**:
 - Video generation: `duomi-service.ts` - callback-based via `DUOMI_API`
 - Image generation: `duomi-image-service.ts` - polling-based via `DUOMI_API`
+- Both APIs use the same `DUOMI_API` key
 
-**Task Flow**: Create task → Deduct credits → Call Duomi API → Poll status (image) or wait for callback (video) → Save to Supabase Storage → Refund on error
+**Duomi API Response Format**:
+```typescript
+// Image API returns nested format
+{
+  code: 200,
+  data: {
+    task_id: "...",
+    state: "pending" | "running" | "succeeded" | "error",
+    data: { images: [...] }
+  }
+}
+
+// Video API returns simple format
+{
+  id: "..."
+}
+```
+
+**Task Flow**:
+1. Create task in database
+2. Deduct credits from user
+3. Call Duomi API
+4. Poll status (image) or wait for callback (video)
+5. Save result to Supabase Storage
+6. Refund credits on error
+
+**Progress Simulation**:
+- Use `useSimulatedProgress` hook for smooth UX
+- Image: 30s simulation, max 95% until completion
+- Video: 5min simulation, max 92% until completion
+- Only reaches 100% when task actually succeeds
 
 ### Security Layer
 
@@ -120,8 +153,36 @@ catch (error) {
 Required in `.env`:
 - `DATABASE_URL` - Supabase pooled connection
 - `DIRECT_URL` - Supabase direct connection (migrations)
-- `BETTER_AUTH_SECRET`
-- `NEXT_PUBLIC_BASE_URL`
+- `BETTER_AUTH_SECRET` - Random secret for Better Auth
+- `NEXT_PUBLIC_BASE_URL` - Base URL (use HTTPS in production)
 - `DUOMI_API` - Duomi API key (for both video and image generation)
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
+
+Optional:
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis URL (for rate limiting)
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis token
+
+## Database Migrations
+
+When modifying schema:
+```bash
+# 1. Update schema files in src/db/schema/
+# 2. Generate migration
+pnpm db:generate
+
+# 3. Push to database
+pnpm db:migrate
+
+# 4. Verify in Drizzle Studio
+pnpm db:studio
+```
+
+## Credit System
+
+- Image generation: 10 credits
+- Video generation (Fast): 30 credits
+- Video generation (Quality): 100 credits
+- Credits are deducted before task creation
+- Automatic refund on task failure
+
