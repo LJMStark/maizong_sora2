@@ -15,7 +15,7 @@ pnpm build            # Production build
 pnpm start            # Start production server
 pnpm lint             # ESLint
 pnpm db:generate      # Generate Drizzle migrations
-pnpm db:migrate       # Push schema to database
+pnpm db:migrate       # Push schema to database (has known bug, see below)
 pnpm db:studio        # Open Drizzle Studio
 ```
 
@@ -41,7 +41,7 @@ src/
 │       ├── auth/[...all]/ # Better Auth handler
 │       ├── video/         # generate, status, tasks
 │       ├── image/         # generate, edit, status, tasks
-│       ├── callback/      # Duomi API webhook
+│       ├── callback/      # Duomi video webhook (public, no auth)
 │       └── credits/       # balance and history
 ├── db/
 │   ├── index.ts           # Drizzle client
@@ -58,8 +58,20 @@ src/
 │   ├── security/          # SSRF protection, error sanitization
 │   ├── validations/       # Zod schemas
 │   └── rate-limit.ts      # Rate limiting (Upstash Redis + memory fallback)
+├── middleware.ts          # Auth middleware (route protection)
+├── routes.ts              # Route definitions (public, auth, API routes)
 └── components/ui/         # shadcn/ui components
 ```
+
+### Middleware & Route Protection
+
+Routes are protected via `src/middleware.ts` using Better Auth cookies:
+- `publicRoutes` - Pages accessible without auth (/, /studio, etc.)
+- `publicApiRoutes` - API endpoints accessible without auth (/api/callback for webhooks)
+- `authRoutes` - Auth pages that redirect to home if already logged in
+- `apiAuthPrefix` - Better Auth API routes (/api/auth/*)
+
+To add a new public webhook endpoint, add it to `publicApiRoutes` in `src/routes.ts`.
 
 ### Key Patterns
 
@@ -78,26 +90,21 @@ export async function GET(
 ```
 
 **External APIs**:
-- Video generation: `duomi-service.ts` - callback-based via `DUOMI_API`
-- Image generation: `duomi-image-service.ts` - polling-based via `DUOMI_API`
-- Both APIs use the same `DUOMI_API` key
+- Video generation: `duomi-service.ts` - **callback-only** (no polling support)
+- Image generation: `duomi-image-service.ts` - polling-based
+- Both use `DUOMI_API` key
+- Video model: `sora-2-temporary` (Fast) or `sora-2-pro` (Quality)
 
-**Duomi API Response Format**:
-```typescript
-// Image API returns nested format
-{
-  code: 200,
-  data: {
-    task_id: "...",
-    state: "pending" | "running" | "succeeded" | "error",
-    data: { images: [...] }
-  }
-}
+**Duomi API Modes**:
+```
+Video API: Callback-only mode
+  1. POST /videos/generations with callback_url
+  2. Duomi sends POST to /api/callback when complete
+  3. Frontend polls database status (not Duomi API)
 
-// Video API returns simple format
-{
-  id: "..."
-}
+Image API: Polling mode
+  1. POST /images/generations returns task_id
+  2. GET /images/generations/{task_id} for status
 ```
 
 **Task Flow**:
@@ -115,16 +122,6 @@ export async function GET(
 - Only reaches 100% when task actually succeeds
 
 ### Security Layer
-
-```
-src/lib/
-├── rate-limit.ts              # Rate limiting (Upstash Redis + memory fallback)
-├── security/
-│   ├── ssrf.ts                # URL validation, blocks private IPs/localhost
-│   └── error-handler.ts       # Sanitizes error messages for clients
-└── validations/
-    └── schemas.ts             # Zod schemas for API input validation
-```
 
 **API Route Pattern**: All generation APIs follow this security flow:
 ```typescript
@@ -154,7 +151,7 @@ Required in `.env`:
 - `DATABASE_URL` - Supabase pooled connection
 - `DIRECT_URL` - Supabase direct connection (migrations)
 - `BETTER_AUTH_SECRET` - Random secret for Better Auth
-- `NEXT_PUBLIC_BASE_URL` - Base URL (use HTTPS in production)
+- `NEXT_PUBLIC_BASE_URL` - Base URL (use HTTPS in production, used for callback URL)
 - `DUOMI_API` - Duomi API key (for both video and image generation)
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key
@@ -165,15 +162,18 @@ Optional:
 
 ## Database Migrations
 
-When modifying schema:
+**Known Issue**: `pnpm db:migrate` (drizzle-kit push) has a bug with Supabase CHECK constraints in version 0.31.8. Use custom migration scripts instead:
+
 ```bash
+# For enum changes, use custom script:
+npx tsx scripts/migrate-enum.ts
+
+# Standard workflow:
 # 1. Update schema files in src/db/schema/
 # 2. Generate migration
 pnpm db:generate
 
-# 3. Push to database
-pnpm db:migrate
-
+# 3. If db:migrate fails, run SQL directly or use custom script
 # 4. Verify in Drizzle Studio
 pnpm db:studio
 ```
@@ -181,8 +181,7 @@ pnpm db:studio
 ## Credit System
 
 - Image generation: 10 credits
-- Video generation (Fast): 30 credits
-- Video generation (Quality): 100 credits
+- Video generation (Fast/sora-2-temporary): 30 credits
+- Video generation (Quality/sora-2-pro): 100 credits
 - Credits are deducted before task creation
 - Automatic refund on task failure
-
