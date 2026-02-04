@@ -26,8 +26,9 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
   const tSignup = useTranslations("auth.signup");
 
   const handleNavigation = (path: string) => {
-    onOpenChange(false);
     router.push(path);
+    // 延迟关闭对话框，确保路由跳转先执行
+    setTimeout(() => onOpenChange(false), 100);
   };
 
   return (
