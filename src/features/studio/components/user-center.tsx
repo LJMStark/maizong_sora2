@@ -97,22 +97,22 @@ const UserCenter: React.FC = () => {
         />
       )}
 
-      <header className="flex items-center justify-between border-b border-[#e5e5e1] px-10 py-6 bg-white sticky top-0 z-10">
+      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#e5e5e1] px-4 md:px-10 py-4 md:py-6 bg-white sticky top-0 z-10">
         <h2 className="text-base font-bold tracking-[0.2em] uppercase text-[#1a1a1a]">
           {t("header")}
         </h2>
-        <div className="flex items-center gap-2 border-b border-[#e5e5e1] pb-1">
+        <div className="flex items-center gap-2 border-b border-[#e5e5e1] pb-1 w-full md:w-auto">
           <span className="material-symbols-outlined text-[18px] text-[#6b7280]">
             search
           </span>
           <input
-            className="bg-transparent border-none text-sm focus:outline-none placeholder:text-[#4b5563]/50 w-64 px-0"
+            className="bg-transparent border-none text-sm focus:outline-none placeholder:text-[#4b5563]/50 w-full md:w-64 px-0"
             placeholder={t("searchPlaceholder")}
           />
         </div>
       </header>
 
-      <div className="p-10 max-w-7xl mx-auto w-full flex flex-col gap-12">
+      <div className="p-4 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-8 md:gap-12">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-serif text-[#1a1a1a] italic">
             {t("title")}
@@ -202,29 +202,29 @@ const UserCenter: React.FC = () => {
         </div>
 
         <section className="flex flex-col gap-8">
-          <div className="flex justify-between items-center border-b border-[#e5e5e1]">
-            <div className="flex gap-12">
+          <div className="flex justify-between items-center border-b border-[#e5e5e1] overflow-x-auto">
+            <div className="flex gap-4 md:gap-8 lg:gap-12">
               <button
                 onClick={() => setActiveTab("all")}
-                className={`pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors ${activeTab === "all" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "all" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
               >
                 {t("tabs.all")}
               </button>
               <button
                 onClick={() => setActiveTab("video")}
-                className={`pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors ${activeTab === "video" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "video" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
               >
                 {t("tabs.video")}
               </button>
               <button
                 onClick={() => setActiveTab("image")}
-                className={`pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors ${activeTab === "image" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "image" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
               >
                 {t("tabs.images")}
               </button>
               <button
                 onClick={() => setActiveTab("credits")}
-                className={`pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors ${activeTab === "credits" ? "border-[#8C7355] text-[#8C7355] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "credits" ? "border-[#8C7355] text-[#8C7355] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
               >
                 {t("tabs.credits")}
               </button>

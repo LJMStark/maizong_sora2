@@ -7,16 +7,16 @@ import { useTranslations } from 'next-intl';
  const Subscription: React.FC = () => {
    const t = useTranslations('studio.subscription');
   return (
-    <div className="flex-1 overflow-y-auto bg-[#faf9f6] py-20 px-6 font-sans">
+    <div className="flex-1 overflow-y-auto bg-[#faf9f6] py-10 md:py-20 px-4 md:px-6 font-sans">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-24">
-          <h1 className="font-serif text-5xl md:text-6xl mb-6 font-normal tracking-tight text-[#1a1a1a]">{t('title')}</h1>
-          <p className="text-[#6b7280] text-lg max-w-xl mx-auto font-light leading-relaxed">{t('subtitle')}</p>
+        <div className="text-center mb-12 md:mb-24">
+          <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl mb-4 md:mb-6 font-normal tracking-tight text-[#1a1a1a]">{t('title')}</h1>
+          <p className="text-[#6b7280] text-base md:text-lg max-w-xl mx-auto font-light leading-relaxed">{t('subtitle')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-[#e5e5e1] bg-white shadow-sm">
           {/* Basic */}
-          <div className="p-12 border-r border-[#e5e5e1] flex flex-col">
+          <div className="p-6 md:p-12 border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col">
             <div className="mb-12">
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6b7280] block mb-4">{t('plans.basic.eyebrow')}</span>
               <h3 className="font-serif text-3xl mb-4 italic text-[#1a1a1a]">{t('plans.basic.name')}</h3>
@@ -37,8 +37,8 @@ import { useTranslations } from 'next-intl';
           </div>
 
           {/* Pro */}
-          <div className="p-12 border-r border-[#e5e5e1] flex flex-col bg-[#faf9f6] relative">
-            <div className="absolute top-8 right-12">
+          <div className="p-6 md:p-12 border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col bg-[#faf9f6] relative">
+            <div className="absolute top-4 right-4 md:top-8 md:right-12">
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 border border-[#8C7355] text-[#8C7355] rounded-full">{t('plans.pro.selected')}</span>
             </div>
             <div className="mb-12">
@@ -66,7 +66,7 @@ import { useTranslations } from 'next-intl';
           </div>
 
           {/* Enterprise */}
-          <div className="p-12 flex flex-col">
+          <div className="p-6 md:p-12 flex flex-col">
             <div className="mb-12">
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#6b7280] block mb-4">{t('plans.enterprise.eyebrow')}</span>
               <h3 className="font-serif text-3xl mb-4 italic text-[#1a1a1a]">{t('plans.enterprise.name')}</h3>

@@ -1,5 +1,6 @@
 import { StudioProvider } from "@/features/studio/context/studio-context";
 import Sidebar from "@/features/studio/components/sidebar";
+import MobileNav from "@/features/studio/components/mobile-nav";
 
 export default function StudioLayout({
   children,
@@ -8,7 +9,8 @@ export default function StudioLayout({
 }) {
   return (
     <StudioProvider>
-      <div className="flex h-screen bg-[#faf9f6] text-[#1a1a1a] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <div className="flex flex-col md:flex-row h-screen bg-[#faf9f6] text-[#1a1a1a] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <MobileNav />
         <Sidebar />
         <main className="flex-1 h-full overflow-hidden relative">
           {children}

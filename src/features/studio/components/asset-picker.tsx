@@ -15,11 +15,11 @@ const AssetPicker: React.FC<Props> = ({ history, onSelect, onClose }) => {
   const assets = history.filter(item => (item.type === 'image' || item.type === 'analysis') && item.url);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1a1a]/80 backdrop-blur-sm p-8" onClick={onClose}>
-      <div className="bg-white w-full max-w-4xl max-h-[80vh] flex flex-col rounded-sm shadow-2xl overflow-hidden animate-[soft-pulse_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
-        <div className="p-6 border-b border-[#e5e5e1] flex justify-between items-center bg-[#faf9f6]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1a1a1a]/80 backdrop-blur-sm p-4 md:p-8" onClick={onClose}>
+      <div className="bg-white w-full max-w-4xl max-h-[85vh] md:max-h-[80vh] flex flex-col rounded-sm shadow-2xl overflow-hidden animate-[soft-pulse_0.2s_ease-out]" onClick={e => e.stopPropagation()}>
+        <div className="p-4 md:p-6 border-b border-[#e5e5e1] flex justify-between items-center bg-[#faf9f6]">
           <div>
-            <h3 className="text-xl font-serif italic text-[#1a1a1a]">{t('title')}</h3>
+            <h3 className="text-lg md:text-xl font-serif italic text-[#1a1a1a]">{t('title')}</h3>
             <p className="text-xs text-[#4b5563] uppercase tracking-widest mt-1">{t('subtitle')}</p>
           </div>
           <button onClick={onClose} className="hover:bg-white p-2 rounded-full transition-colors text-[#6b7280] hover:text-[#1a1a1a]">
@@ -27,7 +27,7 @@ const AssetPicker: React.FC<Props> = ({ history, onSelect, onClose }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-white custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-white custom-scrollbar">
           {assets.length === 0 ? (
             <div className="h-64 flex flex-col items-center justify-center text-[#6b7280]">
               <span className="material-symbols-outlined text-4xl mb-4 opacity-20">image_not_supported</span>

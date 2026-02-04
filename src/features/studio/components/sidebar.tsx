@@ -52,7 +52,7 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 border-r border-[#e5e5e1] bg-white flex flex-col justify-between shrink-0 h-full">
+    <aside className="hidden md:flex w-64 border-r border-[#e5e5e1] bg-white flex-col justify-between shrink-0 h-full">
       <div className="flex flex-col">
         <div className="p-8 pb-10">
           <h1 className="font-serif text-2xl tracking-tight text-[#1a1a1a] flex items-center gap-2">

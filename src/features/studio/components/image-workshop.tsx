@@ -181,7 +181,7 @@ const ImageWorkshop: React.FC = () => {
   };
 
   return (
-    <div className="flex h-full overflow-hidden font-sans">
+    <div className="flex flex-col md:flex-row h-full overflow-hidden font-sans">
       {lightboxOpen && generatedImage && (
         <Lightbox src={generatedImage} type="image" onClose={() => setLightboxOpen(false)} />
       )}
@@ -195,7 +195,7 @@ const ImageWorkshop: React.FC = () => {
       )}
 
       {/* Controls Panel */}
-      <div className="w-[440px] overflow-y-auto border-r border-[#e5e5e1] bg-white p-8 flex flex-col gap-8 custom-scrollbar">
+      <div className="w-full md:w-[440px] overflow-y-auto border-b md:border-b-0 md:border-r border-[#e5e5e1] bg-white p-4 md:p-8 flex flex-col gap-6 md:gap-8 custom-scrollbar order-2 md:order-1">
 
         {/* Mode Switcher */}
         <div className="flex p-1 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
@@ -338,8 +338,8 @@ const ImageWorkshop: React.FC = () => {
       </div>
 
       {/* Canvas Area */}
-      <div className="flex-1 p-12 flex flex-col relative bg-[#faf9f6]">
-        <div className="flex-1 border border-[#e5e5e1] bg-white flex items-center justify-center relative overflow-hidden shadow-sm p-8">
+      <div className="flex-1 p-4 md:p-12 flex flex-col relative bg-[#faf9f6] order-1 md:order-2 min-h-[250px] md:min-h-0">
+        <div className="flex-1 border border-[#e5e5e1] bg-white flex items-center justify-center relative overflow-hidden shadow-sm p-4 md:p-8">
           {loading ? (
             <div className="flex flex-col items-center text-center animate-soft-pulse">
               <span className="material-symbols-outlined text-4xl text-[#4b5563]/50 mb-4 animate-spin">blur_on</span>
@@ -414,13 +414,13 @@ const ImageWorkshop: React.FC = () => {
         </div>
 
         {/* Footer Action */}
-        <div className="absolute bottom-12 right-12 flex items-center gap-10">
+        <div className="absolute bottom-4 right-4 md:bottom-12 md:right-12 flex items-center gap-4 md:gap-10">
           <button
             onClick={handleAction}
             disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
-            className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-12 py-5 text-sm font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
+            className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-6 py-3 md:px-12 md:py-5 text-xs md:text-sm font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all flex items-center gap-2 md:gap-3 shadow-lg hover:shadow-xl"
           >
-            <span className="material-symbols-outlined text-lg">auto_awesome</span>
+            <span className="material-symbols-outlined text-base md:text-lg">auto_awesome</span>
             {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}
           </button>
         </div>
