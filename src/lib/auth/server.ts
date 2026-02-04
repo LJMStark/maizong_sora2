@@ -5,6 +5,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { restrictedUsernames } from "./usernames";
 
 export const auth = betterAuth({
+  baseURL:
+    process.env.BETTER_AUTH_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL,
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
