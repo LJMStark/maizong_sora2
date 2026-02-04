@@ -12,13 +12,6 @@ export interface DuomiCreateTaskResponse {
   id: string;
 }
 
-export interface DuomiVideoStatusResponse {
-  id: string;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  video_url?: string;
-  error?: string;
-}
-
 const DUOMI_API_BASE = "https://duomiapi.com/v1";
 
 export const duomiService = {
@@ -53,28 +46,6 @@ export const duomiService = {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      // Only include status code, hide upstream details
-      throw new Error(`Duomi API error: ${response.status}`);
-    }
-
-    return response.json();
-  },
-
-  async getVideoStatus(taskId: string): Promise<DuomiVideoStatusResponse> {
-    const apiKey = process.env.DUOMI_API;
-
-    if (!apiKey) {
-      throw new Error("DUOMI_API environment variable is not set");
-    }
-
-    const response = await fetch(`${DUOMI_API_BASE}/videos/generations/${taskId}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
     });
 
     if (!response.ok) {
