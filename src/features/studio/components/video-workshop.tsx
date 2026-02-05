@@ -7,6 +7,7 @@ import { AspectRatio } from "../types";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
+import { PromptEnhanceDialog } from "./prompt-enhance-dialog";
 import { useStudio } from "../context/studio-context";
 import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
 import { useSimulatedProgress } from "../hooks/use-simulated-progress";
@@ -63,6 +64,9 @@ const VideoWorkshop: React.FC = () => {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [enhancing, setEnhancing] = useState(false);
+  const [enhanceDialogOpen, setEnhanceDialogOpen] = useState(false);
+  const [enhancedPrompt, setEnhancedPrompt] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +136,39 @@ const VideoWorkshop: React.FC = () => {
   const handleRandomPrompt = () => {
     const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
     setPrompt(random);
+  };
+
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) return;
+
+    setEnhancing(true);
+    try {
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "润色失败");
+      }
+
+      setEnhancedPrompt(data.enhancedPrompt);
+      setEnhanceDialogOpen(true);
+    } catch (error) {
+      console.error("Enhance prompt error:", error);
+      const message = error instanceof Error ? error.message : "润色失败";
+      alert(message);
+    } finally {
+      setEnhancing(false);
+    }
+  };
+
+  const handleConfirmEnhanced = () => {
+    setPrompt(enhancedPrompt);
+    setEnhanceDialogOpen(false);
   };
 
   const handleGenerate = async () => {
@@ -221,6 +258,14 @@ const VideoWorkshop: React.FC = () => {
           onSelect={handleAssetSelect}
         />
       )}
+
+      <PromptEnhanceDialog
+        open={enhanceDialogOpen}
+        onOpenChange={setEnhanceDialogOpen}
+        originalPrompt={prompt}
+        enhancedPrompt={enhancedPrompt}
+        onConfirm={handleConfirmEnhanced}
+      />
 
       <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col bg-white overflow-y-auto custom-scrollbar p-4 md:p-8 gap-6 md:gap-8 order-1 md:order-1">
         <div className="border-b border-[#e5e5e1] pb-6">
@@ -355,13 +400,6 @@ const VideoWorkshop: React.FC = () => {
             <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
               {t("sections.narrativePrompt")}
             </p>
-            <button
-              onClick={handleRandomPrompt}
-              title={t("prompt.randomTitle")}
-              className="text-gray-500 hover:text-[#1a1a1a] p-1 rounded-full hover:bg-[#faf9f6] transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">casino</span>
-            </button>
           </div>
           <textarea
             value={prompt}
@@ -369,6 +407,23 @@ const VideoWorkshop: React.FC = () => {
             className="w-full h-32 bg-[#faf9f6] border border-[#e5e5e1] focus:ring-1 focus:ring-[#1a1a1a] focus:outline-none p-4 text-sm text-gray-800 leading-relaxed placeholder:text-gray-400 resize-none"
             placeholder={t("prompt.placeholder")}
           />
+          <div className="flex gap-2">
+            <button
+              onClick={handleRandomPrompt}
+              className="flex-1 py-3 px-4 border border-[#e5e5e1] text-[#4b5563] text-[11px] font-bold uppercase tracking-widest hover:border-[#1a1a1a] hover:text-[#1a1a1a] transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">casino</span>
+              随机
+            </button>
+            <button
+              onClick={handleEnhancePrompt}
+              disabled={!prompt.trim() || enhancing}
+              className="flex-1 py-3 px-4 bg-[#8C7355] text-white text-[11px] font-bold uppercase tracking-widest hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">auto_fix_high</span>
+              {enhancing ? "润色中..." : "润色"}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
