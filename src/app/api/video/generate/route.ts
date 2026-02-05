@@ -13,6 +13,12 @@ const CREDIT_COSTS = {
   "sora-2-pro": 100,
 } as const;
 
+const MAX_GENERATE_RETRIES = 3;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
 
@@ -82,38 +88,45 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
     const callbackUrl = `${baseUrl}/api/callback`;
 
-    try {
-      const duomiResponse = await duomiService.createVideoTask({
-        prompt,
-        model,
-        aspectRatio: aspectRatio === "9:16" ? "9:16" : "16:9",
-        duration: duration || 10,
-        imageUrl: sourceImageUrl,
-        callbackUrl,
-      });
-
-      if (duomiResponse.id) {
-        await videoTaskService.updateDuomiTaskId(task.id, duomiResponse.id);
-        await videoTaskService.updateTaskStatus(task.id, "running", 0);
-      } else {
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
-          0,
-          "创建 Duomi 任务失败"
-        );
-        await creditService.refundCredits({
-          userId,
-          amount: creditCost,
-          reason: "Video generation failed - refund",
-          referenceType: "video_task",
-          referenceId: task.id,
+    // 同步重试逻辑：最多重试 MAX_GENERATE_RETRIES 次
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
+      try {
+        const duomiResponse = await duomiService.createVideoTask({
+          prompt,
+          model,
+          aspectRatio: aspectRatio === "9:16" ? "9:16" : "16:9",
+          duration: duration || 10,
+          imageUrl: sourceImageUrl,
+          callbackUrl,
         });
+
+        if (duomiResponse.id) {
+          await videoTaskService.updateDuomiTaskId(task.id, duomiResponse.id);
+          await videoTaskService.updateTaskStatus(task.id, "running", 0);
+          lastError = null;
+          break;
+        } else {
+          lastError = new Error("创建 Duomi 任务失败：无返回 ID");
+        }
+      } catch (duomiError) {
+        lastError = duomiError instanceof Error ? duomiError : new Error("未知错误");
+        console.log(`[Generate] Duomi API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, lastError.message);
+
+        if (attempt > 0) {
+          await videoTaskService.incrementRetryCount(task.id, "generate");
+        }
+
+        if (attempt < MAX_GENERATE_RETRIES - 1) {
+          // 指数退避：1s, 2s, 4s
+          await delay(1000 * Math.pow(2, attempt));
+        }
       }
-    } catch (duomiError) {
-      const errorMessage =
-        duomiError instanceof Error ? duomiError.message : "未知错误";
-      await videoTaskService.updateTaskStatus(task.id, "error", 0, errorMessage);
+    }
+
+    // 所有重试都失败
+    if (lastError) {
+      await videoTaskService.updateTaskStatus(task.id, "error", 0, lastError.message);
       await creditService.refundCredits({
         userId,
         amount: creditCost,

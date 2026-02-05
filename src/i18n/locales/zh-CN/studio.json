@@ -168,6 +168,7 @@
       "renderingProcess": "渲染进程",
       "initializingEngine": "初始化神经引擎...",
       "compilingFrames": "使用神经引擎编译最终帧",
+      "autoRetrying": "自动重试中...",
       "progress": "进度",
       "waitMessage": "这可能需要几分钟...",
       "previewWindow": "预览窗口",

@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 export type TaskType = "video" | "image";
 
 export interface BaseTaskStatus {
-  status: "pending" | "running" | "succeeded" | "error";
+  status: "pending" | "running" | "succeeded" | "error" | "retrying";
   errorMessage?: string;
 }
 
@@ -14,6 +14,10 @@ export interface VideoTaskStatus extends BaseTaskStatus {
   prompt: string;
   createdAt: string;
   completedAt?: string;
+  isRetrying?: boolean;
+  canRetry?: boolean;
+  generateRetryCount?: number;
+  callbackRetryCount?: number;
 }
 
 export interface ImageTaskStatus extends BaseTaskStatus {

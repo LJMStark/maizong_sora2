@@ -8,6 +8,7 @@ export const videoTaskStatusEnum = pgEnum("video_task_status", [
   "running",
   "succeeded",
   "error",
+  "retrying",
 ]);
 
 export const videoTask = pgTable("video_task", {
@@ -28,6 +29,9 @@ export const videoTask = pgTable("video_task", {
   finalVideoUrl: text("final_video_url"),
   creditCost: integer("credit_cost").notNull(),
   creditTransactionId: text("credit_transaction_id"),
+  generateRetryCount: integer("generate_retry_count").notNull().default(0),
+  callbackRetryCount: integer("callback_retry_count").notNull().default(0),
+  lastRetryAt: timestamp("last_retry_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

@@ -52,7 +52,7 @@ export const videoTaskService = {
 
   async updateTaskStatus(
     taskId: string,
-    status: "pending" | "running" | "succeeded" | "error",
+    status: "pending" | "running" | "succeeded" | "error" | "retrying",
     progress?: number,
     errorMessage?: string
   ): Promise<VideoTaskType> {
@@ -136,7 +136,35 @@ export const videoTaskService = {
       .orderBy(desc(videoTask.createdAt));
 
     return tasks.filter(
-      (task) => task.status === "pending" || task.status === "running"
+      (task) => task.status === "pending" || task.status === "running" || task.status === "retrying"
     );
+  },
+
+  async incrementRetryCount(
+    taskId: string,
+    type: "generate" | "callback"
+  ): Promise<VideoTaskType> {
+    const task = await this.getTaskById(taskId);
+    if (!task) {
+      throw new Error("Task not found");
+    }
+
+    const updateData: Partial<VideoTaskType> = {
+      lastRetryAt: new Date(),
+    };
+
+    if (type === "generate") {
+      updateData.generateRetryCount = (task.generateRetryCount ?? 0) + 1;
+    } else {
+      updateData.callbackRetryCount = (task.callbackRetryCount ?? 0) + 1;
+    }
+
+    const [updatedTask] = await db
+      .update(videoTask)
+      .set(updateData)
+      .where(eq(videoTask.id, taskId))
+      .returning();
+
+    return updatedTask;
   },
 };

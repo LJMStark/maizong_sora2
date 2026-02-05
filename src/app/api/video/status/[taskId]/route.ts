@@ -39,6 +39,28 @@ export async function GET(
         prompt: task.prompt,
         createdAt: task.createdAt,
         completedAt: task.completedAt,
+        isRetrying: false,
+        canRetry: task.status === "error",
+        generateRetryCount: task.generateRetryCount ?? 0,
+        callbackRetryCount: task.callbackRetryCount ?? 0,
+      });
+    }
+
+    // If task is retrying, return retrying state
+    if (task.status === "retrying") {
+      return NextResponse.json({
+        id: task.id,
+        status: "retrying",
+        progress: task.progress,
+        videoUrl: null,
+        errorMessage: null,
+        prompt: task.prompt,
+        createdAt: task.createdAt,
+        completedAt: null,
+        isRetrying: true,
+        canRetry: false,
+        generateRetryCount: task.generateRetryCount ?? 0,
+        callbackRetryCount: task.callbackRetryCount ?? 0,
       });
     }
 
@@ -52,6 +74,10 @@ export async function GET(
         prompt: task.prompt,
         createdAt: task.createdAt,
         completedAt: task.completedAt,
+        isRetrying: false,
+        canRetry: false,
+        generateRetryCount: task.generateRetryCount ?? 0,
+        callbackRetryCount: task.callbackRetryCount ?? 0,
       });
     }
 
@@ -81,6 +107,10 @@ export async function GET(
             prompt: task.prompt,
             createdAt: task.createdAt,
             completedAt: new Date(),
+            isRetrying: false,
+            canRetry: true,
+            generateRetryCount: task.generateRetryCount ?? 0,
+            callbackRetryCount: task.callbackRetryCount ?? 0,
           });
         }
 
@@ -109,6 +139,10 @@ export async function GET(
           prompt: task.prompt,
           createdAt: task.createdAt,
           completedAt: new Date(),
+          isRetrying: false,
+          canRetry: false,
+          generateRetryCount: task.generateRetryCount ?? 0,
+          callbackRetryCount: task.callbackRetryCount ?? 0,
         });
       } else if (state === "error") {
         const errorMessage = duomiStatus.message || duomiStatus.error || "视频生成失败";
@@ -135,6 +169,10 @@ export async function GET(
           prompt: task.prompt,
           createdAt: task.createdAt,
           completedAt: new Date(),
+          isRetrying: false,
+          canRetry: true,
+          generateRetryCount: task.generateRetryCount ?? 0,
+          callbackRetryCount: task.callbackRetryCount ?? 0,
         });
       } else {
         const mappedStatus = state === "running" ? "running" : "pending";
@@ -151,10 +189,15 @@ export async function GET(
           prompt: task.prompt,
           createdAt: task.createdAt,
           completedAt: task.completedAt,
+          isRetrying: false,
+          canRetry: false,
+          generateRetryCount: task.generateRetryCount ?? 0,
+          callbackRetryCount: task.callbackRetryCount ?? 0,
         });
       }
     } catch (pollError) {
       const message = pollError instanceof Error ? pollError.message : "获取状态失败";
+      const taskStatus = task.status as string;
       return NextResponse.json({
         id: task.id,
         status: task.status,
@@ -164,6 +207,10 @@ export async function GET(
         prompt: task.prompt,
         createdAt: task.createdAt,
         completedAt: task.completedAt,
+        isRetrying: taskStatus === "retrying",
+        canRetry: taskStatus === "error",
+        generateRetryCount: task.generateRetryCount ?? 0,
+        callbackRetryCount: task.callbackRetryCount ?? 0,
       });
     }
   } catch (error) {

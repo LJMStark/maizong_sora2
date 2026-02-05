@@ -426,7 +426,9 @@ const VideoWorkshop: React.FC = () => {
               <p className="text-[#6b7280]/60 text-[11px] leading-relaxed uppercase tracking-widest">
                 {taskStatus === "pending"
                   ? t("canvas.initializingEngine")
-                  : t("canvas.compilingFrames")}
+                  : taskStatus === "retrying"
+                    ? t("canvas.autoRetrying")
+                    : t("canvas.compilingFrames")}
               </p>
 
               <div className="w-64 mt-6">

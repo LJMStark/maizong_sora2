@@ -8,7 +8,7 @@ interface UseSimulatedProgressOptions {
   /**
    * 实际任务状态
    */
-  actualStatus?: "pending" | "running" | "succeeded" | "error";
+  actualStatus?: "pending" | "running" | "succeeded" | "error" | "retrying";
   /**
    * 预计完成时间（毫秒）
    */
