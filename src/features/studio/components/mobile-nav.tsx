@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth/client";
 import { useTranslations } from "next-intl";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { NAV_ITEMS } from "./shared/nav-config";
 import { UserProfile } from "./shared/user-profile";
 import { LoginDialog } from "./shared/login-dialog";
@@ -64,6 +64,7 @@ const MobileNav: React.FC = () => {
                 </button>
               </SheetTrigger>
             <SheetContent side="left" className="w-[280px] p-0 bg-white">
+              <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
               <div className="flex flex-col h-full">
                 <div className="p-6 border-b border-[#e5e5e1]">
                   <h1 className="font-serif text-xl tracking-tight text-[#1a1a1a] flex items-center gap-2">

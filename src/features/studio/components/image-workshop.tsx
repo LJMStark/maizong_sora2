@@ -195,7 +195,7 @@ const ImageWorkshop: React.FC = () => {
       )}
 
       {/* Controls Panel */}
-      <div className="w-full md:w-[440px] overflow-y-auto border-b md:border-b-0 md:border-r border-[#e5e5e1] bg-white p-4 md:p-8 flex flex-col gap-6 md:gap-8 custom-scrollbar order-2 md:order-1">
+      <div className="w-full md:w-[440px] overflow-y-auto border-b md:border-b-0 md:border-r border-[#e5e5e1] bg-white p-4 md:p-8 flex flex-col gap-6 md:gap-8 custom-scrollbar order-1 md:order-1">
 
         {/* Mode Switcher */}
         <div className="flex p-1 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
@@ -338,7 +338,7 @@ const ImageWorkshop: React.FC = () => {
       </div>
 
       {/* Canvas Area */}
-      <div className="flex-1 p-4 md:p-12 flex flex-col relative bg-[#faf9f6] order-1 md:order-2 min-h-[250px] md:min-h-0">
+      <div className="flex-1 p-4 md:p-12 flex flex-col relative bg-[#faf9f6] order-2 md:order-2 min-h-[250px] md:min-h-0">
         <div className="flex-1 border border-[#e5e5e1] bg-white flex items-center justify-center relative overflow-hidden shadow-sm p-4 md:p-8">
           {loading ? (
             <div className="flex flex-col items-center text-center animate-soft-pulse">

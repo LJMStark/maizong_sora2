@@ -222,7 +222,7 @@ const VideoWorkshop: React.FC = () => {
         />
       )}
 
-      <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col bg-white overflow-y-auto custom-scrollbar p-4 md:p-8 gap-6 md:gap-8 order-2 md:order-1">
+      <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col bg-white overflow-y-auto custom-scrollbar p-4 md:p-8 gap-6 md:gap-8 order-1 md:order-1">
         <div className="border-b border-[#e5e5e1] pb-6">
           <h1 className="text-2xl font-serif italic mb-1 text-[#1a1a1a]">
             {t("creationSuite")}
@@ -411,7 +411,7 @@ const VideoWorkshop: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 bg-[#faf9f6] overflow-y-auto custom-scrollbar flex flex-col p-4 md:p-12 items-center justify-center order-1 md:order-2 min-h-[300px] md:min-h-0">
+      <div className="flex-1 bg-[#faf9f6] overflow-y-auto custom-scrollbar flex flex-col p-4 md:p-12 items-center justify-center order-2 md:order-2 min-h-[300px] md:min-h-0">
         <div className="max-w-4xl w-full flex flex-col items-center">
           {loading ? (
             <div
