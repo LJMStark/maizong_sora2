@@ -3,7 +3,12 @@ import { db } from "@/db";
 import { creditOrder, creditPackage } from "@/db/schema";
 import { getServerSession } from "@/lib/auth/get-session";
 import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
+
+function generateOrderId(): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = crypto.randomUUID().slice(0, 6).toUpperCase();
+  return `ORD${timestamp}${random}`;
+}
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -35,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const orderId = `ORD${Date.now()}${nanoid(6).toUpperCase()}`;
+    const orderId = generateOrderId();
 
     await db.insert(creditOrder).values({
       id: orderId,
