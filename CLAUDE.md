@@ -31,7 +31,8 @@ pnpm db:studio        # Open Drizzle Studio
 - Better Auth (authentication with username plugin)
 - Drizzle ORM + PostgreSQL (Supabase)
 - Supabase Storage (file uploads)
-- Tailwind CSS 4 + Radix UI
+- Tailwind CSS 4 + Headless UI (Dialog, Sheet, RadioGroup)
+- Radix UI Slot (仅用于 Button/Form 组件)
 - next-intl (Chinese as default, single-language app)
 
 ### Key Directories
