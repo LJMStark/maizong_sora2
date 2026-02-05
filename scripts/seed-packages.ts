@@ -42,7 +42,7 @@ const packages = [
   },
   {
     id: generateId(),
-    name: "银河积分旗舰包（旗舰版）",
+    name: "银河旗舰包（旗舰版）",
     type: "package",
     credits: 10000,
     daily_credits: null,
