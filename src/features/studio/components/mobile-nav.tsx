@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth/client";
 import { useTranslations } from "next-intl";
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { NAV_ITEMS } from "./shared/nav-config";
 import { UserProfile } from "./shared/user-profile";
 import { LoginDialog } from "./shared/login-dialog";
@@ -57,13 +57,15 @@ const MobileNav: React.FC = () => {
             </div>
           )}
           {mounted ? (
-            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-              <SheetTrigger asChild>
-                <button className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors">
-                  <span className="material-symbols-outlined text-2xl">menu</span>
-                </button>
-              </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] p-0 bg-white">
+            <>
+              <button
+                onClick={() => setSheetOpen(true)}
+                className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors"
+              >
+                <span className="material-symbols-outlined text-2xl">menu</span>
+              </button>
+              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                <SheetContent side="left" className="w-[280px] p-0 bg-white">
               <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
               <div className="flex flex-col h-full">
                 <div className="p-6 border-b border-[#e5e5e1]">
@@ -116,7 +118,8 @@ const MobileNav: React.FC = () => {
                 </div>
               </div>
             </SheetContent>
-            </Sheet>
+              </Sheet>
+            </>
           ) : (
             <button className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors">
               <span className="material-symbols-outlined text-2xl">menu</span>
