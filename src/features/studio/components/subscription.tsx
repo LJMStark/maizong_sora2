@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useTranslations } from "next-intl";
 import { CreditPurchaseDialog } from "./credit-purchase-dialog";
@@ -9,77 +9,11 @@ interface Package {
   id: string;
   name: string;
   type: "package" | "subscription";
-  credits?: number;
-  dailyCredits?: number;
-  durationDays?: number;
+  credits: number | null;
+  dailyCredits: number | null;
+  durationDays: number | null;
   price: number;
 }
-
-const creditPackages: Package[] = [
-  {
-    id: "pkg-basic",
-    name: "启智积分包（基础版）",
-    type: "package",
-    credits: 100,
-    price: 990,
-  },
-  {
-    id: "pkg-advanced",
-    name: "迅驰智算套餐（进阶版）",
-    type: "package",
-    credits: 1000,
-    price: 6880,
-  },
-  {
-    id: "pkg-premium",
-    name: "星云超算方案（高级版）",
-    type: "package",
-    credits: 3000,
-    price: 13880,
-  },
-  {
-    id: "pkg-flagship",
-    name: "银河积分旗舰包（旗舰版）",
-    type: "package",
-    credits: 10000,
-    price: 39880,
-  },
-];
-
-const subscriptionPackages: Package[] = [
-  {
-    id: "sub-day",
-    name: "体验天卡",
-    type: "subscription",
-    dailyCredits: 30,
-    durationDays: 1,
-    price: 288,
-  },
-  {
-    id: "sub-month",
-    name: "超值月卡",
-    type: "subscription",
-    dailyCredits: 30,
-    durationDays: 30,
-    price: 5880,
-  },
-  {
-    id: "sub-halfyear",
-    name: "劲爆半年",
-    type: "subscription",
-    dailyCredits: 40,
-    durationDays: 180,
-    price: 19800,
-  },
-  {
-    id: "sub-year",
-    name: "无敌年卡",
-    type: "subscription",
-    dailyCredits: 50,
-    durationDays: 365,
-    price: 39880,
-  },
-];
 
 function formatPrice(priceInCents: number): string {
   return `¥${(priceInCents / 100).toFixed(2)}`;
@@ -190,13 +124,48 @@ function MemberIntro() {
   );
 }
 
+function PackageSkeleton() {
+  return (
+    <div className="p-6 md:p-8 flex-1 flex flex-col animate-pulse">
+      <div className="mb-6">
+        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
+        <div className="h-4 bg-gray-200 rounded w-1/2" />
+      </div>
+      <div className="mt-auto">
+        <div className="h-8 bg-gray-200 rounded w-1/3 mb-6" />
+        <div className="h-12 bg-gray-200 rounded w-full" />
+      </div>
+    </div>
+  );
+}
+
 const Subscription: React.FC = () => {
   const t = useTranslations("studio.subscription");
-  const [selectedPackage, setSelectedPackage] = React.useState<Package | null>(
-    null
-  );
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  useEffect(() => {
+    async function fetchPackages() {
+      try {
+        const res = await fetch("/api/packages");
+        const data = await res.json();
+        if (data.packages) {
+          setPackages(data.packages);
+        }
+      } catch (error) {
+        console.error("Failed to fetch packages:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPackages();
+  }, []);
+
+  const creditPackages = packages.filter((p) => p.type === "package");
+  const subscriptionPackages = packages.filter((p) => p.type === "subscription");
 
   const handlePurchase = (pkg: Package) => {
     setSelectedPackage(pkg);
@@ -230,43 +199,73 @@ const Subscription: React.FC = () => {
           <TabPanels className="mt-8">
             <TabPanel>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
-                {creditPackages.map((pkg, index) => (
-                  <div
-                    key={pkg.id}
-                    className={
-                      index < creditPackages.length - 1
-                        ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
-                        : ""
-                    }
-                  >
-                    <PackageCard
-                      pkg={pkg}
-                      onPurchase={handlePurchase}
-                      isHighlighted={index === 0}
-                    />
-                  </div>
-                ))}
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={
+                        i < 3
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
+                          : ""
+                      }
+                    >
+                      <PackageSkeleton />
+                    </div>
+                  ))
+                ) : (
+                  creditPackages.map((pkg, index) => (
+                    <div
+                      key={pkg.id}
+                      className={
+                        index < creditPackages.length - 1
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
+                          : ""
+                      }
+                    >
+                      <PackageCard
+                        pkg={pkg}
+                        onPurchase={handlePurchase}
+                        isHighlighted={index === 0}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
             </TabPanel>
 
             <TabPanel>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
-                {subscriptionPackages.map((pkg, index) => (
-                  <div
-                    key={pkg.id}
-                    className={
-                      index < subscriptionPackages.length - 1
-                        ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
-                        : ""
-                    }
-                  >
-                    <PackageCard
-                      pkg={pkg}
-                      onPurchase={handlePurchase}
-                      isHighlighted={index === 1}
-                    />
-                  </div>
-                ))}
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={
+                        i < 3
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
+                          : ""
+                      }
+                    >
+                      <PackageSkeleton />
+                    </div>
+                  ))
+                ) : (
+                  subscriptionPackages.map((pkg, index) => (
+                    <div
+                      key={pkg.id}
+                      className={
+                        index < subscriptionPackages.length - 1
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
+                          : ""
+                      }
+                    >
+                      <PackageCard
+                        pkg={pkg}
+                        onPurchase={handlePurchase}
+                        isHighlighted={index === 1}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
               <MemberIntro />
             </TabPanel>

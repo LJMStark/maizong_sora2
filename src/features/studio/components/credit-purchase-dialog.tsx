@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -14,9 +14,9 @@ interface Package {
   id: string;
   name: string;
   type: "package" | "subscription";
-  credits?: number;
-  dailyCredits?: number;
-  durationDays?: number;
+  credits?: number | null;
+  dailyCredits?: number | null;
+  durationDays?: number | null;
   price: number;
 }
 
@@ -30,25 +30,59 @@ function formatPrice(priceInCents: number): string {
   return `¥${(priceInCents / 100).toFixed(2)}`;
 }
 
-function generateOrderId(): string {
-  const date = new Date();
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-  return `ORD${dateStr}${random}`;
-}
-
 export function CreditPurchaseDialog({
   open,
   onOpenChange,
   selectedPackage,
 }: CreditPurchaseDialogProps) {
   const t = useTranslations("studio.subscription.purchase");
-  const [orderId] = React.useState(() => generateOrderId());
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleConfirm = async () => {
+    if (!selectedPackage) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ packageId: selectedPackage.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "创建订单失败");
+      }
+
+      setOrderId(data.orderId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "创建订单失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setOrderId(null);
+    setError(null);
+    onOpenChange(false);
+  };
+
+  React.useEffect(() => {
+    if (open && selectedPackage) {
+      handleConfirm();
+    }
+  }, [open, selectedPackage?.id]);
 
   if (!selectedPackage) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md bg-white border border-[#e5e5e1] p-0 gap-0">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="font-serif text-2xl italic text-[#1a1a1a] font-normal">
@@ -122,23 +156,32 @@ export function CreditPurchaseDialog({
               <p className="text-xs uppercase tracking-[0.15em] text-[#4b5563] mb-2">
                 {t("orderNote")}
               </p>
-              <p className="font-mono text-lg tracking-wider text-[#8C7355]">
-                {orderId}
-              </p>
+              {loading ? (
+                <p className="font-mono text-lg tracking-wider text-[#4b5563]">
+                  生成中...
+                </p>
+              ) : error ? (
+                <p className="text-sm text-red-500">{error}</p>
+              ) : (
+                <p className="font-mono text-lg tracking-wider text-[#8C7355]">
+                  {orderId}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
         <DialogFooter className="p-6 pt-0 gap-3 sm:gap-3">
           <button
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
             className="flex-1 py-4 px-6 border border-[#e5e5e1] text-[#4b5563] text-[12px] font-bold uppercase tracking-widest hover:border-[#1a1a1a] hover:text-[#1a1a1a] transition-colors"
           >
             {t("cancel")}
           </button>
           <button
-            onClick={() => onOpenChange(false)}
-            className="flex-1 py-4 px-6 bg-[#8C7355] text-white text-[12px] font-bold uppercase tracking-widest hover:bg-[#7a6349] transition-colors"
+            onClick={handleClose}
+            disabled={loading || !!error}
+            className="flex-1 py-4 px-6 bg-[#8C7355] text-white text-[12px] font-bold uppercase tracking-widest hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t("confirm")}
           </button>
