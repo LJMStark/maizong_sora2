@@ -7,11 +7,11 @@ export const publicRoutes: string[] = [
   "/studio/subscription",
 ];
 
-export const authRoutes: string[] = ["/signin", "/signup", "/forgot-password"];
+export const authRoutes: string[] = ["/signin", "/signup", "/login", "/forgot-password"];
 
 export const apiAuthPrefix: string = "/api/auth";
 
-// API routes that should be publicly accessible (webhooks, callbacks)
-export const publicApiRoutes: string[] = ["/api/callback"];
+// API routes that should be publicly accessible (webhooks, callbacks, public data)
+export const publicApiRoutes: string[] = ["/api/callback", "/api/packages"];
 
 export const DEFAULT_LOGIN_REDIRECT: string = "/";
