@@ -93,6 +93,7 @@ const UserCenter: React.FC = () => {
         <Lightbox
           src={lightboxItem.url}
           type={lightboxItem.type}
+          prompt={lightboxItem.prompt}
           onClose={() => setLightboxItem(null)}
         />
       )}
