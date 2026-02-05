@@ -261,42 +261,73 @@
     }
   },
   "subscription": {
-    "title": "投资计划",
-    "subtitle": "为现代电商美学打造的精致生成工具。",
-    "plans": {
+    "title": "购买积分",
+    "subtitle": "选择适合您的积分方案",
+    "tabs": {
+      "package": "积分包",
+      "subscription": "会员订阅"
+    },
+    "packages": {
       "basic": {
-        "eyebrow": "入门",
-        "name": "基础版",
-        "features": {
-          "credits": "10 月度积分",
-          "quality": "标准质量",
-          "gallery": "公开画廊"
-        },
-        "button": "当前计划"
+        "name": "启智积分包（基础版）",
+        "credits": "100"
       },
-      "pro": {
-        "eyebrow": "成长",
-        "name": "专业版",
-        "selected": "精选",
-        "features": {
-          "credits": "500 月度积分",
-          "quality": "4K 超高清",
-          "gallery": "私有画廊",
-          "priority": "优先队列"
-        },
-        "button": "升级到专业版"
+      "advanced": {
+        "name": "迅驰智算套餐（进阶版）",
+        "credits": "1000"
       },
-      "enterprise": {
-        "eyebrow": "规模",
-        "name": "企业版",
-        "features": {
-          "credits": "2,500 月度积分",
-          "storage": "无限存储",
-          "whitelabel": "白标交付",
-          "api": "API 访问"
-        },
-        "button": "联系销售"
+      "premium": {
+        "name": "星云超算方案（高级版）",
+        "credits": "3000"
+      },
+      "flagship": {
+        "name": "银河积分旗舰包（旗舰版）",
+        "credits": "10000"
       }
+    },
+    "subscriptions": {
+      "day": {
+        "name": "体验天卡",
+        "duration": "时长1天",
+        "daily": "每日发放30积分"
+      },
+      "month": {
+        "name": "超值月卡",
+        "duration": "时长30天",
+        "daily": "每日发放30积分"
+      },
+      "halfYear": {
+        "name": "劲爆半年",
+        "duration": "时长180天",
+        "daily": "每日发放40积分"
+      },
+      "year": {
+        "name": "无敌年卡",
+        "duration": "时长365天",
+        "daily": "每日发放50积分"
+      }
+    },
+    "memberIntro": {
+      "title": "会员简介",
+      "benefits": {
+        "autoGrant": "开通即享每日积分自动发放",
+        "noExpire": "积分可累计使用（不过期）",
+        "autoCollect": "无需登录也能自动领取",
+        "costEffective": "长期使用性价比超高"
+      }
+    },
+    "purchase": {
+      "button": "购买",
+      "dialogTitle": "确认购买",
+      "packageLabel": "套餐",
+      "creditsLabel": "积分",
+      "durationLabel": "时长",
+      "dailyLabel": "每日发放",
+      "priceLabel": "价格",
+      "contactInfo": "请添加客服微信完成支付",
+      "orderNote": "备注您的订单号",
+      "cancel": "取消",
+      "confirm": "已添加客服"
     },
     "period": "/月"
   }
