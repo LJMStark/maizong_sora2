@@ -1,13 +1,17 @@
 import "dotenv/config";
 import postgres from "postgres";
-import { nanoid } from "nanoid";
+import crypto from "crypto";
 
 const sql = postgres(process.env.DIRECT_URL!);
+
+function generateId(): string {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 21);
+}
 
 const packages = [
   // 积分包
   {
-    id: nanoid(),
+    id: generateId(),
     name: "启智积分包（基础版）",
     type: "package",
     credits: 100,
@@ -17,7 +21,7 @@ const packages = [
     sort_order: 1,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "迅驰智算套餐（进阶版）",
     type: "package",
     credits: 1000,
@@ -27,7 +31,7 @@ const packages = [
     sort_order: 2,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "星云超算方案（高级版）",
     type: "package",
     credits: 3000,
@@ -37,7 +41,7 @@ const packages = [
     sort_order: 3,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "银河积分旗舰包（旗舰版）",
     type: "package",
     credits: 10000,
@@ -48,7 +52,7 @@ const packages = [
   },
   // 会员订阅
   {
-    id: nanoid(),
+    id: generateId(),
     name: "体验天卡",
     type: "subscription",
     credits: null,
@@ -58,7 +62,7 @@ const packages = [
     sort_order: 5,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "超值月卡",
     type: "subscription",
     credits: null,
@@ -68,7 +72,7 @@ const packages = [
     sort_order: 6,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "劲爆半年",
     type: "subscription",
     credits: null,
@@ -78,7 +82,7 @@ const packages = [
     sort_order: 7,
   },
   {
-    id: nanoid(),
+    id: generateId(),
     name: "无敌年卡",
     type: "subscription",
     credits: null,
