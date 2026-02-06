@@ -156,6 +156,16 @@ export async function POST(request: NextRequest) {
           progress,
           "回调中缺少视频 URL"
         );
+
+        // 退还积分
+        await creditService.refundCredits({
+          userId: task.userId,
+          amount: task.creditCost,
+          reason: "Video generation failed - missing video URL",
+          referenceType: "video_task",
+          referenceId: task.id,
+        });
+
         return NextResponse.json({ success: true });
       }
 
