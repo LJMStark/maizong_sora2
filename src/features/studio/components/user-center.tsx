@@ -6,6 +6,7 @@ import { GenerationResult, VideoTask } from "../types";
 import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
 import AdminSettings from "./admin-settings";
+import RedemptionCodeManager from "./redemption-code-manager";
 import { useSession } from "@/lib/auth/client";
 
 type Tab = "all" | "video" | "image" | "credits";
@@ -55,42 +56,54 @@ const UserCenter: React.FC = () => {
     const checkAdmin = async () => {
       try {
         const res = await fetch("/api/admin/settings");
+        console.log("[UserCenter] Admin check response:", res.status, res.ok);
         setIsAdmin(res.ok);
-      } catch {
+      } catch (err) {
+        console.error("[UserCenter] Admin check error:", err);
         setIsAdmin(false);
       }
     };
     if (session?.user) {
+      console.log("[UserCenter] Checking admin for user:", session.user.id);
       checkAdmin();
     }
   }, [session?.user]);
 
+  const [isRedeeming, setIsRedeeming] = useState(false);
+
   const handleRedeem = async () => {
-    if (!redeemCode) return;
+    if (!redeemCode || isRedeeming) return;
 
-    const validCodes: Record<string, number> = {
-      NEWUSER: 50,
-      VIP2025: 200,
-      ELEPHANT: 500,
-      DEMO: 1000,
-    };
-
-    const code = redeemCode.trim().toUpperCase();
-
-    if (validCodes[code]) {
-      const amount = validCodes[code];
-      addCredits(amount, `${t("redeem.codePrefix")}${code}`);
-      setRedeemStatus({
-        type: "success",
-        msg: t("redeem.success", { amount }),
+    setIsRedeeming(true);
+    try {
+      const res = await fetch("/api/redeem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: redeemCode.trim() }),
       });
-      setRedeemCode("");
-      refreshCredits();
-    } else {
+
+      const data = await res.json();
+
+      if (data.success) {
+        setRedeemStatus({
+          type: "success",
+          msg: t("redeem.success", { amount: data.credits }),
+        });
+        setRedeemCode("");
+        refreshCredits();
+      } else {
+        setRedeemStatus({
+          type: "error",
+          msg: data.error || t("redeem.error"),
+        });
+      }
+    } catch {
       setRedeemStatus({
         type: "error",
         msg: t("redeem.error"),
       });
+    } finally {
+      setIsRedeeming(false);
     }
 
     setTimeout(() => setRedeemStatus({ type: null, msg: "" }), 3000);
@@ -222,6 +235,8 @@ const UserCenter: React.FC = () => {
         </div>
 
         <AdminSettings isAdmin={isAdmin} />
+
+        <RedemptionCodeManager isAdmin={isAdmin} />
 
         <section className="flex flex-col gap-8">
           <div className="flex justify-between items-center border-b border-[#e5e5e1] overflow-x-auto">
