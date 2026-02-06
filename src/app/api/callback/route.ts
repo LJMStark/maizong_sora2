@@ -6,20 +6,41 @@ import { duomiService } from "@/features/studio/services/duomi-service";
 import { VideoTaskType } from "@/db/schema";
 import crypto from "crypto";
 
-const MAX_CALLBACK_RETRIES = 3;
+// 资源分配错误最多重试 3 次
+const MAX_RESOURCE_RETRIES = 3;
+// 生成失败错误只重试 1 次
+const MAX_GENERATION_FAILED_RETRIES = 1;
+
+// 错误类型判断
+function isResourceAllocationError(message: string): boolean {
+  return message?.toLowerCase().includes("resources are being allocated");
+}
+
+function isGenerationFailedError(message: string): boolean {
+  return message?.toLowerCase().includes("failed to generate");
+}
+
+// 用户友好的错误消息
+const PROMPT_REVIEW_ERROR = "提示词未通过内容审核，请尝试：1) 使用更中性的描述 2) 避免敏感词汇 3) 简化复杂场景";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // 异步重试 Duomi 任务
-async function retryDuomiTask(task: VideoTaskType): Promise<void> {
+async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "generation"): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
   const callbackUrl = `${baseUrl}/api/callback`;
 
-  // 等待一段时间后重试（指数退避）
+  // 资源分配错误等待更长时间（30s, 60s, 120s）
+  // 生成失败错误等待较短时间（5s）
   const retryCount = task.callbackRetryCount ?? 0;
-  await delay(1000 * Math.pow(2, retryCount));
+  const delayMs = errorType === "resource"
+    ? 30000 * Math.pow(2, retryCount)  // 30s, 60s, 120s
+    : 5000;  // 5s
+
+  console.log(`[Callback] 等待 ${delayMs / 1000}s 后重试...`);
+  await delay(delayMs);
 
   try {
     const duomiResponse = await duomiService.createVideoTask({
@@ -45,10 +66,12 @@ async function retryDuomiTask(task: VideoTaskType): Promise<void> {
     // 检查是否还有重试次数
     const updatedTask = await videoTaskService.getTaskById(task.id);
     const currentRetryCount = updatedTask?.callbackRetryCount ?? 0;
+    const maxRetries = errorType === "resource" ? MAX_RESOURCE_RETRIES : MAX_GENERATION_FAILED_RETRIES;
 
-    if (currentRetryCount >= MAX_CALLBACK_RETRIES) {
+    if (currentRetryCount >= maxRetries) {
       // 所有重试都失败，标记错误并退款
-      await videoTaskService.updateTaskStatus(task.id, "error", 0, errorMessage);
+      const finalErrorMessage = errorType === "generation" ? PROMPT_REVIEW_ERROR : errorMessage;
+      await videoTaskService.updateTaskStatus(task.id, "error", 0, finalErrorMessage);
       await creditService.refundCredits({
         userId: task.userId,
         amount: task.creditCost,
@@ -187,33 +210,68 @@ export async function POST(request: NextRequest) {
         finalVideoUrl
       );
     } else if (normalizedStatus === "error") {
-      // 检查是否可以重试
       const currentRetryCount = task.callbackRetryCount ?? 0;
+      const rawErrorMessage = errorMessage || "";
 
-      if (currentRetryCount < MAX_CALLBACK_RETRIES) {
-        console.log(`[Callback] 任务失败，开始重试 (${currentRetryCount + 1}/${MAX_CALLBACK_RETRIES})`);
+      // 根据错误类型决定重试策略
+      if (isResourceAllocationError(rawErrorMessage)) {
+        // 资源分配错误：最多重试 3 次，等待更长时间
+        if (currentRetryCount < MAX_RESOURCE_RETRIES) {
+          console.log(`[Callback] 资源分配中，开始重试 (${currentRetryCount + 1}/${MAX_RESOURCE_RETRIES})`);
 
-        // 更新状态为 retrying
-        await videoTaskService.updateTaskStatus(task.id, "retrying", 0);
-        await videoTaskService.incrementRetryCount(task.id, "callback");
+          await videoTaskService.updateTaskStatus(task.id, "retrying", 0);
+          await videoTaskService.incrementRetryCount(task.id, "callback");
 
-        // 异步重新调用 Duomi API
-        retryDuomiTask(task).catch((err) => {
-          console.error("[Callback] 重试失败:", err);
-        });
+          retryDuomiTask(task, "resource").catch((err) => {
+            console.error("[Callback] 重试失败:", err);
+          });
 
-        return NextResponse.json({ success: true });
+          return NextResponse.json({ success: true });
+        }
+
+        // 资源分配重试用尽
+        console.log("[Callback] 资源分配重试用尽，标记为错误状态");
+        await videoTaskService.updateTaskStatus(
+          task.id,
+          "error",
+          progress || 0,
+          "服务器繁忙，请稍后重试"
+        );
+      } else if (isGenerationFailedError(rawErrorMessage)) {
+        // 生成失败错误：只重试 1 次
+        if (currentRetryCount < MAX_GENERATION_FAILED_RETRIES) {
+          console.log(`[Callback] 生成失败，尝试重试 (${currentRetryCount + 1}/${MAX_GENERATION_FAILED_RETRIES})`);
+
+          await videoTaskService.updateTaskStatus(task.id, "retrying", 0);
+          await videoTaskService.incrementRetryCount(task.id, "callback");
+
+          retryDuomiTask(task, "generation").catch((err) => {
+            console.error("[Callback] 重试失败:", err);
+          });
+
+          return NextResponse.json({ success: true });
+        }
+
+        // 生成失败重试用尽，提示用户修改提示词
+        console.log("[Callback] 生成失败，提示用户修改提示词");
+        await videoTaskService.updateTaskStatus(
+          task.id,
+          "error",
+          progress || 0,
+          PROMPT_REVIEW_ERROR
+        );
+      } else {
+        // 其他未知错误：不重试，直接失败
+        console.log("[Callback] 未知错误，标记为错误状态:", rawErrorMessage);
+        await videoTaskService.updateTaskStatus(
+          task.id,
+          "error",
+          progress || 0,
+          rawErrorMessage || "视频生成失败"
+        );
       }
 
-      // 所有重试都失败，标记最终错误并退款
-      console.log("[Callback] 所有重试都失败，标记为错误状态");
-      await videoTaskService.updateTaskStatus(
-        task.id,
-        "error",
-        progress || 0,
-        errorMessage || "视频生成失败"
-      );
-
+      // 退款
       await creditService.refundCredits({
         userId: task.userId,
         amount: task.creditCost,
