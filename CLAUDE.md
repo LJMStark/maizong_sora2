@@ -119,6 +119,27 @@ npx tsx scripts/migrate-enum.ts
 
 Credits deducted before task, auto-refund on failure.
 
+### Daily Video Limits
+
+Default limits stored in `system_config` table:
+- Fast video: unlimited (-1)
+- Quality video: 2/day
+
+Limit values: `-1` = unlimited, `0` = disabled, positive = daily limit
+
+User-level overrides in `user.dailyFastVideoLimit` and `user.dailyQualityVideoLimit` (null = use global).
+
+### Admin APIs
+
+```typescript
+// Check admin permission (reusable)
+import { checkAdmin, isAdminError, adminErrorResponse } from "@/lib/auth/check-admin";
+
+// Admin endpoints
+GET/PATCH /api/admin/settings           // Global limits
+GET/PATCH /api/admin/users/[id]/limits  // User-level overrides
+```
+
 ## Known Issues
 
 ### Video Callback Delay
