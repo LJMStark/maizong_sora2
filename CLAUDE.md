@@ -149,3 +149,15 @@ Video tasks show "处理中 0%" for 10-30+ minutes because:
 - Status updates only when Duomi sends webhook
 
 **Debug**: Check server logs for `[Callback] Received callback request`
+
+### Duomi API Error Handling
+
+Error types and retry strategy in `/api/callback`:
+
+| Error Message | Meaning | Retry | User Message |
+|--------------|---------|-------|--------------|
+| `Resources are being allocated` | Duomi 服务器繁忙 | 3 次 (30s, 60s, 120s) | "服务器繁忙，请稍后重试" |
+| `Failed to generate` | 提示词审核失败 | 1 次 (5s) | "提示词未通过内容审核..." |
+| Other errors | 未知错误 | 不重试 | 原始错误信息 |
+
+All failures auto-refund credits.
