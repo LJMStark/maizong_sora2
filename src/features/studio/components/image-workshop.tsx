@@ -7,6 +7,7 @@ import { AspectRatio, ImageQuality } from '../types';
 import { IMAGE_PROMPTS, EDIT_PROMPTS, ANALYZE_PROMPTS } from '../utils/prompt-library';
 import Lightbox from './lightbox';
 import AssetPicker from './asset-picker';
+import ShowcaseGallery from './showcase-gallery';
 import { useStudio } from '../context/studio-context';
 import { useImageTaskPolling } from '../hooks/use-image-task-polling';
 import { useSimulatedProgress } from '../hooks/use-simulated-progress';
@@ -397,18 +398,8 @@ const ImageWorkshop: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center text-center max-w-sm gap-6 p-8">
-              <div className="w-16 h-16 border border-[#e5e5e1] flex items-center justify-center mb-2 rounded-full">
-                <span className="material-symbols-outlined text-3xl text-[#4b5563] font-light">
-                  {mode === 'edit' ? 'auto_fix_high' : 'shutter_speed'}
-                </span>
-              </div>
-              <h4 className="font-serif text-2xl text-[#1a1a1a] italic">
-                {mode === 'edit' ? t('canvas.readyToEdit') : t('canvas.awaitingComposition')}
-              </h4>
-              <p className="text-sm text-[#4b5563] leading-relaxed max-w-[280px]">
-                {mode === 'edit' ? t('canvas.editDescription') : t('canvas.generateDescription')}
-              </p>
+            <div className="w-full h-full p-4">
+              <ShowcaseGallery onSelectPrompt={(selectedPrompt) => setPrompt(selectedPrompt)} />
             </div>
           )}
         </div>

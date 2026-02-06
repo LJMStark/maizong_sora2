@@ -36,12 +36,25 @@ pnpm db:studio        # Open Drizzle Studio
 - next-intl (Chinese as default, single-language app)
 
 ### Key Directories
-- `src/app/api/` - API routes (video, image, callback, credits)
+- `src/app/api/` - API routes (video, image, callback, credits, admin)
 - `src/db/schema/` - Drizzle schema (auth tables, studio tables)
 - `src/features/studio/` - Main app components, hooks, services
+- `src/features/studio/services/` - Business logic services (see Service Layer below)
 - `src/i18n/locales/zh-CN/` - Translation files
 - `src/lib/auth/` - Better Auth config and helpers
 - `src/routes.ts` - Route protection definitions
+
+### Service Layer (`src/features/studio/services/`)
+
+| Service | Purpose |
+|---------|---------|
+| `credit-service.ts` | Credit deduction, refund, balance queries |
+| `duomi-service.ts` | Video generation API calls |
+| `duomi-image-service.ts` | Image generation API calls |
+| `video-task-service.ts` | Video task CRUD operations |
+| `image-task-service.ts` | Image task CRUD operations |
+| `storage-service.ts` | Supabase Storage uploads |
+| `video-limit-service.ts` | Daily video limit checks |
 
 ### Key Patterns
 
@@ -68,6 +81,18 @@ export async function GET(
 ```typescript
 // Server: const t = await getTranslations('namespace');
 // Client: const t = useTranslations('namespace');
+```
+
+**Hydration Safety** (IMPORTANT):
+```typescript
+// WRONG: Math.random() in useMemo causes hydration mismatch
+const items = useMemo(() => shuffle(data), []);
+
+// CORRECT: Randomize only on client side after hydration
+const [items, setItems] = useState(data);
+useEffect(() => {
+  setItems(shuffle(data));
+}, []);
 ```
 
 ### External APIs (Duomi)
@@ -119,6 +144,19 @@ npx tsx scripts/migrate-enum.ts
 
 Credits deducted before task, auto-refund on failure.
 
+### Redemption Code System
+
+Redemption codes stored in `redemption_code` table:
+- `code` - Unique code string
+- `credits` - Credits to award
+- `maxUses` - Total allowed uses (-1 = unlimited)
+- `usedCount` - Current usage count
+- `expiresAt` - Optional expiration date
+
+API endpoints:
+- `POST /api/credits/redeem` - Redeem a code
+- `GET/POST /api/admin/redemption-codes` - Admin CRUD
+
 ### Daily Video Limits
 
 Default limits stored in `system_config` table:
@@ -138,6 +176,7 @@ import { checkAdmin, isAdminError, adminErrorResponse } from "@/lib/auth/check-a
 // Admin endpoints
 GET/PATCH /api/admin/settings           // Global limits
 GET/PATCH /api/admin/users/[id]/limits  // User-level overrides
+GET/POST  /api/admin/redemption-codes   // Redemption code management
 ```
 
 ## Known Issues
