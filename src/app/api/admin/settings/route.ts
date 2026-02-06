@@ -1,43 +1,16 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth/get-session";
+import { checkAdmin, isAdminError, adminErrorResponse } from "@/lib/auth/check-admin";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
-import { db } from "@/db";
-import { user } from "@/db/schema";
-import { eq } from "drizzle-orm";
-
-async function checkAdmin() {
-  const session = await getServerSession();
-
-  if (!session?.user?.id) {
-    return { error: "未授权", status: 401 };
-  }
-
-  const userResult = await db
-    .select({ role: user.role })
-    .from(user)
-    .where(eq(user.id, session.user.id))
-    .limit(1);
-
-  if (userResult.length === 0 || userResult[0].role !== "admin") {
-    return { error: "需要管理员权限", status: 403 };
-  }
-
-  return { userId: session.user.id };
-}
 
 export async function GET() {
   const authCheck = await checkAdmin();
-  if ("error" in authCheck) {
-    return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+  if (isAdminError(authCheck)) {
+    return adminErrorResponse(authCheck);
   }
 
   try {
     const limits = await videoLimitService.getGlobalLimits();
-
-    return NextResponse.json({
-      success: true,
-      data: limits,
-    });
+    return NextResponse.json({ success: true, data: limits });
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -46,8 +19,8 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   const authCheck = await checkAdmin();
-  if ("error" in authCheck) {
-    return NextResponse.json({ error: authCheck.error }, { status: authCheck.status });
+  if (isAdminError(authCheck)) {
+    return adminErrorResponse(authCheck);
   }
 
   try {
@@ -79,11 +52,7 @@ export async function PATCH(request: Request) {
     );
 
     const updatedLimits = await videoLimitService.getGlobalLimits();
-
-    return NextResponse.json({
-      success: true,
-      data: updatedLimits,
-    });
+    return NextResponse.json({ success: true, data: updatedLimits });
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
