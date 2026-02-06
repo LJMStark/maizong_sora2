@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
 import { creditService } from "@/features/studio/services/credit-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
+import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { rateLimiter } from "@/lib/rate-limit";
@@ -44,6 +45,22 @@ export async function POST(request: NextRequest) {
 
     const model = mode === "Quality" ? "sora-2-pro" : "sora-2-temporary";
     const creditCost = CREDIT_COSTS[model];
+
+    // 检查每日生成限制
+    const videoType = model === "sora-2-temporary" ? "fast" : "quality";
+    const limitCheck = await videoLimitService.checkLimit(userId, videoType);
+
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: limitCheck.reason,
+          errorCode: "DAILY_LIMIT_EXCEEDED",
+          used: limitCheck.used,
+          limit: limitCheck.limit,
+        },
+        { status: 429 }
+      );
+    }
 
     const currentCredits = await creditService.getUserCredits(userId);
     if (currentCredits < creditCost) {

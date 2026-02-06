@@ -11,6 +11,8 @@ export const user = pgTable("user", {
   role: text("role").default("member").notNull(),
   gender: boolean("gender").notNull(),
   credits: integer("credits").notNull().default(50),
+  dailyFastVideoLimit: integer("daily_fast_video_limit"),
+  dailyQualityVideoLimit: integer("daily_quality_video_limit"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { GenerationResult, VideoTask } from "../types";
 import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
+import AdminSettings from "./admin-settings";
+import { useSession } from "@/lib/auth/client";
 
 type Tab = "all" | "video" | "image" | "credits";
 
@@ -36,6 +38,7 @@ const UserCenter: React.FC = () => {
   const t = useTranslations("studio.userCenter");
   const tCredits = useTranslations("studio.credits");
   const { state, addCredits, refreshCredits } = useStudio();
+  const { data: session } = useSession();
   const [lightboxItem, setLightboxItem] = useState<GenerationResult | null>(
     null
   );
@@ -45,6 +48,22 @@ const UserCenter: React.FC = () => {
     msg: string;
   }>({ type: null, msg: "" });
   const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    // 检查用户是否是管理员
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch("/api/admin/settings");
+        setIsAdmin(res.ok);
+      } catch {
+        setIsAdmin(false);
+      }
+    };
+    if (session?.user) {
+      checkAdmin();
+    }
+  }, [session?.user]);
 
   const handleRedeem = async () => {
     if (!redeemCode) return;
@@ -201,6 +220,8 @@ const UserCenter: React.FC = () => {
             </div>
           </div>
         </div>
+
+        <AdminSettings isAdmin={isAdmin} />
 
         <section className="flex flex-col gap-8">
           <div className="flex justify-between items-center border-b border-[#e5e5e1] overflow-x-auto">
