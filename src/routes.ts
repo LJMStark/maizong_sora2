@@ -7,7 +7,7 @@ export const publicRoutes: string[] = [
   "/studio/subscription",
 ];
 
-export const authRoutes: string[] = ["/signin", "/signup", "/login", "/forgot-password"];
+export const authRoutes: string[] = ["/signin", "/signup", "/forgot-password"];
 
 export const apiAuthPrefix: string = "/api/auth";
 
