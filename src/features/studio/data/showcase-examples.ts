@@ -75,14 +75,14 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "10",
-    image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/10.jpg",
     title: "东京夜景",
     prompt: "Tokyo cityscape at night with neon lights and busy streets. Urban photography capturing the energy of a modern metropolis at golden hour.",
     promptZh: "东京夜景，霓虹灯和繁忙的街道。城市摄影捕捉现代都市在黄金时段的能量。"
   },
   {
     id: "11",
-    image: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/11.jpg",
     title: "城市建筑",
     prompt: "Modern city architecture with dramatic perspective. Urban landscape photography showcasing contemporary building design and geometric patterns.",
     promptZh: "现代城市建筑，戏剧性透视。城市景观摄影展示当代建筑设计和几何图案。"
@@ -96,7 +96,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "13",
-    image: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/13.jpg",
     title: "团队协作",
     prompt: "Professional team collaboration in modern office. Business photography showing diverse group working together with natural lighting.",
     promptZh: "现代办公室中的专业团队协作。商业摄影展示多元化团队在自然光下一起工作。"
@@ -131,7 +131,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "18",
-    image: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/18.jpg",
     title: "黑白肖像艺术",
     prompt: "Black and White Portrait Art. High contrast monochrome portrait with dramatic lighting and artistic composition.",
     promptZh: "黑白肖像艺术。高对比度单色肖像，戏剧性光线和艺术构图。"
@@ -145,35 +145,35 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "20",
-    image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/20.jpg",
     title: "手工编织艺术",
     prompt: "Handcrafted knitted artwork with warm textures and soft lighting. Cozy aesthetic showcasing artisan craftsmanship.",
     promptZh: "手工编织艺术品，温暖的纹理和柔和的光线。舒适的美学展示工匠技艺。"
   },
   {
     id: "21",
-    image: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/21.jpg",
     title: "机械键盘特写",
     prompt: "Mechanical keyboard with custom keycaps, detailed textures and studio lighting. Tech product photography with RGB backlighting.",
     promptZh: "机械键盘配定制键帽，细节纹理和影棚灯光。带有RGB背光的科技产品摄影。"
   },
   {
     id: "22",
-    image: "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/22.jpg",
     title: "金色项链展示",
     prompt: "Gold pendant necklace on elegant display. Luxury jewelry photography with soft natural lighting and neutral background.",
     promptZh: "金色吊坠项链优雅展示。奢华珠宝摄影，柔和自然光和中性背景。"
   },
   {
     id: "23",
-    image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/23.jpg",
     title: "可爱钥匙扣",
     prompt: "Cute character keychain with vibrant colors and glossy finish. Product photography showcasing miniature collectible design.",
     promptZh: "可爱角色钥匙扣，鲜艳色彩和光泽表面。产品摄影展示迷你收藏品设计。"
   },
   {
     id: "24",
-    image: "https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/24.jpg",
     title: "精美徽章",
     prompt: "Enamel pin collection with pastel colors and gold metal outline. Cute Japanese-style accessory photography.",
     promptZh: "珐琅徽章系列，粉彩色调和金色金属轮廓。可爱的日式配饰摄影。"
@@ -202,7 +202,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "28",
-    image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/28.jpg",
     title: "室内设计展示",
     prompt: "Modern interior design visualization with furniture arrangement. Realistic lighting and shadows showcasing contemporary living space.",
     promptZh: "现代室内设计可视化，家具布置。逼真的光线和阴影展示当代生活空间。"
@@ -484,7 +484,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "67",
-    image: "https://images.unsplash.com/photo-1491553895911-0055uj8d0?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/67.jpg",
     title: "机械键盘",
     prompt: "RGB mechanical keyboard with colorful backlighting in dark room, tech product photography, gaming aesthetic with neon glow effects.",
     promptZh: "RGB机械键盘在暗室中带有彩色背光，科技产品摄影，带有霓虹光效的游戏美学。"
@@ -596,7 +596,7 @@ export const SHOWCASE_EXAMPLES: ShowcaseExample[] = [
   },
   {
     id: "83",
-    image: "https://images.unsplash.com/photo-1482049016gy-2d1ec7ab7445?w=400",
+    image: "https://wtadldjelwicwpvtuzae.supabase.co/storage/v1/object/public/showcase/83.jpg",
     title: "冰淇淋广告",
     prompt: "Colorful ice cream scoops in waffle cone, summer dessert photography, bright cheerful lighting with melting drips.",
     promptZh: "彩色冰淇淋球放在华夫蛋筒中，夏日甜点摄影，明亮欢快的灯光配融化的滴落。"
