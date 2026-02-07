@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const userId = session.user.id;
 
-  const { success } = await rateLimiter.limit(userId);
+  const { success } = await rateLimiter.limit(userId, "imageGenerate");
   if (!success) {
     return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }

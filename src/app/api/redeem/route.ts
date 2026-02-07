@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { redemptionCode, creditTransaction, user } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { formatRedemptionCode, validateCodeFormat } from "@/lib/redemption-code";
+import { rateLimiter } from "@/lib/rate-limit";
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_FORMAT: "兑换码格式不正确，请输入 XXXX-XXXX-XXXX 格式",
@@ -18,6 +19,14 @@ export async function POST(request: NextRequest) {
   const session = await getServerSession();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+
+  // Rate limit: 5 requests per minute for redeem
+  const { success } = await rateLimiter.limit(userId, "redeem");
+  if (!success) {
+    return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
 
   try {
@@ -55,16 +64,13 @@ export async function POST(request: NextRequest) {
       const codeRecord = codeRecords[0];
 
       // 2. 验证状态
-      if (codeRecord.status === "used") {
-        throw new Error("ALREADY_USED");
-      }
-
-      if (codeRecord.status === "disabled") {
-        throw new Error("DISABLED");
-      }
-
-      if (codeRecord.status === "expired") {
-        throw new Error("EXPIRED");
+      switch (codeRecord.status) {
+        case "used":
+          throw new Error("ALREADY_USED");
+        case "disabled":
+          throw new Error("DISABLED");
+        case "expired":
+          throw new Error("EXPIRED");
       }
 
       if (codeRecord.expiresAt && codeRecord.expiresAt < new Date()) {

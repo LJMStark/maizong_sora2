@@ -19,6 +19,20 @@ interface RedemptionCodeManagerProps {
   isAdmin: boolean;
 }
 
+interface Stats {
+  active: { count: number; credits: number };
+  used: { count: number; credits: number };
+  expired: { count: number; credits: number };
+  disabled: { count: number; credits: number };
+  total: { count: number; credits: number };
+}
+
+interface TrendItem {
+  date: string;
+  count: number;
+  credits: number;
+}
+
 const STATUS_LABELS: Record<string, string> = {
   active: "可用",
   used: "已使用",
@@ -42,6 +56,14 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Stats
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [trend, setTrend] = useState<TrendItem[]>([]);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+
+  // Export
+  const [isExporting, setIsExporting] = useState(false);
 
   // 生成表单
   const [credits, setCredits] = useState<number>(100);
@@ -77,11 +99,29 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
     }
   }, [isAdmin, page, statusFilter]);
 
+  const fetchStats = useCallback(async () => {
+    if (!isAdmin) return;
+    setIsLoadingStats(true);
+    try {
+      const res = await fetch("/api/admin/redemption-codes/stats");
+      const data = await res.json();
+      if (data.success) {
+        setStats(data.data.stats);
+        setTrend(data.data.trend);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, [isAdmin]);
+
   useEffect(() => {
     if (isExpanded && isAdmin) {
       fetchCodes();
+      fetchStats();
     }
-  }, [isExpanded, isAdmin, fetchCodes]);
+  }, [isExpanded, isAdmin, fetchCodes, fetchStats]);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
@@ -105,6 +145,7 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
       if (data.success) {
         setGeneratedCodes(data.codes);
         fetchCodes();
+        fetchStats();
       } else {
         setGenerateError(data.error || "生成失败");
       }
@@ -112,6 +153,32 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
       setGenerateError("网络错误，请重试");
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") {
+        params.set("status", statusFilter);
+      }
+      const res = await fetch(`/api/admin/redemption-codes/export?${params}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `redemption-codes-${new Date().toISOString().split("T")[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (err) {
+      console.error("Failed to export:", err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -127,6 +194,7 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
 
       if (res.ok) {
         fetchCodes();
+        fetchStats();
       }
     } catch (err) {
       console.error("Failed to disable code:", err);
@@ -168,6 +236,74 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
 
       {isExpanded && (
         <div className="border-t border-[#e5e5e1] p-6 space-y-8">
+          {/* 统计概览 */}
+          {stats && (
+            <div className="space-y-4">
+              <h4 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] font-bold">
+                统计概览
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-[#faf9f6] p-4 border border-[#e5e5e1]">
+                  <p className="text-xs text-[#4b5563]">总计</p>
+                  <p className="text-xl font-bold text-[#1a1a1a]">{stats.total.count}</p>
+                  <p className="text-xs text-[#4b5563]">{stats.total.credits} 积分</p>
+                </div>
+                <div className="bg-green-50 p-4 border border-green-200">
+                  <p className="text-xs text-green-600">可用</p>
+                  <p className="text-xl font-bold text-green-700">{stats.active.count}</p>
+                  <p className="text-xs text-green-600">{stats.active.credits} 积分</p>
+                </div>
+                <div className="bg-gray-50 p-4 border border-gray-200">
+                  <p className="text-xs text-gray-600">已使用</p>
+                  <p className="text-xl font-bold text-gray-700">{stats.used.count}</p>
+                  <p className="text-xs text-gray-600">{stats.used.credits} 积分</p>
+                </div>
+                <div className="bg-yellow-50 p-4 border border-yellow-200">
+                  <p className="text-xs text-yellow-600">已过期</p>
+                  <p className="text-xl font-bold text-yellow-700">{stats.expired.count}</p>
+                  <p className="text-xs text-yellow-600">{stats.expired.credits} 积分</p>
+                </div>
+                <div className="bg-red-50 p-4 border border-red-200">
+                  <p className="text-xs text-red-600">已禁用</p>
+                  <p className="text-xl font-bold text-red-700">{stats.disabled.count}</p>
+                  <p className="text-xs text-red-600">{stats.disabled.credits} 积分</p>
+                </div>
+              </div>
+
+              {/* 7天趋势 */}
+              {trend.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-[#4b5563] mb-2">最近 7 天使用趋势</p>
+                  <div className="flex items-end gap-1 h-16">
+                    {trend.map((item) => {
+                      const maxCount = Math.max(...trend.map((t) => t.count), 1);
+                      const height = (item.count / maxCount) * 100;
+                      return (
+                        <div
+                          key={item.date}
+                          className="flex-1 flex flex-col items-center"
+                          title={`${item.date}: ${item.count} 次, ${item.credits} 积分`}
+                        >
+                          <div
+                            className="w-full bg-[#8C7355] rounded-t"
+                            style={{ height: `${Math.max(height, 4)}%` }}
+                          />
+                          <span className="text-[10px] text-[#4b5563] mt-1">
+                            {item.date.slice(5)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {isLoadingStats && (
+            <div className="py-4 text-center text-[#4b5563]">加载统计中...</div>
+          )}
+
           {/* 生成兑换码表单 */}
           <div className="space-y-4">
             <h4 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] font-bold">
@@ -258,10 +394,19 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
 
           {/* 兑换码列表 */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] font-bold">
-                兑换码列表
-              </h4>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-4">
+                <h4 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] font-bold">
+                  兑换码列表
+                </h4>
+                <button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="text-xs px-3 py-1 bg-[#faf9f6] text-[#4b5563] hover:bg-[#e5e5e1] disabled:opacity-50 border border-[#e5e5e1] transition-colors"
+                >
+                  {isExporting ? "导出中..." : "导出 CSV"}
+                </button>
+              </div>
               <div className="flex gap-2">
                 {["all", "active", "used", "expired", "disabled"].map((s) => (
                   <button

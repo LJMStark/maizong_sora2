@@ -4,85 +4,86 @@ import { Redis } from "@upstash/redis";
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-type Unit = "ms" | "s" | "m" | "h" | "d";
-type Duration = `${number} ${Unit}` | `${number}${Unit}`;
+// Rate limit configurations for different endpoints
+export const RATE_LIMITS = {
+  redeem: { requests: 5, windowSeconds: 60 },        // 5 requests per minute
+  imageGenerate: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
+  videoGenerate: { requests: 3, windowSeconds: 60 },  // 3 requests per minute
+  default: { requests: 20, windowSeconds: 60 },       // 20 requests per minute
+} as const;
+
+export type RateLimitKey = keyof typeof RATE_LIMITS;
 
 // In-memory fallback for development
 const memoryStore = new Map<string, { count: number; expiresAt: number }>();
 
-export class RateLimiter {
-  private ratelimit: Ratelimit | null = null;
+// Cache for Redis rate limiters with different configurations
+const redisLimiterCache = new Map<string, Ratelimit>();
 
-  constructor() {
-    if (redisUrl && redisToken) {
-      try {
-        this.ratelimit = new Ratelimit({
-          redis: new Redis({
-            url: redisUrl,
-            token: redisToken,
-          }),
-          // Default limiter, can be overridden per call if we restructured, 
-          // but for now we'll sticky to a general sliding window
-          limiter: Ratelimit.slidingWindow(10, "10 s"),
-          analytics: true,
-          prefix: "@upstash/ratelimit",
-        });
-      } catch (error) {
-        console.warn("Failed to initialize Redis rate limiter:", error);
-      }
-    }
+function getRedisLimiter(requests: number, windowSeconds: number): Ratelimit | null {
+  if (!redisUrl || !redisToken) return null;
+
+  const cacheKey = `${requests}:${windowSeconds}`;
+  const cached = redisLimiterCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const limiter = new Ratelimit({
+      redis: new Redis({
+        url: redisUrl,
+        token: redisToken,
+      }),
+      limiter: Ratelimit.slidingWindow(requests, `${windowSeconds} s`),
+      analytics: true,
+      prefix: `@upstash/ratelimit:${cacheKey}`,
+    });
+    redisLimiterCache.set(cacheKey, limiter);
+    return limiter;
+  } catch (error) {
+    console.warn("Failed to initialize Redis rate limiter:", error);
+    return null;
   }
+}
 
+export class RateLimiter {
   /**
-   * Limit requests based on an identifier.
+   * Limit requests based on an identifier and limit key.
    * @param identifier Unique identifier (e.g. user ID or IP)
-   * @param limit Number of requests allowed
-   * @param windowSeconds Window size in seconds (approximate for in-memory)
+   * @param limitKey Key from RATE_LIMITS config (default: "default")
    */
   async limit(
-    identifier: string, 
-    limit: number = 20, 
-    windowSeconds: number = 60
+    identifier: string,
+    limitKey: RateLimitKey = "default"
   ): Promise<{ success: boolean; remaining: number }> {
-    if (this.ratelimit) {
-      // Create a temporary limiter for this specific call if we want dynamic limits,
-      // but constructing Ratelimit is cheap-ish? 
-      // Actually Ratelimit class is designed to be reused.
-      // If we want different limits for different routes, we should probably instantiate different limiters 
-      // or use the same one with a standard limit.
-      // For this implementation, we will try to use the configured instance.
-      // Note: The instance has a fixed window/limit config.
-      // To support variable limits with one instance, we might need multiple instances.
-      // Let's create a new instance on the fly if we want specific limits, OR just use the fallback if no redis.
-      
-      // Optimization: If the generic limit is close enough, use it. 
-      // But let's support dynamic limits by creating a new instance if needed, 
-      // or just caching instances.
-      
-      // For simplicity in V1: Reuse the single instance. 
-      // Ideally we'd have a factory.
-      return await this.ratelimit.limit(identifier);
+    const config = RATE_LIMITS[limitKey];
+    const { requests, windowSeconds } = config;
+
+    // Try Redis first
+    const redisLimiter = getRedisLimiter(requests, windowSeconds);
+    if (redisLimiter) {
+      const prefixedIdentifier = `${limitKey}:${identifier}`;
+      return await redisLimiter.limit(prefixedIdentifier);
     }
 
-    // In-memory fallback (Token Bucket / Fixed Window simplified)
+    // In-memory fallback (Fixed Window)
     const now = Date.now();
     const windowMs = windowSeconds * 1000;
-    const key = identifier;
-    
+    const key = `${limitKey}:${identifier}`;
+
     const record = memoryStore.get(key);
 
     if (!record || now > record.expiresAt) {
       memoryStore.set(key, { count: 1, expiresAt: now + windowMs });
-      return { success: true, remaining: limit - 1 };
+      return { success: true, remaining: requests - 1 };
     }
 
-    if (record.count >= limit) {
+    if (record.count >= requests) {
       return { success: false, remaining: 0 };
     }
 
     record.count += 1;
     memoryStore.set(key, record);
-    return { success: true, remaining: limit - record.count };
+    return { success: true, remaining: requests - record.count };
   }
 }
 
