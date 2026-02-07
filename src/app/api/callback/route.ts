@@ -99,12 +99,14 @@ function verifyCallback(request: NextRequest, body: string): boolean {
       console.warn("[Callback] No authentication configured - allowing in development mode");
       return true;
     }
+    console.warn("[Callback] No valid authentication found");
     return false;
   }
 
   // 验证 HMAC 签名
   const signature = request.headers.get("x-duomi-signature");
   if (!signature) {
+    console.warn("[Callback] Missing x-duomi-signature header");
     return false;
   }
 
@@ -113,10 +115,21 @@ function verifyCallback(request: NextRequest, body: string): boolean {
     .update(body)
     .digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  // 长度检查防止 timingSafeEqual 抛出异常
+  if (signature.length !== expectedSignature.length) {
+    console.warn("[Callback] Signature length mismatch");
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    console.warn("[Callback] Signature comparison failed");
+    return false;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -128,15 +141,14 @@ export async function POST(request: NextRequest) {
     console.log("[Callback] Headers:", JSON.stringify(Object.fromEntries(request.headers.entries())));
     console.log("[Callback] Body:", bodyText);
 
-    // 暂时跳过验证，先确认 Duomi 回调格式
-    // TODO: 确认 Duomi 回调格式后恢复验证
-    // if (!verifyCallback(request, bodyText)) {
-    //   console.log("[Callback] Verification failed");
-    //   return NextResponse.json(
-    //     { error: "Unauthorized callback" },
-    //     { status: 401 }
-    //   );
-    // }
+    // 验证回调请求
+    if (!verifyCallback(request, bodyText)) {
+      console.log("[Callback] Verification failed");
+      return NextResponse.json(
+        { error: "Unauthorized callback" },
+        { status: 401 }
+      );
+    }
 
     const body = JSON.parse(bodyText);
     const taskId = body.task_id ?? body.id;

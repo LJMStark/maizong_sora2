@@ -119,9 +119,21 @@ Configure in `src/routes.ts`:
 - `NEXT_PUBLIC_BASE_URL` - Production URL (for callback URL)
 - `DUOMI_API` - Duomi API key
 - `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- `CRON_SECRET` - Vercel Cron job authentication
 
 **Optional**:
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` - Rate limiting
+- `DUOMI_CALLBACK_SECRET` - HMAC secret for Duomi callback verification (recommended for production)
+
+### Callback Security
+
+The `/api/callback` endpoint validates incoming requests using a fallback strategy:
+
+1. **HMAC Signature** (if `DUOMI_CALLBACK_SECRET` is set): Validates `x-duomi-signature` header
+2. **Bearer Token** (fallback): Validates `Authorization: Bearer {DUOMI_API}` header
+3. **Development Mode**: Allows unauthenticated requests only in development
+
+For production, configure at least one of `DUOMI_CALLBACK_SECRET` or ensure Duomi sends the `Authorization` header.
 
 ## Database Migrations
 

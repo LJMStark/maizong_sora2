@@ -56,15 +56,12 @@ const UserCenter: React.FC = () => {
     const checkAdmin = async () => {
       try {
         const res = await fetch("/api/admin/settings");
-        console.log("[UserCenter] Admin check response:", res.status, res.ok);
         setIsAdmin(res.ok);
-      } catch (err) {
-        console.error("[UserCenter] Admin check error:", err);
+      } catch {
         setIsAdmin(false);
       }
     };
     if (session?.user) {
-      console.log("[UserCenter] Checking admin for user:", session.user.id);
       checkAdmin();
     }
   }, [session?.user]);
