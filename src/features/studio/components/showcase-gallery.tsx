@@ -8,6 +8,17 @@ interface ShowcaseGalleryProps {
   onSelectPrompt: (prompt: string) => void;
 }
 
+const SkeletonCard: React.FC = () => (
+  <div className="bg-white border border-[#e5e5e1] rounded-sm overflow-hidden animate-pulse">
+    <div className="aspect-[4/3] bg-[#e5e5e1]" />
+    <div className="p-3">
+      <div className="h-3 bg-[#e5e5e1] rounded w-3/4 mb-2" />
+      <div className="h-2 bg-[#e5e5e1] rounded w-full mb-1" />
+      <div className="h-2 bg-[#e5e5e1] rounded w-2/3" />
+    </div>
+  </div>
+);
+
 const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => {
   const t = useTranslations('studio.image');
   const [isPaused, setIsPaused] = useState(false);
@@ -76,6 +87,26 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
     onSelectPrompt(example.promptZh);
   };
 
+  const usePromptLabel = t('showcase.usePrompt');
+
+  // Show skeleton while loading on client side
+  if (!isClient) {
+    return (
+      <div className="w-full h-full flex gap-3 overflow-hidden">
+        <div className="flex-1 flex flex-col gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={`skeleton-left-${i}`} />
+          ))}
+        </div>
+        <div className="flex-1 flex flex-col gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonCard key={`skeleton-right-${i}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="w-full h-full flex gap-3 overflow-hidden"
@@ -94,6 +125,7 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
               key={`left-${example.id}-${index}`}
               example={example}
               onClick={() => handleCardClick(example)}
+              usePromptLabel={usePromptLabel}
             />
           ))}
         </div>
@@ -111,6 +143,7 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
               key={`right-${example.id}-${index}`}
               example={example}
               onClick={() => handleCardClick(example)}
+              usePromptLabel={usePromptLabel}
             />
           ))}
         </div>
@@ -122,9 +155,10 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
 interface ShowcaseCardProps {
   example: ShowcaseExample;
   onClick: () => void;
+  usePromptLabel: string;
 }
 
-const ShowcaseCard: React.FC<ShowcaseCardProps> = ({ example, onClick }) => {
+const ShowcaseCard: React.FC<ShowcaseCardProps> = ({ example, onClick, usePromptLabel }) => {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -162,7 +196,7 @@ const ShowcaseCard: React.FC<ShowcaseCardProps> = ({ example, onClick }) => {
       {/* Hover overlay with click hint */}
       <div className="absolute inset-0 bg-[#1a1a1a]/0 group-hover:bg-[#1a1a1a]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
         <span className="bg-white/90 text-[#1a1a1a] px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
-          使用此提示词
+          {usePromptLabel}
         </span>
       </div>
     </div>
