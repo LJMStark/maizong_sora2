@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "@/lib/auth/client";
+import { isAdmin } from "../../utils/user-helpers";
 import AnnouncementManager from "./announcement-manager";
 import UserManager from "./user-manager";
 import RedemptionCodeManager from "./redemption-code-manager";
@@ -28,8 +29,7 @@ export default function AdminPanel() {
     );
   }
 
-  const role = (session?.user as Record<string, unknown>)?.role;
-  if (!session?.user || role !== "admin") {
+  if (!session?.user || !isAdmin(session.user)) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">

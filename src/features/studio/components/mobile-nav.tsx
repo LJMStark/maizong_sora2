@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth/client";
@@ -9,9 +9,9 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { NAV_ITEMS } from "./shared/nav-config";
 import { UserProfile } from "./shared/user-profile";
 import { LoginDialog } from "./shared/login-dialog";
-import { getInitials } from "../utils/user-helpers";
+import { getInitials, isAdmin } from "../utils/user-helpers";
 
-const MobileNav: React.FC = () => {
+export default function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
@@ -105,7 +105,7 @@ const MobileNav: React.FC = () => {
                   ))}
                 </nav>
 
-                {!isPending && (session?.user as Record<string, unknown>)?.role === "admin" && (
+                {!isPending && isAdmin(session?.user) && (
                   <div className="border-t border-[#e5e5e1] py-2">
                     <button
                       onClick={() => handleNavigation("/studio/admin")}
@@ -155,6 +155,4 @@ const MobileNav: React.FC = () => {
       <LoginDialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen} />
     </>
   );
-};
-
-export default MobileNav;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth/client";
@@ -8,8 +8,9 @@ import { useTranslations } from "next-intl";
 import { NAV_ITEMS } from "./shared/nav-config";
 import { UserProfile } from "./shared/user-profile";
 import { LoginDialog } from "./shared/login-dialog";
+import { isAdmin } from "../utils/user-helpers";
 
-const Sidebar: React.FC = () => {
+export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
@@ -66,7 +67,7 @@ const Sidebar: React.FC = () => {
             ))}
           </nav>
 
-          {!isPending && (session?.user as Record<string, unknown>)?.role === "admin" && (
+          {!isPending && isAdmin(session?.user) && (
             <div className="mt-2 border-t border-[#e5e5e1] pt-2">
               <Link
                 href="/studio/admin"
@@ -106,6 +107,4 @@ const Sidebar: React.FC = () => {
       <LoginDialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen} />
     </>
   );
-};
-
-export default Sidebar;
+}
