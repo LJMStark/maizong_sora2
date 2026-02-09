@@ -1,6 +1,8 @@
 import { db } from "@/db";
 import { videoTask, VideoTaskType } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
+
+export type VideoProvider = "duomi" | "kie";
 
 export interface CreateVideoTaskParams {
   userId: string;
@@ -11,6 +13,7 @@ export interface CreateVideoTaskParams {
   sourceImageUrl?: string;
   creditCost: number;
   creditTransactionId: string;
+  provider?: VideoProvider;
 }
 
 export const videoTaskService = {
@@ -22,6 +25,7 @@ export const videoTaskService = {
       .values({
         id: taskId,
         userId: params.userId,
+        provider: params.provider ?? "duomi",
         model: params.model,
         prompt: params.prompt,
         aspectRatio: params.aspectRatio,
@@ -119,6 +123,24 @@ export const videoTaskService = {
     return task || null;
   },
 
+  async getTaskByProviderTaskId(
+    providerTaskId: string,
+    provider: VideoProvider
+  ): Promise<VideoTaskType | null> {
+    const [task] = await db
+      .select()
+      .from(videoTask)
+      .where(
+        and(
+          eq(videoTask.duomiTaskId, providerTaskId),
+          eq(videoTask.provider, provider)
+        )
+      )
+      .limit(1);
+
+    return task || null;
+  },
+
   async getUserTasks(userId: string, limit = 50): Promise<VideoTaskType[]> {
     return db
       .select()
@@ -138,6 +160,19 @@ export const videoTaskService = {
     return tasks.filter(
       (task) => task.status === "pending" || task.status === "running" || task.status === "retrying"
     );
+  },
+
+  async updateProvider(
+    taskId: string,
+    provider: VideoProvider
+  ): Promise<VideoTaskType> {
+    const [task] = await db
+      .update(videoTask)
+      .set({ provider })
+      .where(eq(videoTask.id, taskId))
+      .returning();
+
+    return task;
   },
 
   async incrementRetryCount(

@@ -9,8 +9,11 @@ export async function GET() {
   }
 
   try {
-    const limits = await videoLimitService.getGlobalLimits();
-    return NextResponse.json({ success: true, data: limits });
+    const [limits, providers] = await Promise.all([
+      videoLimitService.getGlobalLimits(),
+      videoLimitService.getProviderSettings(),
+    ]);
+    return NextResponse.json({ success: true, data: { ...limits, ...providers } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -25,7 +28,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { dailyFastVideoLimit, dailyQualityVideoLimit } = body;
+    const { dailyFastVideoLimit, dailyQualityVideoLimit, kieEnabled, duomiEnabled } = body;
 
     // 验证输入
     if (dailyFastVideoLimit !== undefined) {
@@ -46,13 +49,27 @@ export async function PATCH(request: Request) {
       }
     }
 
-    await videoLimitService.updateGlobalLimits(
-      { dailyFastVideoLimit, dailyQualityVideoLimit },
-      authCheck.userId
-    );
+    // 更新视频限额
+    if (dailyFastVideoLimit !== undefined || dailyQualityVideoLimit !== undefined) {
+      await videoLimitService.updateGlobalLimits(
+        { dailyFastVideoLimit, dailyQualityVideoLimit },
+        authCheck.userId
+      );
+    }
 
-    const updatedLimits = await videoLimitService.getGlobalLimits();
-    return NextResponse.json({ success: true, data: updatedLimits });
+    // 更新供应商设置
+    if (kieEnabled !== undefined || duomiEnabled !== undefined) {
+      await videoLimitService.updateProviderSettings(
+        { kieEnabled, duomiEnabled },
+        authCheck.userId
+      );
+    }
+
+    const [updatedLimits, updatedProviders] = await Promise.all([
+      videoLimitService.getGlobalLimits(),
+      videoLimitService.getProviderSettings(),
+    ]);
+    return NextResponse.json({ success: true, data: { ...updatedLimits, ...updatedProviders } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -3,6 +3,8 @@ import { user } from "../auth/user";
 
 export const videoModelEnum = pgEnum("video_model", ["sora-2", "sora-2-temporary", "sora-2-pro"]);
 
+export const videoProviderEnum = pgEnum("video_provider", ["duomi", "kie"]);
+
 export const videoTaskStatusEnum = pgEnum("video_task_status", [
   "pending",
   "running",
@@ -17,6 +19,7 @@ export const videoTask = pgTable("video_task", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   duomiTaskId: text("duomi_task_id"),
+  provider: videoProviderEnum("provider").notNull().default("duomi"),
   model: videoModelEnum("model").notNull(),
   prompt: text("prompt").notNull(),
   aspectRatio: text("aspect_ratio").notNull(),

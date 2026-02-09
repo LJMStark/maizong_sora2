@@ -207,4 +207,87 @@ export const videoLimitService = {
       quality: { used: qualityCheck.used, limit: qualityCheck.limit },
     };
   },
+
+  /**
+   * 获取视频供应商启用状态
+   */
+  async getProviderSettings(): Promise<{
+    kieEnabled: boolean;
+    duomiEnabled: boolean;
+  }> {
+    const configs = await db
+      .select({ key: systemConfig.key, value: systemConfig.value })
+      .from(systemConfig)
+      .where(
+        sql`${systemConfig.key} IN ('video_provider_kie_enabled', 'video_provider_duomi_enabled')`
+      );
+
+    const result = {
+      kieEnabled: true,
+      duomiEnabled: false,
+    };
+
+    for (const config of configs) {
+      if (config.key === "video_provider_kie_enabled") {
+        result.kieEnabled = config.value === "true";
+      } else if (config.key === "video_provider_duomi_enabled") {
+        result.duomiEnabled = config.value === "true";
+      }
+    }
+
+    return result;
+  },
+
+  /**
+   * 更新视频供应商启用状态
+   */
+  async updateProviderSettings(
+    settings: { kieEnabled?: boolean; duomiEnabled?: boolean },
+    updatedBy: string
+  ): Promise<void> {
+    const updates: { key: string; value: string; description: string }[] = [];
+
+    if (settings.kieEnabled !== undefined) {
+      updates.push({
+        key: "video_provider_kie_enabled",
+        value: String(settings.kieEnabled),
+        description: "KIE AI 视频供应商开关",
+      });
+    }
+
+    if (settings.duomiEnabled !== undefined) {
+      updates.push({
+        key: "video_provider_duomi_enabled",
+        value: String(settings.duomiEnabled),
+        description: "Duomi 视频供应商开关",
+      });
+    }
+
+    for (const update of updates) {
+      const existing = await db
+        .select({ id: systemConfig.id })
+        .from(systemConfig)
+        .where(eq(systemConfig.key, update.key))
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(systemConfig)
+          .set({
+            value: update.value,
+            updatedAt: new Date(),
+            updatedBy,
+          })
+          .where(eq(systemConfig.key, update.key));
+      } else {
+        await db.insert(systemConfig).values({
+          id: crypto.randomUUID(),
+          key: update.key,
+          value: update.value,
+          description: update.description,
+          updatedBy,
+        });
+      }
+    }
+  },
 };

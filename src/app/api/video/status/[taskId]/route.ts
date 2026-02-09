@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
+import { kieService } from "@/features/studio/services/kie-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
 
@@ -81,29 +82,34 @@ export async function GET(
       });
     }
 
-    // Poll Duomi API for status (fallback when callback is missing)
+    // Poll provider API for status (fallback when callback is missing)
     try {
-      const duomiStatus = await duomiService.getVideoTaskStatus(task.duomiTaskId);
-      const state = duomiStatus.state;
+      const isKieProvider = task.provider === "kie";
+
+      const providerStatus = isKieProvider
+        ? await kieService.getVideoTaskStatus(task.duomiTaskId)
+        : await duomiService.getVideoTaskStatus(task.duomiTaskId);
+
+      const state = providerStatus.state;
       const progress =
-        typeof duomiStatus.progress === "number"
-          ? duomiStatus.progress
+        typeof providerStatus.progress === "number"
+          ? providerStatus.progress
           : task.progress;
-      const duomiVideoUrl = duomiStatus.data?.videos?.[0]?.url;
+      const providerVideoUrl = providerStatus.data?.videos?.[0]?.url;
 
       if (state === "succeeded") {
-        if (!duomiVideoUrl) {
+        if (!providerVideoUrl) {
           await videoTaskService.updateTaskStatus(
             task.id,
             "error",
             progress,
-            "Duomi 状态中缺少视频 URL"
+            "状态中缺少视频 URL"
           );
           return NextResponse.json({
             id: task.id,
             status: "error",
             progress,
-            errorMessage: "Duomi 状态中缺少视频 URL",
+            errorMessage: "状态中缺少视频 URL",
             prompt: task.prompt,
             createdAt: task.createdAt,
             completedAt: new Date(),
@@ -114,20 +120,20 @@ export async function GET(
           });
         }
 
-        let finalVideoUrl = duomiVideoUrl;
+        let finalVideoUrl = providerVideoUrl;
         try {
           finalVideoUrl = await storageService.uploadVideoFromUrl(
             task.userId,
             task.id,
-            duomiVideoUrl
+            providerVideoUrl
           );
         } catch {
-          // If upload fails, use the original Duomi URL
+          // If upload fails, use the original provider URL
         }
 
         await videoTaskService.updateTaskVideoUrls(
           task.id,
-          duomiVideoUrl,
+          providerVideoUrl,
           finalVideoUrl
         );
 
@@ -145,7 +151,7 @@ export async function GET(
           callbackRetryCount: task.callbackRetryCount ?? 0,
         });
       } else if (state === "error") {
-        const errorMessage = duomiStatus.message || duomiStatus.error || "视频生成失败";
+        const errorMessage = providerStatus.message || providerStatus.error || "视频生成失败";
         await videoTaskService.updateTaskStatus(
           task.id,
           "error",
