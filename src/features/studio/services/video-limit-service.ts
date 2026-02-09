@@ -3,6 +3,7 @@ import { user, videoTask, systemConfig } from "@/db/schema";
 import { eq, and, gte, ne, sql } from "drizzle-orm";
 
 export type VideoType = "fast" | "quality";
+export type VideoProvider = "kie" | "duomi";
 
 export interface LimitCheckResult {
   allowed: boolean;
@@ -11,7 +12,107 @@ export interface LimitCheckResult {
   limit: number;
 }
 
+export interface CreditCosts {
+  videoFast: number;
+  videoQuality: number;
+  image: number;
+}
+
+export interface VideoGenerationConfig {
+  creditCosts: CreditCosts;
+  providers: {
+    fast: VideoProvider;
+    quality: VideoProvider;
+  };
+}
+
+// 配置缓存（60秒过期）
+const CONFIG_CACHE_TTL = 60 * 1000;
+let configCache: {
+  data: VideoGenerationConfig;
+  expiry: number;
+} | null = null;
+
 export const videoLimitService = {
+  /**
+   * 获取视频生成配置（带缓存）
+   * 一次查询获取积分和供应商配置，减少数据库访问
+   */
+  async getVideoGenerationConfig(): Promise<VideoGenerationConfig> {
+    // 检查缓存
+    if (configCache && Date.now() < configCache.expiry) {
+      return configCache.data;
+    }
+
+    // 一次查询获取所有配置
+    const configs = await db
+      .select({ key: systemConfig.key, value: systemConfig.value })
+      .from(systemConfig)
+      .where(
+        sql`${systemConfig.key} IN (
+          'credit_cost_video_fast', 'credit_cost_video_quality', 'credit_cost_image',
+          'video_fast_provider', 'video_quality_provider'
+        )`
+      );
+
+    const result: VideoGenerationConfig = {
+      creditCosts: {
+        videoFast: 30,
+        videoQuality: 100,
+        image: 10,
+      },
+      providers: {
+        fast: "kie",
+        quality: "kie",
+      },
+    };
+
+    for (const config of configs) {
+      switch (config.key) {
+        case "credit_cost_video_fast": {
+          const v = parseInt(config.value, 10);
+          if (!isNaN(v) && v >= 0) result.creditCosts.videoFast = v;
+          break;
+        }
+        case "credit_cost_video_quality": {
+          const v = parseInt(config.value, 10);
+          if (!isNaN(v) && v >= 0) result.creditCosts.videoQuality = v;
+          break;
+        }
+        case "credit_cost_image": {
+          const v = parseInt(config.value, 10);
+          if (!isNaN(v) && v >= 0) result.creditCosts.image = v;
+          break;
+        }
+        case "video_fast_provider":
+          if (config.value === "kie" || config.value === "duomi") {
+            result.providers.fast = config.value;
+          }
+          break;
+        case "video_quality_provider":
+          if (config.value === "kie" || config.value === "duomi") {
+            result.providers.quality = config.value;
+          }
+          break;
+      }
+    }
+
+    // 更新缓存
+    configCache = {
+      data: result,
+      expiry: Date.now() + CONFIG_CACHE_TTL,
+    };
+
+    return result;
+  },
+
+  /**
+   * 清除配置缓存（配置更新后调用）
+   */
+  clearConfigCache(): void {
+    configCache = null;
+  },
+
   /**
    * 检查用户是否可以生成视频
    */
@@ -209,85 +310,131 @@ export const videoLimitService = {
   },
 
   /**
-   * 获取视频供应商启用状态
+   * 获取模式对应的供应商（使用缓存）
    */
-  async getProviderSettings(): Promise<{
-    kieEnabled: boolean;
-    duomiEnabled: boolean;
-  }> {
-    const configs = await db
-      .select({ key: systemConfig.key, value: systemConfig.value })
-      .from(systemConfig)
-      .where(
-        sql`${systemConfig.key} IN ('video_provider_kie_enabled', 'video_provider_duomi_enabled')`
-      );
-
-    const result = {
-      kieEnabled: true,
-      duomiEnabled: false,
-    };
-
-    for (const config of configs) {
-      if (config.key === "video_provider_kie_enabled") {
-        result.kieEnabled = config.value === "true";
-      } else if (config.key === "video_provider_duomi_enabled") {
-        result.duomiEnabled = config.value === "true";
-      }
-    }
-
-    return result;
+  async getProviderForMode(mode: VideoType): Promise<VideoProvider> {
+    const config = await this.getVideoGenerationConfig();
+    return config.providers[mode];
   },
 
   /**
-   * 更新视频供应商启用状态
+   * 获取所有供应商配置（按模式，使用缓存）
    */
-  async updateProviderSettings(
-    settings: { kieEnabled?: boolean; duomiEnabled?: boolean },
+  async getProviderSettings(): Promise<{
+    videoFastProvider: VideoProvider;
+    videoQualityProvider: VideoProvider;
+  }> {
+    const config = await this.getVideoGenerationConfig();
+    return {
+      videoFastProvider: config.providers.fast,
+      videoQualityProvider: config.providers.quality,
+    };
+  },
+
+  /**
+   * 更新供应商配置（按模式）
+   */
+  async updateProviderForMode(
+    mode: VideoType,
+    provider: VideoProvider,
     updatedBy: string
   ): Promise<void> {
-    const updates: { key: string; value: string; description: string }[] = [];
+    const configKey = mode === "fast" ? "video_fast_provider" : "video_quality_provider";
+    const description = mode === "fast" ? "快速视频供应商" : "高质量视频供应商";
 
-    if (settings.kieEnabled !== undefined) {
-      updates.push({
-        key: "video_provider_kie_enabled",
-        value: String(settings.kieEnabled),
-        description: "KIE AI 视频供应商开关",
-      });
+    await this.upsertConfig(configKey, provider, description, updatedBy);
+    this.clearConfigCache();
+  },
+
+  /**
+   * 批量更新供应商配置
+   */
+  async updateProviderSettings(
+    settings: { videoFastProvider?: VideoProvider; videoQualityProvider?: VideoProvider },
+    updatedBy: string
+  ): Promise<void> {
+    if (settings.videoFastProvider !== undefined) {
+      await this.updateProviderForMode("fast", settings.videoFastProvider, updatedBy);
     }
-
-    if (settings.duomiEnabled !== undefined) {
-      updates.push({
-        key: "video_provider_duomi_enabled",
-        value: String(settings.duomiEnabled),
-        description: "Duomi 视频供应商开关",
-      });
+    if (settings.videoQualityProvider !== undefined) {
+      await this.updateProviderForMode("quality", settings.videoQualityProvider, updatedBy);
     }
+  },
 
-    for (const update of updates) {
-      const existing = await db
-        .select({ id: systemConfig.id })
-        .from(systemConfig)
-        .where(eq(systemConfig.key, update.key))
-        .limit(1);
+  /**
+   * 获取积分消耗配置（使用缓存）
+   */
+  async getCreditCosts(): Promise<CreditCosts> {
+    const config = await this.getVideoGenerationConfig();
+    return config.creditCosts;
+  },
 
-      if (existing.length > 0) {
-        await db
-          .update(systemConfig)
-          .set({
-            value: update.value,
-            updatedAt: new Date(),
-            updatedBy,
-          })
-          .where(eq(systemConfig.key, update.key));
-      } else {
-        await db.insert(systemConfig).values({
-          id: crypto.randomUUID(),
-          key: update.key,
-          value: update.value,
-          description: update.description,
+  /**
+   * 更新积分消耗配置
+   */
+  async updateCreditCosts(
+    costs: { videoFast?: number; videoQuality?: number; image?: number },
+    updatedBy: string
+  ): Promise<void> {
+    if (costs.videoFast !== undefined && costs.videoFast >= 0) {
+      await this.upsertConfig(
+        "credit_cost_video_fast",
+        costs.videoFast.toString(),
+        "快速视频积分消耗",
+        updatedBy
+      );
+    }
+    if (costs.videoQuality !== undefined && costs.videoQuality >= 0) {
+      await this.upsertConfig(
+        "credit_cost_video_quality",
+        costs.videoQuality.toString(),
+        "高质量视频积分消耗",
+        updatedBy
+      );
+    }
+    if (costs.image !== undefined && costs.image >= 0) {
+      await this.upsertConfig(
+        "credit_cost_image",
+        costs.image.toString(),
+        "图片生成积分消耗",
+        updatedBy
+      );
+    }
+    this.clearConfigCache();
+  },
+
+  /**
+   * 通用配置 upsert 方法
+   */
+  async upsertConfig(
+    key: string,
+    value: string,
+    description: string,
+    updatedBy: string
+  ): Promise<void> {
+    const existing = await db
+      .select({ id: systemConfig.id })
+      .from(systemConfig)
+      .where(eq(systemConfig.key, key))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(systemConfig)
+        .set({
+          value,
+          updatedAt: new Date(),
           updatedBy,
-        });
-      }
+        })
+        .where(eq(systemConfig.key, key));
+    } else {
+      await db.insert(systemConfig).values({
+        id: crypto.randomUUID(),
+        key,
+        value,
+        description,
+        updatedBy,
+      });
     }
   },
 };

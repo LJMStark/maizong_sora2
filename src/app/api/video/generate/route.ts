@@ -11,11 +11,6 @@ import { GenerateVideoSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
 import type { VideoProvider } from "@/features/studio/services/video-task-service";
 
-const CREDIT_COSTS = {
-  "sora-2-temporary": 30,
-  "sora-2-pro": 100,
-} as const;
-
 const MAX_GENERATE_RETRIES = 3;
 
 function delay(ms: number): Promise<void> {
@@ -46,10 +41,16 @@ export async function POST(request: NextRequest) {
     const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType } = validation.data;
 
     const model = mode === "Quality" ? "sora-2-pro" : "sora-2-temporary";
-    const creditCost = CREDIT_COSTS[model];
+    const videoType = model === "sora-2-temporary" ? "fast" : "quality";
+
+    // 一次查询获取积分和供应商配置（带缓存）
+    const generationConfig = await videoLimitService.getVideoGenerationConfig();
+    const creditCost = videoType === "fast"
+      ? generationConfig.creditCosts.videoFast
+      : generationConfig.creditCosts.videoQuality;
+    const configuredProvider = generationConfig.providers[videoType];
 
     // 检查每日生成限制
-    const videoType = model === "sora-2-temporary" ? "fast" : "quality";
     const limitCheck = await videoLimitService.checkLimit(userId, videoType);
 
     if (!limitCheck.allowed) {
@@ -69,16 +70,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "积分不足", required: creditCost, current: currentCredits },
         { status: 400 }
-      );
-    }
-
-    // 获取供应商启用状态
-    const providerSettings = await videoLimitService.getProviderSettings();
-
-    if (!providerSettings.kieEnabled && !providerSettings.duomiEnabled) {
-      return NextResponse.json(
-        { error: "当前没有可用的视频供应商，请联系管理员" },
-        { status: 503 }
       );
     }
 
@@ -105,10 +96,6 @@ export async function POST(request: NextRequest) {
     const resolvedAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";
     const resolvedDuration = duration || 10;
 
-    // 根据配置决定供应商优先级: KIE 优先 -> Duomi 备选
-    const defaultProvider: VideoProvider = providerSettings.kieEnabled ? "kie" : "duomi";
-    let usedProvider: VideoProvider = defaultProvider;
-
     const task = await videoTaskService.createTask({
       userId,
       model,
@@ -118,13 +105,13 @@ export async function POST(request: NextRequest) {
       sourceImageUrl,
       creditCost,
       creditTransactionId: transactionId,
-      provider: defaultProvider,
+      provider: configuredProvider,
     });
 
     let lastError: Error | null = null;
 
-    // 尝试 KIE AI
-    if (providerSettings.kieEnabled && process.env.KIE_AI_API_KEY) {
+    // 根据配置的供应商调用对应 API
+    if (configuredProvider === "kie") {
       const kieCallbackUrl = `${baseUrl}/api/callback/kie`;
 
       for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
@@ -140,7 +127,6 @@ export async function POST(request: NextRequest) {
           });
 
           if (kieResponse.id) {
-            usedProvider = "kie";
             await videoTaskService.updateDuomiTaskId(task.id, kieResponse.id);
             await videoTaskService.updateTaskStatus(task.id, "running", 0);
             lastError = null;
@@ -161,16 +147,9 @@ export async function POST(request: NextRequest) {
           }
         }
       }
-    }
-
-    // KIE 失败或未启用 -> 尝试 Duomi（仅在 Duomi 启用时）
-    if (providerSettings.duomiEnabled && (lastError || !providerSettings.kieEnabled)) {
-      if (lastError) {
-        console.log("[Generate] KIE AI 全部失败，降级到 Duomi");
-      }
-
+    } else {
+      // Duomi 供应商
       const duomiCallbackUrl = `${baseUrl}/api/callback`;
-      lastError = null;
 
       for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
         try {
@@ -184,7 +163,6 @@ export async function POST(request: NextRequest) {
           });
 
           if (duomiResponse.id) {
-            usedProvider = "duomi";
             await videoTaskService.updateDuomiTaskId(task.id, duomiResponse.id);
             await videoTaskService.updateTaskStatus(task.id, "running", 0);
             lastError = null;
@@ -207,12 +185,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 更新实际使用的 provider
-    if (!lastError && usedProvider !== defaultProvider) {
-      await videoTaskService.updateProvider(task.id, usedProvider);
-    }
-
-    // 所有 provider 都失败
+    // 供应商调用失败
     if (lastError) {
       await videoTaskService.updateTaskStatus(task.id, "error", 0, lastError.message);
       await creditService.refundCredits({

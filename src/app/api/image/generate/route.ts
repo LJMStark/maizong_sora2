@@ -3,11 +3,10 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { creditService } from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
+import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateImageSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
-
-const IMAGE_CREDIT_COST = 10;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -41,12 +40,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "无效的模型" }, { status: 400 });
     }
 
+    // 获取动态积分配置（带缓存）
+    const generationConfig = await videoLimitService.getVideoGenerationConfig();
+    const imageCreditCost = generationConfig.creditCosts.image;
+
     const currentCredits = await creditService.getUserCredits(userId);
-    if (currentCredits < IMAGE_CREDIT_COST) {
+    if (currentCredits < imageCreditCost) {
       return NextResponse.json(
         {
           error: "积分不足",
-          required: IMAGE_CREDIT_COST,
+          required: imageCreditCost,
           current: currentCredits,
         },
         { status: 400 }
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const { transactionId } = await creditService.deductCredits({
       userId,
-      amount: IMAGE_CREDIT_COST,
+      amount: imageCreditCost,
       reason: `Image Generation (${selectedModel})`,
       referenceType: "image_task",
     });
@@ -66,7 +69,7 @@ export async function POST(request: NextRequest) {
       model: selectedModel,
       prompt,
       aspectRatio,
-      creditCost: IMAGE_CREDIT_COST,
+      creditCost: imageCreditCost,
       creditTransactionId: transactionId,
     });
 
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
         );
         await creditService.refundCredits({
           userId,
-          amount: IMAGE_CREDIT_COST,
+          amount: imageCreditCost,
           reason: "Image generation failed - refund",
           referenceType: "image_task",
           referenceId: task.id,
@@ -101,7 +104,7 @@ export async function POST(request: NextRequest) {
       await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
       await creditService.refundCredits({
         userId,
-        amount: IMAGE_CREDIT_COST,
+        amount: imageCreditCost,
         reason: "Image generation failed - refund",
         referenceType: "image_task",
         referenceId: task.id,
@@ -111,7 +114,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId: task.id,
-      creditCost: IMAGE_CREDIT_COST,
+      creditCost: imageCreditCost,
     });
   } catch (error) {
     const message = sanitizeError(error);

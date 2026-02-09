@@ -4,11 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+type VideoProvider = "kie" | "duomi";
+
 interface GlobalSettings {
   dailyFastVideoLimit: number;
   dailyQualityVideoLimit: number;
-  kieEnabled: boolean;
-  duomiEnabled: boolean;
+  videoFastProvider: VideoProvider;
+  videoQualityProvider: VideoProvider;
+  creditCostVideoFast: number;
+  creditCostVideoQuality: number;
+  creditCostImage: number;
 }
 
 export default function SettingsManager() {
@@ -16,8 +21,11 @@ export default function SettingsManager() {
   const [form, setForm] = useState({
     dailyFastVideoLimit: -1,
     dailyQualityVideoLimit: 2,
-    kieEnabled: true,
-    duomiEnabled: false,
+    videoFastProvider: "kie" as VideoProvider,
+    videoQualityProvider: "kie" as VideoProvider,
+    creditCostVideoFast: 30,
+    creditCostVideoQuality: 100,
+    creditCostImage: 10,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,8 +41,11 @@ export default function SettingsManager() {
         setForm({
           dailyFastVideoLimit: json.data.dailyFastVideoLimit ?? -1,
           dailyQualityVideoLimit: json.data.dailyQualityVideoLimit ?? 2,
-          kieEnabled: json.data.kieEnabled ?? true,
-          duomiEnabled: json.data.duomiEnabled ?? false,
+          videoFastProvider: json.data.videoFastProvider ?? "kie",
+          videoQualityProvider: json.data.videoQualityProvider ?? "kie",
+          creditCostVideoFast: json.data.creditCostVideoFast ?? 30,
+          creditCostVideoQuality: json.data.creditCostVideoQuality ?? 100,
+          creditCostImage: json.data.creditCostImage ?? 10,
         });
       }
     } catch {
@@ -81,44 +92,96 @@ export default function SettingsManager() {
   return (
     <div className="max-w-lg space-y-6">
       <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
-        <h2 className="font-medium text-[#1a1a1a]">视频供应商</h2>
-        <p className="text-xs text-[#9ca3af]">启用的供应商将按优先级依次尝试：KIE AI 优先，Duomi 备选</p>
+        <h2 className="font-medium text-[#1a1a1a]">视频供应商配置</h2>
+        <p className="text-xs text-[#9ca3af]">为每种视频模式选择使用的供应商</p>
 
-        <div className="space-y-3">
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.kieEnabled}
-              onChange={(e) => setForm({ ...form, kieEnabled: e.target.checked })}
-              className="rounded border-gray-300 w-4 h-4"
-            />
-            <div>
-              <span className="text-sm font-medium text-[#1a1a1a]">KIE AI</span>
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${settings.kieEnabled ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                {settings.kieEnabled ? "已启用" : "已禁用"}
-              </span>
-            </div>
-          </label>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+              快速视频 (Fast) 供应商
+            </label>
+            <select
+              value={form.videoFastProvider}
+              onChange={(e) => setForm({ ...form, videoFastProvider: e.target.value as VideoProvider })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="kie">KIE AI</option>
+              <option value="duomi">Duomi</option>
+            </select>
+            <p className="text-xs text-[#9ca3af] mt-1">
+              当前: {settings?.videoFastProvider === "duomi" ? "Duomi" : "KIE AI"}
+            </p>
+          </div>
 
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.duomiEnabled}
-              onChange={(e) => setForm({ ...form, duomiEnabled: e.target.checked })}
-              className="rounded border-gray-300 w-4 h-4"
-            />
-            <div>
-              <span className="text-sm font-medium text-[#1a1a1a]">Duomi</span>
-              <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${settings.duomiEnabled ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                {settings.duomiEnabled ? "已启用" : "已禁用"}
-              </span>
-            </div>
-          </label>
+          <div>
+            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+              高质量视频 (Quality) 供应商
+            </label>
+            <select
+              value={form.videoQualityProvider}
+              onChange={(e) => setForm({ ...form, videoQualityProvider: e.target.value as VideoProvider })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="kie">KIE AI</option>
+              <option value="duomi">Duomi</option>
+            </select>
+            <p className="text-xs text-[#9ca3af] mt-1">
+              当前: {settings?.videoQualityProvider === "duomi" ? "Duomi" : "KIE AI"}
+            </p>
+          </div>
         </div>
+      </div>
 
-        {!form.kieEnabled && !form.duomiEnabled && (
-          <p className="text-xs text-red-500">至少需要启用一个供应商</p>
-        )}
+      <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
+        <h2 className="font-medium text-[#1a1a1a]">积分消耗配置</h2>
+        <p className="text-xs text-[#9ca3af]">设置各类生成任务的积分消耗</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+              快速视频积分消耗
+            </label>
+            <Input
+              type="number"
+              value={form.creditCostVideoFast}
+              onChange={(e) => setForm({ ...form, creditCostVideoFast: parseInt(e.target.value) || 0 })}
+              min={0}
+            />
+            <p className="text-xs text-[#9ca3af] mt-1">
+              当前值: {settings?.creditCostVideoFast ?? 30}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+              高质量视频积分消耗
+            </label>
+            <Input
+              type="number"
+              value={form.creditCostVideoQuality}
+              onChange={(e) => setForm({ ...form, creditCostVideoQuality: parseInt(e.target.value) || 0 })}
+              min={0}
+            />
+            <p className="text-xs text-[#9ca3af] mt-1">
+              当前值: {settings?.creditCostVideoQuality ?? 100}
+            </p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+              图片生成积分消耗
+            </label>
+            <Input
+              type="number"
+              value={form.creditCostImage}
+              onChange={(e) => setForm({ ...form, creditCostImage: parseInt(e.target.value) || 0 })}
+              min={0}
+            />
+            <p className="text-xs text-[#9ca3af] mt-1">
+              当前值: {settings?.creditCostImage ?? 10}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
@@ -136,7 +199,7 @@ export default function SettingsManager() {
             min={-1}
           />
           <p className="text-xs text-[#9ca3af] mt-1">
-            当前值: {settings.dailyFastVideoLimit === -1 ? "无限制" : settings.dailyFastVideoLimit}
+            当前值: {settings?.dailyFastVideoLimit === -1 ? "无限制" : settings?.dailyFastVideoLimit}
           </p>
         </div>
 
@@ -151,7 +214,7 @@ export default function SettingsManager() {
             min={-1}
           />
           <p className="text-xs text-[#9ca3af] mt-1">
-            当前值: {settings.dailyQualityVideoLimit === -1 ? "无限制" : settings.dailyQualityVideoLimit}
+            当前值: {settings?.dailyQualityVideoLimit === -1 ? "无限制" : settings?.dailyQualityVideoLimit}
           </p>
         </div>
       </div>
@@ -159,7 +222,7 @@ export default function SettingsManager() {
       <div className="flex items-center gap-3">
         <Button
           onClick={handleSave}
-          disabled={saving || (!form.kieEnabled && !form.duomiEnabled)}
+          disabled={saving}
         >
           {saving ? "保存中..." : "保存设置"}
         </Button>
