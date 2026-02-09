@@ -46,6 +46,7 @@ async function retryKieTask(
       imageUrl: task.sourceImageUrl ?? undefined,
       callbackUrl,
       progressCallbackUrl: callbackUrl,
+      isPro: task.model === "sora-2-pro",
     });
 
     if (kieResponse.id) {

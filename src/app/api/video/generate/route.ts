@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
             imageUrl: sourceImageUrl,
             callbackUrl: kieCallbackUrl,
             progressCallbackUrl: kieCallbackUrl,
+            isPro: model === "sora-2-pro",
           });
 
           if (kieResponse.id) {

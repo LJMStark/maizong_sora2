@@ -5,6 +5,7 @@ export interface KieCreateTaskParams {
   imageUrl?: string;
   callbackUrl?: string;
   progressCallbackUrl?: string;
+  isPro?: boolean;
 }
 
 export interface KieCreateTaskResponse {
@@ -60,8 +61,12 @@ export const kieService = {
     }
 
     const model = params.imageUrl
-      ? "sora-2-image-to-video"
-      : "sora-2-text-to-video";
+      ? params.isPro
+        ? "sora-2-pro-image-to-video"
+        : "sora-2-image-to-video"
+      : params.isPro
+        ? "sora-2-pro-text-to-video"
+        : "sora-2-text-to-video";
 
     const input: Record<string, unknown> = {
       prompt: params.prompt,
