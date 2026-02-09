@@ -105,6 +105,30 @@ const MobileNav: React.FC = () => {
                   ))}
                 </nav>
 
+                {!isPending && (session?.user as Record<string, unknown>)?.role === "admin" && (
+                  <div className="border-t border-[#e5e5e1] py-2">
+                    <button
+                      onClick={() => handleNavigation("/studio/admin")}
+                      className={`flex items-center gap-4 px-6 py-4 w-full transition-all relative
+                        ${
+                          isActive("/studio/admin")
+                            ? "text-[#1a1a1a] bg-[#faf9f6]"
+                            : "text-[#4b5563] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50"
+                        }`}
+                    >
+                      {isActive("/studio/admin") && (
+                        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#1a1a1a]" />
+                      )}
+                      <span className="material-symbols-outlined text-xl">
+                        admin_panel_settings
+                      </span>
+                      <span className="text-sm font-medium">
+                        管理后台
+                      </span>
+                    </button>
+                  </div>
+                )}
+
                 <div className="p-6 border-t border-[#e5e5e1]">
                   <UserProfile
                     user={session?.user ?? null}

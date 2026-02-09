@@ -65,6 +65,32 @@ const Sidebar: React.FC = () => {
               </Link>
             ))}
           </nav>
+
+          {!isPending && (session?.user as Record<string, unknown>)?.role === "admin" && (
+            <div className="mt-2 border-t border-[#e5e5e1] pt-2">
+              <Link
+                href="/studio/admin"
+                className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
+                  ${
+                    isActive("/studio/admin")
+                      ? "text-[#1a1a1a] bg-[#faf9f6]"
+                      : "text-[#4b5563] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50"
+                  }`}
+              >
+                {isActive("/studio/admin") && (
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#1a1a1a]" />
+                )}
+                <span
+                  className={`material-symbols-outlined text-2xl ${isActive("/studio/admin") ? "font-medium" : "font-normal"}`}
+                >
+                  admin_panel_settings
+                </span>
+                <p className="text-base font-medium tracking-tight">
+                  管理后台
+                </p>
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="p-8 border-t border-[#e5e5e1]">

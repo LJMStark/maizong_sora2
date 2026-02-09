@@ -6,3 +6,4 @@ export * from "./user-subscription";
 export * from "./credit-order";
 export * from "./system-config";
 export * from "./redemption-code";
+export * from "./announcement";

@@ -1,6 +1,7 @@
 import { StudioProvider } from "@/features/studio/context/studio-context";
 import Sidebar from "@/features/studio/components/sidebar";
 import MobileNav from "@/features/studio/components/mobile-nav";
+import AnnouncementDialog from "@/features/studio/components/announcement-dialog";
 
 export default function StudioLayout({
   children,
@@ -16,6 +17,7 @@ export default function StudioLayout({
           {children}
         </main>
       </div>
+      <AnnouncementDialog />
     </StudioProvider>
   );
 }
