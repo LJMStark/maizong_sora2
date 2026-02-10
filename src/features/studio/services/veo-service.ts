@@ -60,7 +60,14 @@ export const veoService = {
       );
     }
 
-    return response.json();
+    const result = await response.json();
+
+    const taskId = result?.id || result?.data?.id || result?.data?.task_id || result?.task_id;
+    if (!taskId) {
+      throw new Error(`VEO API 返回格式异常: ${JSON.stringify(result)}`);
+    }
+
+    return { id: taskId };
   },
 
   async getVideoTaskStatus(taskId: string) {

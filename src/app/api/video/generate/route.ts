@@ -91,6 +91,9 @@ export async function POST(request: NextRequest) {
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
     const configuredProvider = generationConfig.providers.fast;
 
+    console.log("[Generate] generationConfig:", JSON.stringify(generationConfig));
+    console.log("[Generate] configuredProvider:", configuredProvider);
+
     // VEO provider 时固定模型和时长，统一归类为 fast
     const isVeo = configuredProvider === "veo";
     const model = isVeo ? "veo3.1-fast" : (mode === "Quality" ? "sora-2-pro" : "sora-2-temporary");
