@@ -164,10 +164,11 @@ export async function GET(
       }));
     } catch (pollError) {
       const message = pollError instanceof Error ? pollError.message : "获取状态失败";
+      const statusStr = task.status as string;
       return NextResponse.json(buildTaskResponse(task, {
         errorMessage: message,
-        isRetrying: task.status === "retrying",
-        canRetry: task.status === "error",
+        isRetrying: statusStr === "retrying",
+        canRetry: statusStr === "error",
       }));
     }
   } catch (error) {
