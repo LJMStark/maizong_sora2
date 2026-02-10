@@ -69,16 +69,16 @@ export async function PATCH(request: Request) {
     }
 
     // 验证供应商配置
-    const validProviders: VideoProvider[] = ["kie", "duomi"];
+    const validProviders: VideoProvider[] = ["kie", "duomi", "veo"];
     if (videoFastProvider !== undefined && !validProviders.includes(videoFastProvider)) {
       return NextResponse.json(
-        { error: "videoFastProvider 必须是 'kie' 或 'duomi'" },
+        { error: "videoFastProvider 必须是 'kie'、'duomi' 或 'veo'" },
         { status: 400 }
       );
     }
     if (videoQualityProvider !== undefined && !validProviders.includes(videoQualityProvider)) {
       return NextResponse.json(
-        { error: "videoQualityProvider 必须是 'kie' 或 'duomi'" },
+        { error: "videoQualityProvider 必须是 'kie'、'duomi' 或 'veo'" },
         { status: 400 }
       );
     }

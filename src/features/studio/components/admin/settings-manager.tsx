@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-type VideoProvider = "kie" | "duomi";
+type VideoProvider = "kie" | "duomi" | "veo";
 
 interface GlobalSettings {
   dailyFastVideoLimit: number;
@@ -107,9 +107,10 @@ export default function SettingsManager() {
             >
               <option value="kie">KIE AI</option>
               <option value="duomi">Duomi</option>
+              <option value="veo">VEO</option>
             </select>
             <p className="text-xs text-[#9ca3af] mt-1">
-              当前: {settings?.videoFastProvider === "duomi" ? "Duomi" : "KIE AI"}
+              当前: {settings?.videoFastProvider === "duomi" ? "Duomi" : settings?.videoFastProvider === "veo" ? "VEO" : "KIE AI"}
             </p>
           </div>
 
@@ -124,9 +125,10 @@ export default function SettingsManager() {
             >
               <option value="kie">KIE AI</option>
               <option value="duomi">Duomi</option>
+              <option value="veo">VEO</option>
             </select>
             <p className="text-xs text-[#9ca3af] mt-1">
-              当前: {settings?.videoQualityProvider === "duomi" ? "Duomi" : "KIE AI"}
+              当前: {settings?.videoQualityProvider === "duomi" ? "Duomi" : settings?.videoQualityProvider === "veo" ? "VEO" : "KIE AI"}
             </p>
           </div>
         </div>

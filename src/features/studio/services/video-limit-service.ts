@@ -3,7 +3,7 @@ import { user, videoTask, systemConfig } from "@/db/schema";
 import { eq, and, gte, ne, sql } from "drizzle-orm";
 
 export type VideoType = "fast" | "quality";
-export type VideoProvider = "kie" | "duomi";
+export type VideoProvider = "kie" | "duomi" | "veo";
 
 export interface LimitCheckResult {
   allowed: boolean;
@@ -85,12 +85,12 @@ export const videoLimitService = {
           break;
         }
         case "video_fast_provider":
-          if (config.value === "kie" || config.value === "duomi") {
+          if (config.value === "kie" || config.value === "duomi" || config.value === "veo") {
             result.providers.fast = config.value;
           }
           break;
         case "video_quality_provider":
-          if (config.value === "kie" || config.value === "duomi") {
+          if (config.value === "kie" || config.value === "duomi" || config.value === "veo") {
             result.providers.quality = config.value;
           }
           break;

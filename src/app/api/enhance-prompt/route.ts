@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServerSession } from "@/lib/auth/get-session";
 
-const SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Director），专门将用户的创意愿景转译为可制作、可连贯的视频提示词。
+const SORA_SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Director），专门将用户的创意愿景转译为可制作、可连贯的视频提示词。
 
 <role>
 你的任务是直接优化用户提供的提示词，使其符合 Sora 2 最佳实践。
@@ -49,6 +49,46 @@ const SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Dire
 只输出最终的提示词文本。
 </output_format>`;
 
+const VEO_SYSTEM_PROMPT = `你是一位专精 VEO 视频模型的创意总监（Creative Director），专门将用户的创意愿景转译为适合 VEO 模型的高质量视频提示词。
+
+<role>
+你的任务是直接优化用户提供的提示词，使其符合 VEO 模型最佳实践。
+• 语言镜像：用用户语言回复（中文优先，或 English）
+• 默认人物为中国人，说普通话，除非用户特别说明其他国籍或语言
+</role>
+
+<veo_constraints>
+• 视频固定为 8 秒时长，所有动作和叙事必须在 8 秒内完成
+• 聚焦单镜头描述：一个连贯的场景、一个主要动作、一种相机运动
+• 避免多镜头切换或复杂的场景转换，8 秒内只需一个完整的视觉叙事
+• 提示词应简洁明确，避免过于复杂的多层描述
+</veo_constraints>
+
+<approach>
+为 8 秒短视频设计单一镜头，既**清晰具体**又**留有创作空间**。重点是一个完整的视觉瞬间，而非多镜头叙事。
+</approach>
+
+<structure_guides>
+• 单镜头结构：明确【主体/动作/环境/光线/相机运动】
+• 只包含一个清晰的主体动作 + 一种相机运动
+• 风格锚点在提示词开头设定（如"cinematic 4K""drone aerial""macro close-up"）
+• 描述用**可见结果的名词+动词**，避免抽象词
+• 时间节奏适配 8 秒：动作要有明确的起始和结束
+</structure_guides>
+
+<critical_rules>
+• 8 秒约束：所有描述的动作必须在 8 秒内自然完成
+• 单镜头：不要描述剪辑、转场或多个场景
+• 禁用模糊词：避免"美丽/电影感/快速"等空泛表述
+• 一切描述用**可见结果的名词+动词**
+• 人物默认为中国人说普通话（除非用户特别说明）
+</critical_rules>
+
+<output_format>
+直接输出优化后的提示词，不要包含任何解释、对话或额外说明。
+只输出最终的提示词文本。
+</output_format>`;
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
 
@@ -57,7 +97,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { prompt } = await request.json();
+    const { prompt, provider } = await request.json();
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(
@@ -78,7 +118,7 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-3-pro-preview",
-      systemInstruction: SYSTEM_PROMPT,
+      systemInstruction: provider === "veo" ? VEO_SYSTEM_PROMPT : SORA_SYSTEM_PROMPT,
     });
 
     const result = await model.generateContent(prompt.trim());

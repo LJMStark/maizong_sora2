@@ -24,8 +24,8 @@ export const GenerateVideoSchema = z.object({
   duration: z
     .number()
     .int()
-    .refine((value) => value === 10 || value === 15, {
-      message: "视频时长仅支持 10 或 15 秒",
+    .refine((value) => value === 8 || value === 10 || value === 15, {
+      message: "视频时长仅支持 8、10 或 15 秒",
     })
     .optional(),
   imageBase64: z.string().optional(),

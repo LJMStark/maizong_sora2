@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
 import { kieService } from "@/features/studio/services/kie-service";
+import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
 
@@ -85,10 +86,13 @@ export async function GET(
     // Poll provider API for status (fallback when callback is missing)
     try {
       const isKieProvider = task.provider === "kie";
+      const isVeoProvider = task.provider === "veo";
 
       const providerStatus = isKieProvider
         ? await kieService.getVideoTaskStatus(task.duomiTaskId)
-        : await duomiService.getVideoTaskStatus(task.duomiTaskId);
+        : isVeoProvider
+          ? await veoService.getVideoTaskStatus(task.duomiTaskId)
+          : await duomiService.getVideoTaskStatus(task.duomiTaskId);
 
       const state = providerStatus.state;
       const progress =

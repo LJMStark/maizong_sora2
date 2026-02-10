@@ -5,6 +5,7 @@ import { videoTaskService } from "@/features/studio/services/video-task-service"
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
 import { kieService } from "@/features/studio/services/kie-service";
+import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateVideoSchema } from "@/lib/validations/schemas";
@@ -40,29 +41,35 @@ export async function POST(request: NextRequest) {
     }
     const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType } = validation.data;
 
-    const model = mode === "Quality" ? "sora-2-pro" : "sora-2-temporary";
-    const videoType = model === "sora-2-temporary" ? "fast" : "quality";
-
     // 一次查询获取积分和供应商配置（带缓存）
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
+    const configuredProvider = generationConfig.providers.fast;
+
+    // VEO provider 时固定模型和时长，统一归类为 fast
+    const isVeo = configuredProvider === "veo";
+    const model = isVeo ? "veo3.1-fast" : (mode === "Quality" ? "sora-2-pro" : "sora-2-temporary");
+    const videoType: "fast" | "quality" = isVeo ? "fast" : (model === "sora-2-temporary" ? "fast" : "quality");
+
     const creditCost = videoType === "fast"
       ? generationConfig.creditCosts.videoFast
       : generationConfig.creditCosts.videoQuality;
-    const configuredProvider = generationConfig.providers[videoType];
+    const actualProvider: "veo" | "kie" | "duomi" = isVeo ? "veo" : generationConfig.providers[videoType];
 
-    // 检查每日生成限制
-    const limitCheck = await videoLimitService.checkLimit(userId, videoType);
+    // VEO 不检查每日限额，仅受积分限制
+    if (!isVeo) {
+      const limitCheck = await videoLimitService.checkLimit(userId, videoType);
 
-    if (!limitCheck.allowed) {
-      return NextResponse.json(
-        {
-          error: limitCheck.reason,
-          errorCode: "DAILY_LIMIT_EXCEEDED",
-          used: limitCheck.used,
-          limit: limitCheck.limit,
-        },
-        { status: 429 }
-      );
+      if (!limitCheck.allowed) {
+        return NextResponse.json(
+          {
+            error: limitCheck.reason,
+            errorCode: "DAILY_LIMIT_EXCEEDED",
+            used: limitCheck.used,
+            limit: limitCheck.limit,
+          },
+          { status: 429 }
+        );
+      }
     }
 
     const currentCredits = await creditService.getUserCredits(userId);
@@ -94,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
     const resolvedAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";
-    const resolvedDuration = duration || 10;
+    const resolvedDuration = isVeo ? 8 : (duration || 10);
 
     const task = await videoTaskService.createTask({
       userId,
@@ -105,13 +112,44 @@ export async function POST(request: NextRequest) {
       sourceImageUrl,
       creditCost,
       creditTransactionId: transactionId,
-      provider: configuredProvider,
+      provider: actualProvider,
     });
 
     let lastError: Error | null = null;
 
     // 根据配置的供应商调用对应 API
-    if (configuredProvider === "kie") {
+    if (actualProvider === "veo") {
+      // VEO 供应商（不需要 callback，通过前端轮询获取状态）
+      for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
+        try {
+          const veoResponse = await veoService.createVideoTask({
+            prompt,
+            aspectRatio: resolvedAspectRatio,
+            imageUrls: sourceImageUrl ? [sourceImageUrl] : undefined,
+          });
+
+          if (veoResponse.id) {
+            await videoTaskService.updateDuomiTaskId(task.id, veoResponse.id);
+            await videoTaskService.updateTaskStatus(task.id, "running", 0);
+            lastError = null;
+            break;
+          } else {
+            lastError = new Error("创建 VEO 任务失败：无返回 ID");
+          }
+        } catch (veoError) {
+          lastError = veoError instanceof Error ? veoError : new Error("未知错误");
+          console.log(`[Generate] VEO API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, lastError.message);
+
+          if (attempt > 0) {
+            await videoTaskService.incrementRetryCount(task.id, "generate");
+          }
+
+          if (attempt < MAX_GENERATE_RETRIES - 1) {
+            await delay(1000 * Math.pow(2, attempt));
+          }
+        }
+      }
+    } else if (actualProvider === "kie") {
       const kieCallbackUrl = `${baseUrl}/api/callback/kie`;
 
       for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
@@ -155,7 +193,7 @@ export async function POST(request: NextRequest) {
         try {
           const duomiResponse = await duomiService.createVideoTask({
             prompt,
-            model,
+            model: model as "sora-2-temporary" | "sora-2-pro",
             aspectRatio: resolvedAspectRatio,
             duration: resolvedDuration,
             imageUrl: sourceImageUrl,

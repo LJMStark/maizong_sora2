@@ -2,11 +2,11 @@ import { db } from "@/db";
 import { videoTask, VideoTaskType } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 
-export type VideoProvider = "duomi" | "kie";
+export type VideoProvider = "duomi" | "kie" | "veo";
 
 export interface CreateVideoTaskParams {
   userId: string;
-  model: "sora-2" | "sora-2-temporary" | "sora-2-pro";
+  model: "sora-2" | "sora-2-temporary" | "sora-2-pro" | "veo3.1-fast";
   prompt: string;
   aspectRatio: string;
   duration: number;

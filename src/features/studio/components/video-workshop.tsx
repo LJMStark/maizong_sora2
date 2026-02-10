@@ -41,7 +41,17 @@ const urlToBase64 = async (url: string): Promise<string> => {
   });
 };
 
-const CREDIT_COSTS = {
+interface VideoConfig {
+  fastProvider: string;
+  qualityProvider: string;
+  creditCosts: {
+    videoFast: number;
+    videoQuality: number;
+    image: number;
+  };
+}
+
+const DEFAULT_CREDIT_COSTS = {
   Fast: 30,
   Quality: 100,
 } as const;
@@ -56,7 +66,7 @@ const VideoWorkshop: React.FC = () => {
   const [sourceImage, setSourceImage] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.SOCIAL);
-  const [duration, setDuration] = useState<10 | 15>(10);
+  const [duration, setDuration] = useState<8 | 10 | 15>(10);
   const [mode, setMode] = useState<"Fast" | "Quality">("Fast");
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -67,6 +77,32 @@ const VideoWorkshop: React.FC = () => {
   const [enhancing, setEnhancing] = useState(false);
   const [enhanceDialogOpen, setEnhanceDialogOpen] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
+  const [videoConfig, setVideoConfig] = useState<VideoConfig | null>(null);
+
+  const isVeo = videoConfig?.fastProvider === "veo";
+  const creditCosts = {
+    Fast: videoConfig?.creditCosts.videoFast ?? DEFAULT_CREDIT_COSTS.Fast,
+    Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.Quality,
+  };
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/video/config");
+        const json = await res.json();
+        if (json.success) {
+          setVideoConfig(json.data);
+          if (json.data.fastProvider === "veo") {
+            setDuration(8);
+            setMode("Fast");
+          }
+        }
+      } catch {
+        // fallback to defaults
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,7 +182,7 @@ const VideoWorkshop: React.FC = () => {
       const res = await fetch("/api/enhance-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({ prompt: prompt.trim(), provider: isVeo ? "veo" : undefined }),
       });
 
       const data = await res.json();
@@ -177,7 +213,7 @@ const VideoWorkshop: React.FC = () => {
       return;
     }
 
-    const cost = CREDIT_COSTS[mode];
+    const cost = creditCosts[mode];
     if (credits < cost) {
       alert(
         t("errors.insufficientCredits", {
@@ -217,9 +253,9 @@ const VideoWorkshop: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: prompt || "Product showcase, cinematic lighting, 4k",
-          mode,
+          mode: isVeo ? "Fast" : mode,
           aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-          duration,
+          duration: isVeo ? 8 : duration,
           imageBase64,
           imageMimeType,
         }),
@@ -375,24 +411,34 @@ const VideoWorkshop: React.FC = () => {
           <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
             {t("sections.videoDuration")}
           </p>
-          <div className="grid grid-cols-2 gap-px bg-[#e5e5e1] border border-[#e5e5e1]">
-            <button
-              onClick={() => setDuration(10)}
-              className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 10 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
-            >
-              <span className="text-xs uppercase tracking-tighter">
-                {t("duration.10s")}
-              </span>
-            </button>
-            <button
-              onClick={() => setDuration(15)}
-              className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 15 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
-            >
-              <span className="text-xs uppercase tracking-tighter">
-                {t("duration.15s")}
-              </span>
-            </button>
-          </div>
+          {isVeo ? (
+            <div className="border border-[#e5e5e1]">
+              <div className="flex items-center justify-center py-4 bg-[#faf9f6] text-[#1a1a1a] font-bold">
+                <span className="text-xs uppercase tracking-tighter">
+                  {t("duration.8s")}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-px bg-[#e5e5e1] border border-[#e5e5e1]">
+              <button
+                onClick={() => setDuration(10)}
+                className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 10 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
+              >
+                <span className="text-xs uppercase tracking-tighter">
+                  {t("duration.10s")}
+                </span>
+              </button>
+              <button
+                onClick={() => setDuration(15)}
+                className={`flex items-center justify-center gap-2 py-4 transition-colors ${duration === 15 ? "bg-[#faf9f6] text-[#1a1a1a] font-bold" : "bg-white text-gray-500 hover:text-gray-800"}`}
+              >
+                <span className="text-xs uppercase tracking-tighter">
+                  {t("duration.15s")}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -426,31 +472,49 @@ const VideoWorkshop: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
-            {t("sections.renderMode")}
-          </p>
-          <div className="flex border border-[#e5e5e1]">
-            <button
-              onClick={() => setMode("Fast")}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
-            >
-              <span>{t("mode.fast")}</span>
-              <span className="text-[10px] opacity-70">
-                {CREDIT_COSTS.Fast} {t("cost.credits")}
-              </span>
-            </button>
-            <button
-              onClick={() => setMode("Quality")}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
-            >
-              <span>{t("mode.quality")}</span>
-              <span className="text-[10px] opacity-70">
-                {CREDIT_COSTS.Quality} {t("cost.credits")}
-              </span>
-            </button>
+        {!isVeo && (
+          <div className="space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
+              {t("sections.renderMode")}
+            </p>
+            <div className="flex border border-[#e5e5e1]">
+              <button
+                onClick={() => setMode("Fast")}
+                className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
+              >
+                <span>{t("mode.fast")}</span>
+                <span className="text-[10px] opacity-70">
+                  {creditCosts.Fast} {t("cost.credits")}
+                </span>
+              </button>
+              <button
+                onClick={() => setMode("Quality")}
+                className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
+              >
+                <span>{t("mode.quality")}</span>
+                <span className="text-[10px] opacity-70">
+                  {creditCosts.Quality} {t("cost.credits")}
+                </span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {isVeo && (
+          <div className="space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
+              {t("sections.renderMode")}
+            </p>
+            <div className="border border-[#e5e5e1]">
+              <div className="py-3 text-xs font-bold uppercase tracking-widest flex flex-col items-center bg-[#1a1a1a] text-white">
+                <span>VEO</span>
+                <span className="text-[10px] opacity-70">
+                  {creditCosts.Fast} {t("cost.credits")}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="mt-auto pt-8 border-t border-[#e5e5e1]">
           <button
