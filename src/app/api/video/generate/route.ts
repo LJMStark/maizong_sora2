@@ -18,6 +18,52 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+const PROVIDER_LABELS: Record<VideoProvider, string> = {
+  veo: "VEO",
+  kie: "KIE AI",
+  duomi: "Duomi",
+};
+
+async function callProviderWithRetry(params: {
+  taskId: string;
+  provider: VideoProvider;
+  callProvider: () => Promise<{ id: string }>;
+}): Promise<Error | null> {
+  const { taskId, provider, callProvider } = params;
+  const label = PROVIDER_LABELS[provider];
+
+  for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
+    try {
+      const response = await callProvider();
+
+      if (response.id) {
+        await videoTaskService.updateDuomiTaskId(taskId, response.id);
+        await videoTaskService.updateTaskStatus(taskId, "running", 0);
+        return null;
+      }
+
+      return new Error(`创建 ${label} 任务失败：无返回 ID`);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("未知错误");
+      console.log(`[Generate] ${label} API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, error.message);
+
+      if (attempt > 0) {
+        await videoTaskService.incrementRetryCount(taskId, "generate");
+      }
+
+      if (attempt < MAX_GENERATE_RETRIES - 1) {
+        await delay(1000 * Math.pow(2, attempt));
+      }
+
+      if (attempt === MAX_GENERATE_RETRIES - 1) {
+        return error;
+      }
+    }
+  }
+
+  return new Error("重试次数已用完");
+}
+
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
 
@@ -115,113 +161,38 @@ export async function POST(request: NextRequest) {
       provider: actualProvider,
     });
 
-    let lastError: Error | null = null;
-
-    // 根据配置的供应商调用对应 API
-    if (actualProvider === "veo") {
-      // VEO 供应商（不需要 callback，通过前端轮询获取状态）
-      for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
-        try {
-          const veoResponse = await veoService.createVideoTask({
+    const lastError = await callProviderWithRetry({
+      taskId: task.id,
+      provider: actualProvider,
+      callProvider: () => {
+        if (actualProvider === "veo") {
+          return veoService.createVideoTask({
             prompt,
             aspectRatio: resolvedAspectRatio,
             imageUrls: sourceImageUrl ? [sourceImageUrl] : undefined,
           });
-
-          if (veoResponse.id) {
-            await videoTaskService.updateDuomiTaskId(task.id, veoResponse.id);
-            await videoTaskService.updateTaskStatus(task.id, "running", 0);
-            lastError = null;
-            break;
-          } else {
-            lastError = new Error("创建 VEO 任务失败：无返回 ID");
-          }
-        } catch (veoError) {
-          lastError = veoError instanceof Error ? veoError : new Error("未知错误");
-          console.log(`[Generate] VEO API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, lastError.message);
-
-          if (attempt > 0) {
-            await videoTaskService.incrementRetryCount(task.id, "generate");
-          }
-
-          if (attempt < MAX_GENERATE_RETRIES - 1) {
-            await delay(1000 * Math.pow(2, attempt));
-          }
         }
-      }
-    } else if (actualProvider === "kie") {
-      const kieCallbackUrl = `${baseUrl}/api/callback/kie`;
-
-      for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
-        try {
-          const kieResponse = await kieService.createVideoTask({
+        if (actualProvider === "kie") {
+          return kieService.createVideoTask({
             prompt,
             aspectRatio: resolvedAspectRatio,
             duration: resolvedDuration,
             imageUrl: sourceImageUrl,
-            callbackUrl: kieCallbackUrl,
-            progressCallbackUrl: kieCallbackUrl,
+            callbackUrl: `${baseUrl}/api/callback/kie`,
+            progressCallbackUrl: `${baseUrl}/api/callback/kie`,
             isPro: model === "sora-2-pro",
           });
-
-          if (kieResponse.id) {
-            await videoTaskService.updateDuomiTaskId(task.id, kieResponse.id);
-            await videoTaskService.updateTaskStatus(task.id, "running", 0);
-            lastError = null;
-            break;
-          } else {
-            lastError = new Error("创建 KIE AI 任务失败：无返回 ID");
-          }
-        } catch (kieError) {
-          lastError = kieError instanceof Error ? kieError : new Error("未知错误");
-          console.log(`[Generate] KIE AI API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, lastError.message);
-
-          if (attempt > 0) {
-            await videoTaskService.incrementRetryCount(task.id, "generate");
-          }
-
-          if (attempt < MAX_GENERATE_RETRIES - 1) {
-            await delay(1000 * Math.pow(2, attempt));
-          }
         }
-      }
-    } else {
-      // Duomi 供应商
-      const duomiCallbackUrl = `${baseUrl}/api/callback`;
-
-      for (let attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
-        try {
-          const duomiResponse = await duomiService.createVideoTask({
-            prompt,
-            model: model as "sora-2-temporary" | "sora-2-pro",
-            aspectRatio: resolvedAspectRatio,
-            duration: resolvedDuration,
-            imageUrl: sourceImageUrl,
-            callbackUrl: duomiCallbackUrl,
-          });
-
-          if (duomiResponse.id) {
-            await videoTaskService.updateDuomiTaskId(task.id, duomiResponse.id);
-            await videoTaskService.updateTaskStatus(task.id, "running", 0);
-            lastError = null;
-            break;
-          } else {
-            lastError = new Error("创建 Duomi 任务失败：无返回 ID");
-          }
-        } catch (duomiError) {
-          lastError = duomiError instanceof Error ? duomiError : new Error("未知错误");
-          console.log(`[Generate] Duomi API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, lastError.message);
-
-          if (attempt > 0) {
-            await videoTaskService.incrementRetryCount(task.id, "generate");
-          }
-
-          if (attempt < MAX_GENERATE_RETRIES - 1) {
-            await delay(1000 * Math.pow(2, attempt));
-          }
-        }
-      }
-    }
+        return duomiService.createVideoTask({
+          prompt,
+          model: model as "sora-2-temporary" | "sora-2-pro",
+          aspectRatio: resolvedAspectRatio,
+          duration: resolvedDuration,
+          imageUrl: sourceImageUrl,
+          callbackUrl: `${baseUrl}/api/callback`,
+        });
+      },
+    });
 
     // 供应商调用失败
     if (lastError) {

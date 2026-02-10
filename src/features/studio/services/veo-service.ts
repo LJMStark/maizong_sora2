@@ -1,3 +1,5 @@
+import { duomiService } from "./duomi-service";
+
 export interface VeoCreateTaskParams {
   prompt: string;
   aspectRatio: "16:9" | "9:16";
@@ -61,12 +63,7 @@ export const veoService = {
     return response.json();
   },
 
-  /**
-   * 查询 VEO 任务状态
-   * VEO 的查询 API 格式与 DUOMI 完全一致，复用 duomiService.getVideoTaskStatus
-   */
   async getVideoTaskStatus(taskId: string) {
-    const { duomiService } = await import("./duomi-service");
     return duomiService.getVideoTaskStatus(taskId);
   },
 };

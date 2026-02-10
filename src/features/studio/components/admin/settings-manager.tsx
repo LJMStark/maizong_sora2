@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 
 type VideoProvider = "kie" | "duomi" | "veo";
 
+const PROVIDER_LABELS: Record<VideoProvider, string> = {
+  kie: "KIE AI",
+  duomi: "Duomi",
+  veo: "VEO",
+};
+
 interface GlobalSettings {
   dailyFastVideoLimit: number;
   dailyQualityVideoLimit: number;
@@ -110,7 +116,7 @@ export default function SettingsManager() {
               <option value="veo">VEO</option>
             </select>
             <p className="text-xs text-[#9ca3af] mt-1">
-              当前: {settings?.videoFastProvider === "duomi" ? "Duomi" : settings?.videoFastProvider === "veo" ? "VEO" : "KIE AI"}
+              当前: {PROVIDER_LABELS[settings.videoFastProvider]}
             </p>
           </div>
 
@@ -128,7 +134,7 @@ export default function SettingsManager() {
               <option value="veo">VEO</option>
             </select>
             <p className="text-xs text-[#9ca3af] mt-1">
-              当前: {settings?.videoQualityProvider === "duomi" ? "Duomi" : settings?.videoQualityProvider === "veo" ? "VEO" : "KIE AI"}
+              当前: {PROVIDER_LABELS[settings.videoQualityProvider]}
             </p>
           </div>
         </div>

@@ -6,6 +6,46 @@ import { kieService } from "@/features/studio/services/kie-service";
 import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
+import type { VideoTaskType } from "@/db/schema";
+
+function buildTaskResponse(
+  task: VideoTaskType,
+  overrides: Partial<{
+    status: string;
+    progress: number;
+    videoUrl: string | null;
+    errorMessage: string | null;
+    completedAt: Date | null;
+    isRetrying: boolean;
+    canRetry: boolean;
+  }> = {}
+) {
+  return {
+    id: task.id,
+    status: overrides.status ?? task.status,
+    progress: overrides.progress ?? task.progress,
+    videoUrl: overrides.videoUrl !== undefined ? overrides.videoUrl : (task.finalVideoUrl || task.duomiVideoUrl || null),
+    errorMessage: overrides.errorMessage !== undefined ? overrides.errorMessage : task.errorMessage,
+    prompt: task.prompt,
+    createdAt: task.createdAt,
+    completedAt: overrides.completedAt !== undefined ? overrides.completedAt : task.completedAt,
+    isRetrying: overrides.isRetrying ?? false,
+    canRetry: overrides.canRetry ?? false,
+    generateRetryCount: task.generateRetryCount ?? 0,
+    callbackRetryCount: task.callbackRetryCount ?? 0,
+  };
+}
+
+function getProviderStatusFetcher(provider: string | null) {
+  switch (provider) {
+    case "kie":
+      return kieService.getVideoTaskStatus.bind(kieService);
+    case "veo":
+      return veoService.getVideoTaskStatus.bind(veoService);
+    default:
+      return duomiService.getVideoTaskStatus.bind(duomiService);
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -30,69 +70,31 @@ export async function GET(
       return NextResponse.json({ error: "禁止访问" }, { status: 403 });
     }
 
-    // If task is already completed or has an error, return current state
     if (task.status === "succeeded" || task.status === "error") {
-      return NextResponse.json({
-        id: task.id,
-        status: task.status,
+      return NextResponse.json(buildTaskResponse(task, {
         progress: task.status === "succeeded" ? 100 : task.progress,
-        videoUrl: task.finalVideoUrl || task.duomiVideoUrl,
-        errorMessage: task.errorMessage,
-        prompt: task.prompt,
-        createdAt: task.createdAt,
-        completedAt: task.completedAt,
-        isRetrying: false,
         canRetry: task.status === "error",
-        generateRetryCount: task.generateRetryCount ?? 0,
-        callbackRetryCount: task.callbackRetryCount ?? 0,
-      });
+      }));
     }
 
-    // If task is retrying, return retrying state
     if (task.status === "retrying") {
-      return NextResponse.json({
-        id: task.id,
-        status: "retrying",
-        progress: task.progress,
+      return NextResponse.json(buildTaskResponse(task, {
         videoUrl: null,
         errorMessage: null,
-        prompt: task.prompt,
-        createdAt: task.createdAt,
         completedAt: null,
         isRetrying: true,
-        canRetry: false,
-        generateRetryCount: task.generateRetryCount ?? 0,
-        callbackRetryCount: task.callbackRetryCount ?? 0,
-      });
+      }));
     }
 
-    // If task has no duomiTaskId, it means it failed to create
     if (!task.duomiTaskId) {
-      return NextResponse.json({
-        id: task.id,
-        status: task.status,
-        progress: task.progress,
+      return NextResponse.json(buildTaskResponse(task, {
         errorMessage: task.errorMessage || "任务创建中",
-        prompt: task.prompt,
-        createdAt: task.createdAt,
-        completedAt: task.completedAt,
-        isRetrying: false,
-        canRetry: false,
-        generateRetryCount: task.generateRetryCount ?? 0,
-        callbackRetryCount: task.callbackRetryCount ?? 0,
-      });
+      }));
     }
 
-    // Poll provider API for status (fallback when callback is missing)
     try {
-      const isKieProvider = task.provider === "kie";
-      const isVeoProvider = task.provider === "veo";
-
-      const providerStatus = isKieProvider
-        ? await kieService.getVideoTaskStatus(task.duomiTaskId)
-        : isVeoProvider
-          ? await veoService.getVideoTaskStatus(task.duomiTaskId)
-          : await duomiService.getVideoTaskStatus(task.duomiTaskId);
+      const fetchStatus = getProviderStatusFetcher(task.provider);
+      const providerStatus = await fetchStatus(task.duomiTaskId);
 
       const state = providerStatus.state;
       const progress =
@@ -103,65 +105,36 @@ export async function GET(
 
       if (state === "succeeded") {
         if (!providerVideoUrl) {
-          await videoTaskService.updateTaskStatus(
-            task.id,
-            "error",
-            progress,
-            "状态中缺少视频 URL"
-          );
-          return NextResponse.json({
-            id: task.id,
+          await videoTaskService.updateTaskStatus(task.id, "error", progress, "状态中缺少视频 URL");
+          return NextResponse.json(buildTaskResponse(task, {
             status: "error",
             progress,
             errorMessage: "状态中缺少视频 URL",
-            prompt: task.prompt,
-            createdAt: task.createdAt,
             completedAt: new Date(),
-            isRetrying: false,
             canRetry: true,
-            generateRetryCount: task.generateRetryCount ?? 0,
-            callbackRetryCount: task.callbackRetryCount ?? 0,
-          });
+          }));
         }
 
         let finalVideoUrl = providerVideoUrl;
         try {
-          finalVideoUrl = await storageService.uploadVideoFromUrl(
-            task.userId,
-            task.id,
-            providerVideoUrl
-          );
+          finalVideoUrl = await storageService.uploadVideoFromUrl(task.userId, task.id, providerVideoUrl);
         } catch {
           // If upload fails, use the original provider URL
         }
 
-        await videoTaskService.updateTaskVideoUrls(
-          task.id,
-          providerVideoUrl,
-          finalVideoUrl
-        );
+        await videoTaskService.updateTaskVideoUrls(task.id, providerVideoUrl, finalVideoUrl);
 
-        return NextResponse.json({
-          id: task.id,
+        return NextResponse.json(buildTaskResponse(task, {
           status: "succeeded",
           progress: 100,
           videoUrl: finalVideoUrl,
-          prompt: task.prompt,
-          createdAt: task.createdAt,
           completedAt: new Date(),
-          isRetrying: false,
-          canRetry: false,
-          generateRetryCount: task.generateRetryCount ?? 0,
-          callbackRetryCount: task.callbackRetryCount ?? 0,
-        });
-      } else if (state === "error") {
+        }));
+      }
+
+      if (state === "error") {
         const errorMessage = providerStatus.message || providerStatus.error || "视频生成失败";
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
-          progress,
-          errorMessage
-        );
+        await videoTaskService.updateTaskStatus(task.id, "error", progress, errorMessage);
 
         await creditService.refundCredits({
           userId: task.userId,
@@ -171,57 +144,31 @@ export async function GET(
           referenceId: task.id,
         });
 
-        return NextResponse.json({
-          id: task.id,
+        return NextResponse.json(buildTaskResponse(task, {
           status: "error",
           progress,
           errorMessage,
-          prompt: task.prompt,
-          createdAt: task.createdAt,
           completedAt: new Date(),
-          isRetrying: false,
           canRetry: true,
-          generateRetryCount: task.generateRetryCount ?? 0,
-          callbackRetryCount: task.callbackRetryCount ?? 0,
-        });
-      } else {
-        const mappedStatus = state === "running" ? "running" : "pending";
-        if (task.status !== mappedStatus || task.progress !== progress) {
-          await videoTaskService.updateTaskStatus(task.id, mappedStatus, progress);
-        }
-
-        return NextResponse.json({
-          id: task.id,
-          status: mappedStatus,
-          progress,
-          videoUrl: task.finalVideoUrl || task.duomiVideoUrl,
-          errorMessage: task.errorMessage,
-          prompt: task.prompt,
-          createdAt: task.createdAt,
-          completedAt: task.completedAt,
-          isRetrying: false,
-          canRetry: false,
-          generateRetryCount: task.generateRetryCount ?? 0,
-          callbackRetryCount: task.callbackRetryCount ?? 0,
-        });
+        }));
       }
+
+      const mappedStatus = state === "running" ? "running" : "pending";
+      if (task.status !== mappedStatus || task.progress !== progress) {
+        await videoTaskService.updateTaskStatus(task.id, mappedStatus, progress);
+      }
+
+      return NextResponse.json(buildTaskResponse(task, {
+        status: mappedStatus,
+        progress,
+      }));
     } catch (pollError) {
       const message = pollError instanceof Error ? pollError.message : "获取状态失败";
-      const taskStatus = task.status as string;
-      return NextResponse.json({
-        id: task.id,
-        status: task.status,
-        progress: task.progress,
-        videoUrl: task.finalVideoUrl || task.duomiVideoUrl,
+      return NextResponse.json(buildTaskResponse(task, {
         errorMessage: message,
-        prompt: task.prompt,
-        createdAt: task.createdAt,
-        completedAt: task.completedAt,
-        isRetrying: taskStatus === "retrying",
-        canRetry: taskStatus === "error",
-        generateRetryCount: task.generateRetryCount ?? 0,
-        callbackRetryCount: task.callbackRetryCount ?? 0,
-      });
+        isRetrying: task.status === "retrying",
+        canRetry: task.status === "error",
+      }));
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "未知错误";
