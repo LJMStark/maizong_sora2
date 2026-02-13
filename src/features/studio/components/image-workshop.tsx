@@ -336,6 +336,18 @@ const ImageWorkshop: React.FC = () => {
           </div>
         )}
 
+        {/* Generate Button */}
+        <div className="mt-auto pt-8 border-t border-[#e5e5e1]">
+          <button
+            onClick={handleAction}
+            disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
+            className="w-full bg-[#1a1a1a] text-white py-5 text-sm font-bold uppercase tracking-[0.2em] hover:bg-[#2d3436] disabled:bg-gray-400 transition-all flex items-center justify-center gap-3"
+          >
+            <span className="material-symbols-outlined text-sm">auto_awesome</span>
+            {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}
+          </button>
+        </div>
+
       </div>
 
       {/* Canvas Area */}
@@ -402,18 +414,6 @@ const ImageWorkshop: React.FC = () => {
               <ShowcaseGallery onSelectPrompt={(selectedPrompt) => setPrompt(selectedPrompt)} />
             </div>
           )}
-        </div>
-
-        {/* Footer Action */}
-        <div className="absolute bottom-4 right-4 md:bottom-12 md:right-12 flex items-center gap-4 md:gap-10">
-          <button
-            onClick={handleAction}
-            disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
-            className="bg-[#1a1a1a] hover:bg-[#2d3436] disabled:bg-gray-400 text-white px-6 py-3 md:px-12 md:py-5 text-xs md:text-sm font-bold uppercase tracking-[0.15em] md:tracking-[0.2em] transition-all flex items-center gap-2 md:gap-3 shadow-lg hover:shadow-xl"
-          >
-            <span className="material-symbols-outlined text-base md:text-lg">auto_awesome</span>
-            {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}
-          </button>
         </div>
       </div>
     </div>
