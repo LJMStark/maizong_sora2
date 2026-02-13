@@ -97,13 +97,44 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { prompt, provider } = await request.json();
+    const { prompt, provider, imageBase64, imageMimeType, mode } = await request.json();
 
     if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
       return NextResponse.json(
         { error: "Prompt is required" },
         { status: 400 }
       );
+    }
+
+    // 校验图片参数：必须成对出现，且限制大小 (10MB base64 ≈ 7.5MB 原图)
+    const hasImage = imageBase64 && imageMimeType;
+    if (imageBase64 && !imageMimeType) {
+      return NextResponse.json(
+        { error: "imageMimeType is required when imageBase64 is provided" },
+        { status: 400 }
+      );
+    }
+    if (hasImage) {
+      if (typeof imageBase64 !== "string" || typeof imageMimeType !== "string") {
+        return NextResponse.json(
+          { error: "Invalid image parameters" },
+          { status: 400 }
+        );
+      }
+      const MAX_BASE64_LENGTH = 10 * 1024 * 1024; // ~10MB base64
+      if (imageBase64.length > MAX_BASE64_LENGTH) {
+        return NextResponse.json(
+          { error: "Image too large, max 10MB" },
+          { status: 400 }
+        );
+      }
+      const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+      if (!ALLOWED_MIME_TYPES.includes(imageMimeType)) {
+        return NextResponse.json(
+          { error: "Unsupported image type" },
+          { status: 400 }
+        );
+      }
     }
 
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -116,12 +147,61 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
+
+    // 根据是否有图片和模式选择不同的系统提示
+    let systemInstruction: string;
+    if (mode === "random" && hasImage) {
+      // 随机模式 + 有图片：根据图片生成创意提示词
+      const baseConstraint = provider === "veo"
+        ? "生成的提示词必须适合 8 秒单镜头短视频。"
+        : "生成的提示词可以包含多镜头叙事。";
+      systemInstruction = `你是一位视频创意总监。用户会提供一张图片，你需要仔细分析图片内容（主体、场景、色调、氛围），然后生成一个富有创意的视频提示词。
+
+要求：
+- 仔细观察图片中的主体、颜色、材质、场景
+- 基于图片内容设计动态效果（相机运动、光线变化、物体动作等）
+- ${baseConstraint}
+- 提示词要具体、可执行，避免模糊词汇
+- 用中文输出
+- 直接输出提示词，不要任何解释
+
+只输出最终的提示词文本。`;
+    } else if (hasImage) {
+      // 润色模式 + 有图片：结合图片内容润色提示词
+      const basePrompt = provider === "veo" ? VEO_SYSTEM_PROMPT : SORA_SYSTEM_PROMPT;
+      systemInstruction = basePrompt + `
+
+<image_context>
+用户同时提供了一张参考图片。你必须：
+1. 仔细分析图片中的主体、场景、色调、材质
+2. 确保优化后的提示词与图片内容一致
+3. 基于图片中的实际元素来丰富描述（而非凭空想象）
+4. 如果用户的提示词与图片内容不符，以图片为准进行调整
+</image_context>`;
+    } else {
+      systemInstruction = provider === "veo" ? VEO_SYSTEM_PROMPT : SORA_SYSTEM_PROMPT;
+    }
+
     const model = genAI.getGenerativeModel({
       model: "gemini-3-pro-preview",
-      systemInstruction: provider === "veo" ? VEO_SYSTEM_PROMPT : SORA_SYSTEM_PROMPT,
+      systemInstruction,
     });
 
-    const result = await model.generateContent(prompt.trim());
+    // 构建请求内容 - 如果有图片则包含图片
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+    if (hasImage) {
+      parts.push({
+        inlineData: {
+          mimeType: imageMimeType,
+          data: imageBase64,
+        },
+      });
+    }
+
+    parts.push({ text: prompt.trim() });
+
+    const result = await model.generateContent(parts);
     const enhancedPrompt = result.response.text().trim();
 
     if (!enhancedPrompt) {
@@ -135,13 +215,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("[EnhancePrompt] Error:", error);
 
-    // 提供更详细的错误信息
-    const errorMessage = error instanceof Error
-      ? error.message
-      : "Failed to enhance prompt";
-
     return NextResponse.json(
-      { error: errorMessage },
+      { error: "Failed to enhance prompt" },
       { status: 500 }
     );
   }

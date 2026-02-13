@@ -12,15 +12,13 @@ import { useStudio } from "../context/studio-context";
 import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
 import { useSimulatedProgress } from "../hooks/use-simulated-progress";
 
-// 工具函数
+// 工具函数 - 返回完整 data URI (data:mime;base64,xxx)
 const fileToBase64 = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(",")[1];
-      resolve(base64);
+      resolve(reader.result as string);
     };
     reader.onerror = reject;
   });
@@ -33,12 +31,33 @@ const urlToBase64 = async (url: string): Promise<string> => {
     const reader = new FileReader();
     reader.readAsDataURL(blob);
     reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(",")[1];
-      resolve(base64);
+      resolve(reader.result as string);
     };
     reader.onerror = reject;
   });
+};
+
+// 从 data URI 中提取 base64 和 mime type
+const parseDataUri = (dataUri: string): { base64: string; mimeType: string } | null => {
+  const match = dataUri.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+};
+
+// 获取当前图片的 base64 数据（用于 AI 分析）
+const getImageBase64Data = async (
+  sourceImage: File | null,
+  sourcePreview: string | null
+): Promise<{ base64: string; mimeType: string } | null> => {
+  if (sourceImage) {
+    const dataUri = await fileToBase64(sourceImage);
+    return parseDataUri(dataUri);
+  }
+  if (sourcePreview && !sourcePreview.startsWith("blob:")) {
+    const dataUri = await urlToBase64(sourcePreview);
+    return parseDataUri(dataUri);
+  }
+  return null;
 };
 
 interface VideoConfig {
@@ -169,20 +188,74 @@ const VideoWorkshop: React.FC = () => {
     setSourceImage(null);
   };
 
-  const handleRandomPrompt = () => {
-    const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
-    setPrompt(random);
-  };
+  const [randomizing, setRandomizing] = useState(false);
 
-  const handleEnhancePrompt = async () => {
-    if (!prompt.trim()) return;
+  const handleRandomPrompt = async () => {
+    if (enhancing) return;
+    const hasImage = sourceImage || (sourcePreview && !sourcePreview.startsWith("blob:"));
 
-    setEnhancing(true);
+    if (!hasImage) {
+      const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
+      setPrompt(random);
+      return;
+    }
+
+    // 有图片时，调用 AI 分析图片生成提示词
+    setRandomizing(true);
     try {
+      const imageData = await getImageBase64Data(sourceImage, sourcePreview);
+      if (!imageData) {
+        const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
+        setPrompt(random);
+        return;
+      }
+
       const res = await fetch("/api/enhance-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), provider: isVeo ? "veo" : undefined }),
+        body: JSON.stringify({
+          prompt: "根据这张图片，生成一个适合图生视频的创意提示词。描述图片中的主体，并设计一个有趣的动态效果。",
+          provider: isVeo ? "veo" : undefined,
+          imageBase64: imageData.base64,
+          imageMimeType: imageData.mimeType,
+          mode: "random",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.enhancedPrompt) {
+        setPrompt(data.enhancedPrompt);
+      } else {
+        const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
+        setPrompt(random);
+      }
+    } catch {
+      const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
+      setPrompt(random);
+    } finally {
+      setRandomizing(false);
+    }
+  };
+
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim() || randomizing) return;
+
+    setEnhancing(true);
+    try {
+      // 如果有图片，一起传给 AI 分析
+      const imageData = await getImageBase64Data(sourceImage, sourcePreview);
+
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          provider: isVeo ? "veo" : undefined,
+          ...(imageData && {
+            imageBase64: imageData.base64,
+            imageMimeType: imageData.mimeType,
+          }),
+        }),
       });
 
       const data = await res.json();
@@ -232,20 +305,10 @@ const VideoWorkshop: React.FC = () => {
       let imageBase64: string | undefined;
       let imageMimeType: string | undefined;
 
-      if (sourceImage) {
-        const base64Data = await fileToBase64(sourceImage);
-        const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-          imageMimeType = match[1];
-          imageBase64 = match[2];
-        }
-      } else if (sourcePreview && !sourcePreview.startsWith("blob:")) {
-        const base64Data = await urlToBase64(sourcePreview);
-        const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
-        if (match) {
-          imageMimeType = match[1];
-          imageBase64 = match[2];
-        }
+      const imageData = await getImageBase64Data(sourceImage, sourcePreview);
+      if (imageData) {
+        imageBase64 = imageData.base64;
+        imageMimeType = imageData.mimeType;
       }
 
       const response = await fetch("/api/video/generate", {
@@ -456,14 +519,15 @@ const VideoWorkshop: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={handleRandomPrompt}
-              className="flex-1 py-3 px-4 border border-[#e5e5e1] text-[#4b5563] text-[11px] font-bold uppercase tracking-widest hover:border-[#1a1a1a] hover:text-[#1a1a1a] transition-colors flex items-center justify-center gap-2"
+              disabled={randomizing || enhancing}
+              className="flex-1 py-3 px-4 border border-[#e5e5e1] text-[#4b5563] text-[11px] font-bold uppercase tracking-widest hover:border-[#1a1a1a] hover:text-[#1a1a1a] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-base">casino</span>
-              随机
+              {randomizing ? "生成中..." : "随机"}
             </button>
             <button
               onClick={handleEnhancePrompt}
-              disabled={!prompt.trim() || enhancing}
+              disabled={!prompt.trim() || enhancing || randomizing}
               className="flex-1 py-3 px-4 bg-[#8C7355] text-white text-[11px] font-bold uppercase tracking-widest hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-base">auto_fix_high</span>
