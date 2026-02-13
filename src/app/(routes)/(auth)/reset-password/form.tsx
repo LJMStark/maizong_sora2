@@ -10,57 +10,69 @@ import {
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signIn } from "@/lib/auth/client";
-import { useRouter } from "next/navigation";
+import { resetPassword } from "@/lib/auth/client";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { SignInSchema, SignInValues } from "./validate";
-import InputStartIcon from "../components/input-start-icon";
+import { ResetPasswordSchema, ResetPasswordValues } from "./validate";
 import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
-import { AtSign } from "lucide-react";
-import { useTranslations } from 'next-intl';
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-export default function SignInForm() {
+export default function ResetPasswordForm() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const t = useTranslations('auth.signin');
-  const tErrors = useTranslations('auth.errors');
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const t = useTranslations("auth.resetPassword");
+  const tErrors = useTranslations("auth.errors");
 
-  const form = useForm<SignInValues>({
-    resolver: zodResolver(SignInSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-    },
+  const form = useForm<ResetPasswordValues>({
+    resolver: zodResolver(ResetPasswordSchema),
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
-  function onSubmit(data: SignInValues) {
+  function onSubmit(data: ResetPasswordValues) {
     startTransition(async () => {
-      const response = await signIn.username(data);
+      const response = await resetPassword({
+        newPassword: data.password,
+        token,
+      });
 
       if (response.error) {
-        console.log("SIGN_IN:", response.error.message);
-        let errorKey = 'unknown';
-        if (response.error.message === 'Invalid credentials') {
-          errorKey = 'invalidCredentials';
-        } else if (response.error.message?.includes('email is not verified') || response.error.code === 'EMAIL_NOT_VERIFIED') {
-          errorKey = 'emailNotVerified';
-        }
-        toast.error(tErrors(errorKey));
+        toast.error(
+          response.error.message?.includes("INVALID")
+            ? t("invalidToken")
+            : tErrors("unknown")
+        );
       } else {
-        router.push("/");
+        toast.success(t("success"));
+        router.push("/signin");
       }
     });
   }
 
-  const getInputClassName = (fieldName: keyof SignInValues) =>
+  const getInputClassName = (fieldName: keyof ResetPasswordValues) =>
     cn(
       form.formState.errors[fieldName] &&
-        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20",
+        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20"
     );
+
+  if (!token) {
+    return (
+      <div className="text-center space-y-4">
+        <p className="text-[#ef4444]">{t("invalidToken")}</p>
+        <Link
+          href="/forgot-password"
+          className="inline-block text-sm font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
+        >
+          {t("backToSignin")}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -70,35 +82,14 @@ export default function SignInForm() {
       >
         <FormField
           control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputStartIcon icon={AtSign}>
-                  <Input
-                    placeholder={t('usernamePlaceholder')}
-                    className={cn("peer ps-9", getInputClassName("username"))}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="password"
           render={({ field }) => (
             <FormItem>
               <FormControl>
                 <InputPasswordContainer>
                   <Input
-                    id="input-23"
                     className={cn("pe-9", getInputClassName("password"))}
-                    placeholder={t('passwordPlaceholder')}
+                    placeholder={t("passwordPlaceholder")}
                     disabled={isPending}
                     {...field}
                   />
@@ -108,14 +99,25 @@ export default function SignInForm() {
             </FormItem>
           )}
         />
-        <div className="flex justify-end">
-          <Link
-            href="/forgot-password"
-            className="text-sm text-[#6b7280] hover:text-[#8C7355] transition-colors"
-          >
-            {t('forgotPassword')}
-          </Link>
-        </div>
+        <FormField
+          control={form.control}
+          name="confirmPassword"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <InputPasswordContainer>
+                  <Input
+                    className={cn("pe-9", getInputClassName("confirmPassword"))}
+                    placeholder={t("confirmPasswordPlaceholder")}
+                    disabled={isPending}
+                    {...field}
+                  />
+                </InputPasswordContainer>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <Button
           type="submit"
           disabled={isPending}
@@ -124,7 +126,7 @@ export default function SignInForm() {
           {isPending ? (
             <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
           ) : (
-            t('submit')
+            t("submit")
           )}
         </Button>
       </form>

@@ -8,7 +8,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useEffect, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUp } from "@/lib/auth/client";
@@ -23,11 +23,14 @@ import { cn } from "@/lib/utils";
 import { AtSign, MailIcon } from "lucide-react";
 import { GenderRadioGroup } from "../components/gender-radio-group";
 import { useTranslations } from 'next-intl';
+import Link from "next/link";
 
 export default function SignUpForm() {
   const [isPending, startTransition] = useTransition();
+  const [emailSent, setEmailSent] = useState(false);
   const t = useTranslations('auth.signup');
   const tErrors = useTranslations('auth.errors');
+  const tVerify = useTranslations('auth.emailVerification');
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
@@ -52,17 +55,24 @@ export default function SignUpForm() {
   function onSubmit(data: SignUpValues) {
     startTransition(async () => {
       console.log("submit data:", data);
+
+      // Clean up unverified accounts with same email/username
+      await fetch("/api/auth/cleanup-unverified", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, username: data.username }),
+      });
+
       const response = await signUp.email(data);
 
       if (response.error) {
         console.log("SIGN_UP:", response.error.status);
-        // 映射 Better Auth 错误消息
         const errorKey = response.error.message === 'User already exists'
           ? 'userExists'
           : 'unknown';
         toast.error(tErrors(errorKey));
       } else {
-        redirect("/");
+        setEmailSent(true);
       }
     });
   }
@@ -72,6 +82,22 @@ export default function SignUpForm() {
       form.formState.errors[fieldName] &&
         "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20",
     );
+
+  if (emailSent) {
+    return (
+      <div className="text-center space-y-4 py-4">
+        <span className="material-symbols-outlined text-4xl text-[#8C7355]">mark_email_read</span>
+        <h3 className="text-lg font-semibold text-[#1a1a1a]">{tVerify('checkEmail')}</h3>
+        <p className="text-[#4b5563] text-sm">{tVerify('checkEmailDesc')}</p>
+        <Link
+          href="/signin"
+          className="inline-block text-sm font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
+        >
+          {t('signinLink')}
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
