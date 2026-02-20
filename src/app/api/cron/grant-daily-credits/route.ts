@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userSubscription, creditTransaction, user } from "@/db/schema";
-import { eq, and, lte, lt, sql, or, isNull } from "drizzle-orm";
+import { eq, and, lte, lt, gte, sql, or, isNull } from "drizzle-orm";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
 export async function GET(request: NextRequest) {
@@ -42,43 +42,70 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      await db.transaction(async (tx) => {
+      const granted = await db.transaction(async (tx) => {
+        // 先以条件更新“抢占”当日发放资格，避免并发重复发放
+        const claimed = await tx
+          .update(userSubscription)
+          .set({ lastGrantDate: today })
+          .where(
+            and(
+              eq(userSubscription.id, subscription.id),
+              eq(userSubscription.status, "active"),
+              lte(userSubscription.startDate, today),
+              gte(userSubscription.endDate, today),
+              or(
+                isNull(userSubscription.lastGrantDate),
+                lt(userSubscription.lastGrantDate, today)
+              )
+            )
+          )
+          .returning({
+            id: userSubscription.id,
+            userId: userSubscription.userId,
+            packageId: userSubscription.packageId,
+            dailyCredits: userSubscription.dailyCredits,
+          });
+
+        if (claimed.length === 0) {
+          return false;
+        }
+
+        const current = claimed[0];
         const updateResult = await tx
           .update(user)
           .set({
-            credits: sql`${user.credits} + ${subscription.dailyCredits}`,
+            credits: sql`${user.credits} + ${current.dailyCredits}`,
           })
-          .where(eq(user.id, subscription.userId))
+          .where(eq(user.id, current.userId))
           .returning({
             newBalance: user.credits,
           });
 
         if (updateResult.length === 0) {
-          return;
+          throw new Error(`订阅用户不存在: ${current.userId}`);
         }
 
         const newBalance = updateResult[0].newBalance;
-        const balanceBefore = newBalance - subscription.dailyCredits;
+        const balanceBefore = newBalance - current.dailyCredits;
 
         await tx.insert(creditTransaction).values({
           id: crypto.randomUUID(),
-          userId: subscription.userId,
+          userId: current.userId,
           type: "addition",
-          amount: subscription.dailyCredits,
+          amount: current.dailyCredits,
           balanceBefore,
           balanceAfter: newBalance,
-          reason: `会员每日发放 - ${subscription.packageId}`,
+          reason: `会员每日发放 - ${current.packageId}`,
           referenceType: "subscription",
-          referenceId: subscription.id,
+          referenceId: current.id,
         });
 
-        await tx
-          .update(userSubscription)
-          .set({ lastGrantDate: today })
-          .where(eq(userSubscription.id, subscription.id));
+        return true;
       });
 
-      grantedCount++;
+      if (granted) {
+        grantedCount++;
+      }
     }
 
     console.log(

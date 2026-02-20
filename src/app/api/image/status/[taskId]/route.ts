@@ -72,29 +72,47 @@ export async function GET(
           // If upload fails, use the original Duomi URL
         }
 
-        await imageTaskService.updateTaskImageUrls(
+        const updatedTask = await imageTaskService.updateTaskImageUrls(
           task.id,
           duomiImageUrl,
           finalImageUrl
         );
 
+        if (!updatedTask) {
+          const latestTask = await imageTaskService.getTaskById(task.id);
+          if (!latestTask) {
+            return NextResponse.json({ error: "任务未找到" }, { status: 404 });
+          }
+          return NextResponse.json({
+            taskId: latestTask.id,
+            status: latestTask.status,
+            imageUrl: latestTask.finalImageUrl,
+            errorMessage: latestTask.errorMessage,
+          });
+        }
+
         return NextResponse.json({
-          taskId: task.id,
+          taskId: updatedTask.id,
           status: "succeeded",
           imageUrl: finalImageUrl,
         });
       } else if (duomiStatus.state === "error") {
         const errorMessage = duomiStatus.error || "图片生成失败";
-        await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
+        const transitionedTask = await imageTaskService.transitionToErrorIfActive(
+          task.id,
+          errorMessage
+        );
 
-        // Refund credits on error
-        await creditService.refundCredits({
-          userId: task.userId,
-          amount: task.creditCost,
-          reason: "图片生成失败 - 退款",
-          referenceType: "image_task",
-          referenceId: task.id,
-        });
+        if (transitionedTask) {
+          // Refund credits on error
+          await creditService.refundCredits({
+            userId: task.userId,
+            amount: task.creditCost,
+            reason: "图片生成失败 - 退款",
+            referenceType: "image_task",
+            referenceId: task.id,
+          });
+        }
 
         return NextResponse.json({
           taskId: task.id,

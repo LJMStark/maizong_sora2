@@ -27,6 +27,44 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function redactSensitiveHeaders(headers: Headers): Record<string, string> {
+  const result = Object.fromEntries(headers.entries());
+  if (result.authorization) {
+    result.authorization = "[REDACTED]";
+  }
+  if (result["x-duomi-signature"]) {
+    result["x-duomi-signature"] = "[REDACTED]";
+  }
+  return result;
+}
+
+async function transitionTaskToErrorAndRefund(params: {
+  task: VideoTaskType;
+  progress: number;
+  errorMessage: string;
+  refundReason: string;
+}): Promise<boolean> {
+  const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+    taskId: params.task.id,
+    progress: params.progress,
+    errorMessage: params.errorMessage,
+  });
+
+  if (!transitionedTask) {
+    return false;
+  }
+
+  await creditService.refundCredits({
+    userId: params.task.userId,
+    amount: params.task.creditCost,
+    reason: params.refundReason,
+    referenceType: "video_task",
+    referenceId: params.task.id,
+  });
+
+  return true;
+}
+
 // 异步重试 Duomi 任务
 async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "generation"): Promise<void> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
@@ -71,13 +109,11 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
     if (currentRetryCount >= maxRetries) {
       // 所有重试都失败，标记错误并退款
       const finalErrorMessage = errorType === "generation" ? PROMPT_REVIEW_ERROR : errorMessage;
-      await videoTaskService.updateTaskStatus(task.id, "error", 0, finalErrorMessage);
-      await creditService.refundCredits({
-        userId: task.userId,
-        amount: task.creditCost,
-        reason: "视频生成失败 - 退款",
-        referenceType: "video_task",
-        referenceId: task.id,
+      await transitionTaskToErrorAndRefund({
+        task,
+        progress: 0,
+        errorMessage: finalErrorMessage,
+        refundReason: "视频生成失败 - 退款",
       });
     }
   }
@@ -138,7 +174,10 @@ export async function POST(request: NextRequest) {
 
     // 记录回调请求详情用于调试
     console.log("[Callback] Received callback request");
-    console.log("[Callback] Headers:", JSON.stringify(Object.fromEntries(request.headers.entries())));
+    console.log(
+      "[Callback] Headers:",
+      JSON.stringify(redactSensitiveHeaders(request.headers))
+    );
     console.log("[Callback] Body:", bodyText);
 
     // 验证回调请求
@@ -173,7 +212,10 @@ export async function POST(request: NextRequest) {
 
     const normalizedStatus = statusRaw === "failed" ? "error" : statusRaw;
 
-    const task = await videoTaskService.getTaskByDuomiId(taskId);
+    const task = await videoTaskService.getTaskByProviderTaskId(
+      taskId,
+      "duomi"
+    );
 
     if (!task) {
       return NextResponse.json({ error: "任务不存在" }, { status: 404 });
@@ -185,20 +227,11 @@ export async function POST(request: NextRequest) {
 
     if (normalizedStatus === "succeeded") {
       if (!videoUrl) {
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
+        await transitionTaskToErrorAndRefund({
+          task,
           progress,
-          "回调中缺少视频 URL"
-        );
-
-        // 退还积分
-        await creditService.refundCredits({
-          userId: task.userId,
-          amount: task.creditCost,
-          reason: "视频生成失败 - 缺少视频地址",
-          referenceType: "video_task",
-          referenceId: task.id,
+          errorMessage: "回调中缺少视频 URL",
+          refundReason: "视频生成失败 - 缺少视频地址",
         });
 
         return NextResponse.json({ success: true });
@@ -216,14 +249,21 @@ export async function POST(request: NextRequest) {
         // If upload fails, use the original Duomi URL
       }
 
-      await videoTaskService.updateTaskVideoUrls(
+      const updatedTask = await videoTaskService.updateTaskVideoUrls(
         task.id,
         videoUrl,
         finalVideoUrl
       );
+
+      if (!updatedTask) {
+        console.warn(
+          `[Callback] Skip succeeded transition because task is already in error state: ${task.id}`
+        );
+      }
     } else if (normalizedStatus === "error") {
       const currentRetryCount = task.callbackRetryCount ?? 0;
       const rawErrorMessage = errorMessage || "";
+      let terminalErrorMessage: string | null = null;
 
       // 根据错误类型决定重试策略
       if (isResourceAllocationError(rawErrorMessage)) {
@@ -243,12 +283,7 @@ export async function POST(request: NextRequest) {
 
         // 资源分配重试用尽
         console.log("[Callback] 资源分配重试用尽，标记为错误状态");
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
-          progress || 0,
-          "服务器繁忙，请稍后重试"
-        );
+        terminalErrorMessage = "服务器繁忙，请稍后重试";
       } else if (isGenerationFailedError(rawErrorMessage)) {
         // 生成失败错误：只重试 1 次
         if (currentRetryCount < MAX_GENERATION_FAILED_RETRIES) {
@@ -266,30 +301,18 @@ export async function POST(request: NextRequest) {
 
         // 生成失败重试用尽，提示用户修改提示词
         console.log("[Callback] 生成失败，提示用户修改提示词");
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
-          progress || 0,
-          PROMPT_REVIEW_ERROR
-        );
+        terminalErrorMessage = PROMPT_REVIEW_ERROR;
       } else {
         // 其他未知错误：不重试，直接失败
         console.log("[Callback] 未知错误，标记为错误状态:", rawErrorMessage);
-        await videoTaskService.updateTaskStatus(
-          task.id,
-          "error",
-          progress || 0,
-          rawErrorMessage || "视频生成失败"
-        );
+        terminalErrorMessage = rawErrorMessage || "视频生成失败";
       }
 
-      // 退款
-      await creditService.refundCredits({
-        userId: task.userId,
-        amount: task.creditCost,
-        reason: "视频生成失败 - 退款",
-        referenceType: "video_task",
-        referenceId: task.id,
+      await transitionTaskToErrorAndRefund({
+        task,
+        progress: progress || 0,
+        errorMessage: terminalErrorMessage || "视频生成失败",
+        refundReason: "视频生成失败 - 退款",
       });
     } else if (normalizedStatus === "running" || normalizedStatus === "pending") {
       const mappedStatus = normalizedStatus === "running" ? "running" : "pending";

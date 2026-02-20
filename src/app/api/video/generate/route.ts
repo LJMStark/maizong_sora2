@@ -10,6 +10,7 @@ import { storageService } from "@/features/studio/services/storage-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateVideoSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
+import { ensureUserActive } from "@/lib/auth/ensure-active-user";
 import type { VideoProvider } from "@/features/studio/services/video-task-service";
 
 const MAX_GENERATE_RETRIES = 3;
@@ -72,6 +73,11 @@ export async function POST(request: NextRequest) {
   }
 
   const userId = session.user.id;
+
+  const activeCheck = await ensureUserActive(userId);
+  if (!activeCheck.ok) {
+    return NextResponse.json({ error: activeCheck.error }, { status: activeCheck.status });
+  }
 
   const { success } = await rateLimiter.limit(userId, "videoGenerate");
   if (!success) {
@@ -152,7 +158,7 @@ export async function POST(request: NextRequest) {
     const { transactionId } = await creditService.deductCredits({
       userId,
       amount: creditCost,
-      reason: `视频生成（${mode === "fast" ? "快速" : "质量"}模式）`,
+      reason: `视频生成（${requestedVideoType === "fast" ? "快速" : "质量"}模式）`,
       referenceType: "video_task",
     });
 
@@ -160,17 +166,29 @@ export async function POST(request: NextRequest) {
     const resolvedAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";
     const resolvedDuration = isVeo ? 8 : (duration || 10);
 
-    const task = await videoTaskService.createTask({
-      userId,
-      model,
-      prompt,
-      aspectRatio: aspectRatio || "16:9",
-      duration: resolvedDuration,
-      sourceImageUrl,
-      creditCost,
-      creditTransactionId: transactionId,
-      provider: actualProvider,
-    });
+    let task: Awaited<ReturnType<typeof videoTaskService.createTask>>;
+    try {
+      task = await videoTaskService.createTask({
+        userId,
+        model,
+        prompt,
+        aspectRatio: aspectRatio || "16:9",
+        duration: resolvedDuration,
+        sourceImageUrl,
+        creditCost,
+        creditTransactionId: transactionId,
+        provider: actualProvider,
+      });
+    } catch (createTaskError) {
+      await creditService.refundCredits({
+        userId,
+        amount: creditCost,
+        reason: "视频任务创建失败 - 退款",
+        referenceType: "credit_transaction",
+        referenceId: transactionId,
+      });
+      throw createTaskError;
+    }
 
     const lastError = await callProviderWithRetry({
       taskId: task.id,
@@ -207,14 +225,21 @@ export async function POST(request: NextRequest) {
 
     // 供应商调用失败
     if (lastError) {
-      await videoTaskService.updateTaskStatus(task.id, "error", 0, lastError.message);
-      await creditService.refundCredits({
-        userId,
-        amount: creditCost,
-        reason: "视频生成失败 - 退款",
-        referenceType: "video_task",
-        referenceId: task.id,
+      const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+        taskId: task.id,
+        progress: 0,
+        errorMessage: lastError.message,
       });
+
+      if (transitionedTask) {
+        await creditService.refundCredits({
+          userId,
+          amount: creditCost,
+          reason: "视频生成失败 - 退款",
+          referenceType: "video_task",
+          referenceId: task.id,
+        });
+      }
     }
 
     return NextResponse.json({

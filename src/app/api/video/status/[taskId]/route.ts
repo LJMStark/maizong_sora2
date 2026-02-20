@@ -105,7 +105,22 @@ export async function GET(
 
       if (state === "succeeded") {
         if (!providerVideoUrl) {
-          await videoTaskService.updateTaskStatus(task.id, "error", progress, "状态中缺少视频 URL");
+          const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+            taskId: task.id,
+            progress,
+            errorMessage: "状态中缺少视频 URL",
+          });
+
+          if (transitionedTask) {
+            await creditService.refundCredits({
+              userId: task.userId,
+              amount: task.creditCost,
+              reason: "视频生成失败 - 缺少视频地址",
+              referenceType: "video_task",
+              referenceId: task.id,
+            });
+          }
+
           return NextResponse.json(buildTaskResponse(task, {
             status: "error",
             progress,
@@ -128,9 +143,24 @@ export async function GET(
           // If upload fails, use the original provider URL
         }
 
-        await videoTaskService.updateTaskVideoUrls(task.id, providerVideoUrl, finalVideoUrl);
+        const updatedTask = await videoTaskService.updateTaskVideoUrls(
+          task.id,
+          providerVideoUrl,
+          finalVideoUrl
+        );
 
-        return NextResponse.json(buildTaskResponse(task, {
+        if (!updatedTask) {
+          const latestTask = await videoTaskService.getTaskById(task.id);
+          if (!latestTask) {
+            return NextResponse.json({ error: "任务未找到" }, { status: 404 });
+          }
+          return NextResponse.json(buildTaskResponse(latestTask, {
+            progress: latestTask.status === "succeeded" ? 100 : latestTask.progress,
+            canRetry: latestTask.status === "error",
+          }));
+        }
+
+        return NextResponse.json(buildTaskResponse(updatedTask, {
           status: "succeeded",
           progress: 100,
           videoUrl: finalVideoUrl,
@@ -140,15 +170,21 @@ export async function GET(
 
       if (state === "error") {
         const errorMessage = providerStatus.message || providerStatus.error || "视频生成失败";
-        await videoTaskService.updateTaskStatus(task.id, "error", progress, errorMessage);
-
-        await creditService.refundCredits({
-          userId: task.userId,
-          amount: task.creditCost,
-          reason: "视频生成失败 - 退款",
-          referenceType: "video_task",
-          referenceId: task.id,
+        const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+          taskId: task.id,
+          progress,
+          errorMessage,
         });
+
+        if (transitionedTask) {
+          await creditService.refundCredits({
+            userId: task.userId,
+            amount: task.creditCost,
+            reason: "视频生成失败 - 退款",
+            referenceType: "video_task",
+            referenceId: task.id,
+          });
+        }
 
         return NextResponse.json(buildTaskResponse(task, {
           status: "error",

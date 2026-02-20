@@ -7,9 +7,11 @@ import AnnouncementManager from "./announcement-manager";
 import UserManager from "./user-manager";
 import RedemptionCodeManager from "./redemption-code-manager";
 import SettingsManager from "./settings-manager";
+import OrderManager from "./order-manager";
 
 const TABS = [
   { key: "announcements", label: "公告管理", icon: "campaign" },
+  { key: "orders", label: "订单管理", icon: "receipt_long" },
   { key: "users", label: "用户管理", icon: "group" },
   { key: "codes", label: "兑换码", icon: "confirmation_number" },
   { key: "settings", label: "系统设置", icon: "settings" },
@@ -64,6 +66,7 @@ export default function AdminPanel() {
 
       <div className="flex-1 overflow-y-auto bg-[#faf9f6] p-6">
         {activeTab === "announcements" && <AnnouncementManager />}
+        {activeTab === "orders" && <OrderManager />}
         {activeTab === "users" && <UserManager />}
         {activeTab === "codes" && <RedemptionCodeManager />}
         {activeTab === "settings" && <SettingsManager />}

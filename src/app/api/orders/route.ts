@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { creditOrder, creditPackage, user } from "@/db/schema";
 import { getServerSession } from "@/lib/auth/get-session";
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 import { rateLimiter } from "@/lib/rate-limit";
 
@@ -69,45 +69,55 @@ export async function POST(request: NextRequest) {
     }
 
     const recentThreshold = new Date(Date.now() - 30 * 60 * 1000);
-    const existingPendingOrder = await db
-      .select({
-        id: creditOrder.id,
-      })
-      .from(creditOrder)
-      .where(
-        and(
-          eq(creditOrder.userId, session.user.id),
-          eq(creditOrder.packageId, normalizedPackageId),
-          eq(creditOrder.status, "pending"),
-          gt(creditOrder.createdAt, recentThreshold)
+    const lockKey = `credit_order:${session.user.id}:${normalizedPackageId}`;
+
+    const order = await db.transaction(async (tx) => {
+      // 同一用户同一套餐串行化，避免并发生成多个 pending 订单
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+      const existingPendingOrder = await tx
+        .select({
+          id: creditOrder.id,
+        })
+        .from(creditOrder)
+        .where(
+          and(
+            eq(creditOrder.userId, session.user.id),
+            eq(creditOrder.packageId, normalizedPackageId),
+            eq(creditOrder.status, "pending"),
+            gt(creditOrder.createdAt, recentThreshold)
+          )
         )
-      )
-      .orderBy(desc(creditOrder.createdAt))
-      .limit(1);
+        .orderBy(desc(creditOrder.createdAt))
+        .limit(1);
 
-    if (existingPendingOrder.length > 0) {
-      return NextResponse.json({
-        success: true,
-        orderId: existingPendingOrder[0].id,
-        package: pkg[0],
-        reused: true,
+      if (existingPendingOrder.length > 0) {
+        return {
+          orderId: existingPendingOrder[0].id,
+          reused: true,
+        };
+      }
+
+      const orderId = generateOrderId();
+      await tx.insert(creditOrder).values({
+        id: orderId,
+        userId: session.user.id,
+        packageId: normalizedPackageId,
+        amount: pkg[0].price,
+        status: "pending",
       });
-    }
 
-    const orderId = generateOrderId();
-
-    await db.insert(creditOrder).values({
-      id: orderId,
-      userId: session.user.id,
-      packageId: normalizedPackageId,
-      amount: pkg[0].price,
-      status: "pending",
+      return {
+        orderId,
+        reused: false,
+      };
     });
 
     return NextResponse.json({
       success: true,
-      orderId,
+      orderId: order.orderId,
       package: pkg[0],
+      reused: order.reused,
     });
   } catch (error) {
     console.error("[Orders] Error creating order:", error);

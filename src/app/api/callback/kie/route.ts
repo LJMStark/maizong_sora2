@@ -23,6 +23,33 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function transitionTaskToErrorAndRefund(params: {
+  task: VideoTaskType;
+  progress: number;
+  errorMessage: string;
+  refundReason: string;
+}): Promise<boolean> {
+  const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+    taskId: params.task.id,
+    progress: params.progress,
+    errorMessage: params.errorMessage,
+  });
+
+  if (!transitionedTask) {
+    return false;
+  }
+
+  await creditService.refundCredits({
+    userId: params.task.userId,
+    amount: params.task.creditCost,
+    reason: params.refundReason,
+    referenceType: "video_task",
+    referenceId: params.task.id,
+  });
+
+  return true;
+}
+
 async function retryKieTask(
   task: VideoTaskType,
   errorType: "resource" | "generation"
@@ -73,18 +100,11 @@ async function retryKieTask(
     if (currentRetryCount >= maxRetries) {
       const finalErrorMessage =
         errorType === "generation" ? PROMPT_REVIEW_ERROR : errorMessage;
-      await videoTaskService.updateTaskStatus(
-        task.id,
-        "error",
-        0,
-        finalErrorMessage
-      );
-      await creditService.refundCredits({
-        userId: task.userId,
-        amount: task.creditCost,
-        reason: "视频生成失败 - 退款",
-        referenceType: "video_task",
-        referenceId: task.id,
+      await transitionTaskToErrorAndRefund({
+        task,
+        progress: 0,
+        errorMessage: finalErrorMessage,
+        refundReason: "视频生成失败 - 退款",
       });
     }
   }
@@ -228,17 +248,13 @@ export async function POST(request: NextRequest) {
       "kie"
     );
 
-    // 兜底: 尝试不带 provider 查找 (兼容旧数据)
-    const resolvedTask =
-      task ?? (await videoTaskService.getTaskByDuomiId(taskId as string));
-
-    if (!resolvedTask) {
+    if (!task) {
       return NextResponse.json({ error: "任务不存在" }, { status: 404 });
     }
 
     if (
-      resolvedTask.status === "succeeded" ||
-      resolvedTask.status === "error"
+      task.status === "succeeded" ||
+      task.status === "error"
     ) {
       return NextResponse.json({ success: true });
     }
@@ -247,18 +263,11 @@ export async function POST(request: NextRequest) {
       const videoUrl = extractVideoUrl(body);
 
       if (!videoUrl) {
-        await videoTaskService.updateTaskStatus(
-          resolvedTask.id,
-          "error",
-          progress as number,
-          "回调中缺少视频 URL"
-        );
-        await creditService.refundCredits({
-          userId: resolvedTask.userId,
-          amount: resolvedTask.creditCost,
-          reason: "视频生成失败 - 缺少视频地址",
-          referenceType: "video_task",
-          referenceId: resolvedTask.id,
+        await transitionTaskToErrorAndRefund({
+          task,
+          progress: (progress as number) || 0,
+          errorMessage: "回调中缺少视频 URL",
+          refundReason: "视频生成失败 - 缺少视频地址",
         });
         return NextResponse.json({ success: true });
       }
@@ -266,22 +275,29 @@ export async function POST(request: NextRequest) {
       let finalVideoUrl = videoUrl;
       try {
         finalVideoUrl = await storageService.uploadVideoFromUrl(
-          resolvedTask.userId,
-          resolvedTask.id,
+          task.userId,
+          task.id,
           videoUrl
         );
       } catch {
         // If upload fails, use the original KIE URL
       }
 
-      await videoTaskService.updateTaskVideoUrls(
-        resolvedTask.id,
+      const updatedTask = await videoTaskService.updateTaskVideoUrls(
+        task.id,
         videoUrl,
         finalVideoUrl
       );
+
+      if (!updatedTask) {
+        console.warn(
+          `[KIE Callback] Skip succeeded transition because task is already in error state: ${task.id}`
+        );
+      }
     } else if (normalizedStatus === "error") {
-      const currentRetryCount = resolvedTask.callbackRetryCount ?? 0;
+      const currentRetryCount = task.callbackRetryCount ?? 0;
       const rawErrorMessage = (errorMessage as string) || "";
+      let terminalErrorMessage: string | null = null;
 
       if (isResourceAllocationError(rawErrorMessage)) {
         if (currentRetryCount < MAX_RESOURCE_RETRIES) {
@@ -289,80 +305,64 @@ export async function POST(request: NextRequest) {
             `[KIE Callback] 资源分配中，开始重试 (${currentRetryCount + 1}/${MAX_RESOURCE_RETRIES})`
           );
           await videoTaskService.updateTaskStatus(
-            resolvedTask.id,
+            task.id,
             "retrying",
             0
           );
           await videoTaskService.incrementRetryCount(
-            resolvedTask.id,
+            task.id,
             "callback"
           );
-          retryKieTask(resolvedTask, "resource").catch((err) => {
+          retryKieTask(task, "resource").catch((err) => {
             console.error("[KIE Callback] 重试失败:", err);
           });
           return NextResponse.json({ success: true });
         }
 
         console.log("[KIE Callback] 资源分配重试用尽，标记为错误状态");
-        await videoTaskService.updateTaskStatus(
-          resolvedTask.id,
-          "error",
-          (progress as number) || 0,
-          "服务器繁忙，请稍后重试"
-        );
+        terminalErrorMessage = "服务器繁忙，请稍后重试";
       } else if (isGenerationFailedError(rawErrorMessage)) {
         if (currentRetryCount < MAX_GENERATION_FAILED_RETRIES) {
           console.log(
             `[KIE Callback] 生成失败，尝试重试 (${currentRetryCount + 1}/${MAX_GENERATION_FAILED_RETRIES})`
           );
           await videoTaskService.updateTaskStatus(
-            resolvedTask.id,
+            task.id,
             "retrying",
             0
           );
           await videoTaskService.incrementRetryCount(
-            resolvedTask.id,
+            task.id,
             "callback"
           );
-          retryKieTask(resolvedTask, "generation").catch((err) => {
+          retryKieTask(task, "generation").catch((err) => {
             console.error("[KIE Callback] 重试失败:", err);
           });
           return NextResponse.json({ success: true });
         }
 
         console.log("[KIE Callback] 生成失败，提示用户修改提示词");
-        await videoTaskService.updateTaskStatus(
-          resolvedTask.id,
-          "error",
-          (progress as number) || 0,
-          PROMPT_REVIEW_ERROR
-        );
+        terminalErrorMessage = PROMPT_REVIEW_ERROR;
       } else {
         console.log(
           "[KIE Callback] 未知错误，标记为错误状态:",
           rawErrorMessage
         );
-        await videoTaskService.updateTaskStatus(
-          resolvedTask.id,
-          "error",
-          (progress as number) || 0,
-          rawErrorMessage || "视频生成失败"
-        );
+        terminalErrorMessage = rawErrorMessage || "视频生成失败";
       }
 
-      await creditService.refundCredits({
-        userId: resolvedTask.userId,
-        amount: resolvedTask.creditCost,
-        reason: "视频生成失败 - 退款",
-        referenceType: "video_task",
-        referenceId: resolvedTask.id,
+      await transitionTaskToErrorAndRefund({
+        task,
+        progress: (progress as number) || 0,
+        errorMessage: terminalErrorMessage || "视频生成失败",
+        refundReason: "视频生成失败 - 退款",
       });
     } else if (
       normalizedStatus === "running" ||
       normalizedStatus === "pending"
     ) {
       await videoTaskService.updateTaskStatus(
-        resolvedTask.id,
+        task.id,
         normalizedStatus,
         (progress as number) || 0
       );

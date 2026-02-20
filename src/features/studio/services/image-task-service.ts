@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { imageTask, ImageTaskType } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 
 export interface CreateImageTaskParams {
   userId: string;
@@ -77,7 +77,7 @@ export const imageTaskService = {
     taskId: string,
     duomiImageUrl: string,
     finalImageUrl: string
-  ): Promise<ImageTaskType> {
+  ): Promise<ImageTaskType | null> {
     const [task] = await db
       .update(imageTask)
       .set({
@@ -86,10 +86,15 @@ export const imageTaskService = {
         status: "succeeded",
         completedAt: new Date(),
       })
-      .where(eq(imageTask.id, taskId))
+      .where(
+        and(
+          eq(imageTask.id, taskId),
+          ne(imageTask.status, "error")
+        )
+      )
       .returning();
 
-    return task;
+    return task || null;
   },
 
   async getTaskById(taskId: string): Promise<ImageTaskType | null> {
@@ -131,5 +136,33 @@ export const imageTaskService = {
     return tasks.filter(
       (task) => task.status === "pending" || task.status === "running"
     );
+  },
+
+  async transitionToErrorIfActive(
+    taskId: string,
+    errorMessage?: string
+  ): Promise<ImageTaskType | null> {
+    const updateData: Partial<ImageTaskType> = {
+      status: "error",
+      completedAt: new Date(),
+    };
+
+    if (errorMessage !== undefined) {
+      updateData.errorMessage = errorMessage;
+    }
+
+    const [task] = await db
+      .update(imageTask)
+      .set(updateData)
+      .where(
+        and(
+          eq(imageTask.id, taskId),
+          ne(imageTask.status, "succeeded"),
+          ne(imageTask.status, "error")
+        )
+      )
+      .returning();
+
+    return task || null;
   },
 };

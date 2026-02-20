@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { videoTask, VideoTaskType } from "@/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, ne } from "drizzle-orm";
 
 export type VideoProvider = "duomi" | "kie" | "veo";
 
@@ -87,7 +87,7 @@ export const videoTaskService = {
     taskId: string,
     duomiVideoUrl: string,
     finalVideoUrl: string
-  ): Promise<VideoTaskType> {
+  ): Promise<VideoTaskType | null> {
     const [task] = await db
       .update(videoTask)
       .set({
@@ -97,10 +97,15 @@ export const videoTaskService = {
         progress: 100,
         completedAt: new Date(),
       })
-      .where(eq(videoTask.id, taskId))
+      .where(
+        and(
+          eq(videoTask.id, taskId),
+          ne(videoTask.status, "error")
+        )
+      )
       .returning();
 
-    return task;
+    return task || null;
   },
 
   async getTaskById(taskId: string): Promise<VideoTaskType | null> {
@@ -201,5 +206,38 @@ export const videoTaskService = {
       .returning();
 
     return updatedTask;
+  },
+
+  async transitionToErrorIfActive(params: {
+    taskId: string;
+    progress?: number;
+    errorMessage?: string;
+  }): Promise<VideoTaskType | null> {
+    const updateData: Partial<VideoTaskType> = {
+      status: "error",
+      completedAt: new Date(),
+    };
+
+    if (params.progress !== undefined) {
+      updateData.progress = params.progress;
+    }
+
+    if (params.errorMessage !== undefined) {
+      updateData.errorMessage = params.errorMessage;
+    }
+
+    const [task] = await db
+      .update(videoTask)
+      .set(updateData)
+      .where(
+        and(
+          eq(videoTask.id, params.taskId),
+          ne(videoTask.status, "succeeded"),
+          ne(videoTask.status, "error")
+        )
+      )
+      .returning();
+
+    return task || null;
   },
 };
