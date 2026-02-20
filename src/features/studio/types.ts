@@ -38,7 +38,7 @@ export interface CreditTransaction {
 
 export interface VideoTask {
   id: string;
-  status: 'pending' | 'running' | 'succeeded' | 'error';
+  status: 'pending' | 'running' | 'succeeded' | 'error' | 'retrying';
   progress: number;
   prompt: string;
   aspectRatio: string;

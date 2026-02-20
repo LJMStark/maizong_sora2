@@ -114,6 +114,36 @@ export const videoLimitService = {
   },
 
   /**
+   * 获取视频配置版本（用于前端热更新）
+   */
+  async getConfigVersion(): Promise<string> {
+    const latestConfig = await db
+      .select({
+        latestUpdatedAt: sql<Date | string | null>`max(${systemConfig.updatedAt})`,
+      })
+      .from(systemConfig)
+      .where(
+        sql`${systemConfig.key} IN (
+          'video_fast_provider', 'video_quality_provider',
+          'credit_cost_video_fast', 'credit_cost_video_quality',
+          'daily_fast_video_limit', 'daily_quality_video_limit'
+        )`
+      );
+
+    const latestValue = latestConfig[0]?.latestUpdatedAt;
+    if (!latestValue) {
+      return "0";
+    }
+
+    const latestDate =
+      latestValue instanceof Date ? latestValue : new Date(latestValue);
+
+    return Number.isNaN(latestDate.getTime())
+      ? "0"
+      : latestDate.toISOString();
+  },
+
+  /**
    * 检查用户是否可以生成视频
    */
   async checkLimit(userId: string, videoType: VideoType): Promise<LimitCheckResult> {

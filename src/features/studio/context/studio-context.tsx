@@ -6,6 +6,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
   ReactNode,
 } from "react";
 import {
@@ -19,6 +20,14 @@ import {
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
+function isActiveVideoTask(task: VideoTask): boolean {
+  return (
+    task.status === "pending" ||
+    task.status === "running" ||
+    task.status === "retrying"
+  );
+}
+
 export function StudioProvider({ children }: { children: ReactNode }) {
   const [appState, setAppState] = useState<AppState>({
     credits: 0,
@@ -27,6 +36,13 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     videoTasks: [],
     imageTasks: [],
   });
+  const [pendingConfigReload, setPendingConfigReload] = useState(false);
+  const videoTasksRef = useRef<VideoTask[]>([]);
+  const reloadingRef = useRef(false);
+
+  useEffect(() => {
+    videoTasksRef.current = appState.videoTasks;
+  }, [appState.videoTasks]);
 
   const refreshCredits = useCallback(async () => {
     try {
@@ -71,7 +87,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refreshVideoTasks = useCallback(async () => {
+  const fetchVideoTasks = useCallback(async (): Promise<VideoTask[] | null> => {
     try {
       const response = await fetch("/api/video/tasks");
       if (response.ok) {
@@ -79,7 +95,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const formattedTasks: VideoTask[] = data.tasks.map(
           (task: {
             id: string;
-            status: "pending" | "running" | "succeeded" | "error";
+            status: "pending" | "running" | "succeeded" | "error" | "retrying";
             progress: number;
             prompt: string;
             aspectRatio: string;
@@ -124,11 +140,19 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             history: [...videoHistory, ...existingNonVideoHistory],
           };
         });
+
+        return formattedTasks;
       }
     } catch (error) {
       console.error("刷新视频任务失败:", error);
     }
+
+    return null;
   }, []);
+
+  const refreshVideoTasks = useCallback(async () => {
+    await fetchVideoTasks();
+  }, [fetchVideoTasks]);
 
   const refreshImageTasks = useCallback(async () => {
     try {
@@ -194,6 +218,94 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     refreshVideoTasks();
     refreshImageTasks();
   }, [refreshCredits, refreshCreditHistory, refreshVideoTasks, refreshImageTasks]);
+
+  const triggerReload = useCallback(() => {
+    if (reloadingRef.current) {
+      return;
+    }
+
+    reloadingRef.current = true;
+    window.location.reload();
+  }, []);
+
+  const handleConfigUpdate = useCallback(async () => {
+    if (reloadingRef.current) {
+      return;
+    }
+
+    const latestTasks = await fetchVideoTasks();
+    const tasksToCheck = latestTasks ?? videoTasksRef.current;
+    const hasActiveVideoTasks = tasksToCheck.some(isActiveVideoTask);
+
+    if (hasActiveVideoTasks) {
+      setPendingConfigReload(true);
+      return;
+    }
+
+    triggerReload();
+  }, [fetchVideoTasks, triggerReload]);
+
+  useEffect(() => {
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let eventSource: EventSource | null = null;
+    let stopped = false;
+
+    const connect = () => {
+      if (stopped) {
+        return;
+      }
+
+      eventSource = new EventSource("/api/video/config/stream");
+
+      eventSource.addEventListener("config-updated", () => {
+        void handleConfigUpdate();
+      });
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+
+        if (!stopped) {
+          reconnectTimer = setTimeout(connect, 5000);
+        }
+      };
+    };
+
+    connect();
+
+    return () => {
+      stopped = true;
+      eventSource?.close();
+
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+      }
+    };
+  }, [handleConfigUpdate]);
+
+  useEffect(() => {
+    if (!pendingConfigReload || reloadingRef.current) {
+      return;
+    }
+
+    const hasActiveVideoTasks = appState.videoTasks.some(isActiveVideoTask);
+    if (!hasActiveVideoTasks) {
+      triggerReload();
+    }
+  }, [appState.videoTasks, pendingConfigReload, triggerReload]);
+
+  useEffect(() => {
+    if (!pendingConfigReload || reloadingRef.current) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      void refreshVideoTasks();
+    }, 3000);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, [pendingConfigReload, refreshVideoTasks]);
 
   const deductCredits = (amount: number, reason: string = "Service Usage") => {
     setAppState((prev) => ({

@@ -12,6 +12,7 @@ const getStatusBadge = (status: VideoTask["status"], t: any) => {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700",
     running: "bg-blue-100 text-blue-700",
+    retrying: "bg-amber-100 text-amber-700",
     succeeded: "bg-green-100 text-green-700",
     error: "bg-red-100 text-red-700",
   };
@@ -19,6 +20,7 @@ const getStatusBadge = (status: VideoTask["status"], t: any) => {
   const labels = {
     pending: t("status.pending"),
     running: t("status.running"),
+    retrying: t("status.running"),
     succeeded: t("status.succeeded"),
     error: t("status.error"),
   };
@@ -160,7 +162,10 @@ const AssetsGallery: React.FC = () => {
           {activeTab === "video" ? (
             <div className="flex flex-col gap-6">
               {videoTasks.filter(
-                (t) => t.status === "pending" || t.status === "running"
+                (t) =>
+                  t.status === "pending" ||
+                  t.status === "running" ||
+                  t.status === "retrying"
               ).length > 0 && (
                 <div className="bg-blue-50 border border-blue-200 p-6">
                   <h4 className="text-sm font-bold text-blue-800 mb-4">
@@ -169,7 +174,10 @@ const AssetsGallery: React.FC = () => {
                   <div className="space-y-4">
                     {videoTasks
                       .filter(
-                        (t) => t.status === "pending" || t.status === "running"
+                        (t) =>
+                          t.status === "pending" ||
+                          t.status === "running" ||
+                          t.status === "retrying"
                       )
                       .map((task) => (
                         <div
