@@ -2,7 +2,7 @@
 
 ## 功能概述
 
-AI 提示词润色功能使用 Google Gemini 3 Pro 模型，将用户的简单描述转化为符合 Sora 2 最佳实践的专业视频生成提示词。
+AI 提示词润色功能使用 Google Gemini 3 Flash 模型，将用户的简单描述转化为符合 Sora 2 最佳实践的专业视频生成提示词。
 
 ## 技术实现
 
@@ -11,7 +11,7 @@ AI 提示词润色功能使用 Google Gemini 3 Pro 模型，将用户的简单�
 **文件**: `src/app/api/enhance-prompt/route.ts`
 
 - 接收用户输入的简单提示词
-- 调用 Google Gemini 3 Pro API (gemini-3-pro-preview)
+- 调用 Google Gemini 3 Flash API (`gemini-3-flash-preview`)
 - 使用专业的 Sora 2 Creative Director 系统提示词
 - 返回优化后的提示词
 
@@ -79,7 +79,7 @@ GOOGLE_GEMINI_API_KEY=your_api_key_here
 
 1. 用户在提示词输入框输入简单描述（如："一个人在跑步"）
 2. 点击"润色"按钮
-3. 系统调用 Gemini 3 Pro API 进行优化
+3. 系统调用 Gemini 3 Flash API 进行优化
 4. 弹出对话框显示原始和优化后的提示词对比
 5. 用户确认后，优化后的提示词替换原始输入
 6. 用户可以继续编辑或直接生成视频
