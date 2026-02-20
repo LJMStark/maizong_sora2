@@ -190,52 +190,16 @@ const Subscription: React.FC = () => {
         <TabGroup selectedIndex={selectedIndex} onChange={setSelectedIndex}>
           <div className="border-b border-[#e5e5e1]">
             <TabList className="flex gap-8 md:gap-12">
-              <Tab className="pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors focus:outline-none data-[selected]:border-[#1a1a1a] data-[selected]:text-[#1a1a1a] data-[selected]:font-bold border-transparent text-[#4b5563] hover:text-[#1a1a1a]">
-                {t("tabs.package")}
-              </Tab>
               <Tab className="pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors focus:outline-none data-[selected]:border-[#8C7355] data-[selected]:text-[#8C7355] data-[selected]:font-bold border-transparent text-[#4b5563] hover:text-[#1a1a1a]">
                 {t("tabs.subscription")}
+              </Tab>
+              <Tab className="pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors focus:outline-none data-[selected]:border-[#1a1a1a] data-[selected]:text-[#1a1a1a] data-[selected]:font-bold border-transparent text-[#4b5563] hover:text-[#1a1a1a]">
+                {t("tabs.package")}
               </Tab>
             </TabList>
           </div>
 
           <TabPanels className="mt-8">
-            <TabPanel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={
-                        i < 3
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
-                          : ""
-                      }
-                    >
-                      <PackageSkeleton />
-                    </div>
-                  ))
-                ) : (
-                  creditPackages.map((pkg, index) => (
-                    <div
-                      key={pkg.id}
-                      className={
-                        index < creditPackages.length - 1
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
-                          : ""
-                      }
-                    >
-                      <PackageCard
-                        pkg={pkg}
-                        onPurchase={handlePurchase}
-                        isHighlighted={index === 0}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            </TabPanel>
-
             <TabPanel>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
                 {loading ? (
@@ -271,6 +235,42 @@ const Subscription: React.FC = () => {
                 )}
               </div>
               <MemberIntro />
+            </TabPanel>
+
+            <TabPanel>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
+                {loading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={
+                        i < 3
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
+                          : ""
+                      }
+                    >
+                      <PackageSkeleton />
+                    </div>
+                  ))
+                ) : (
+                  creditPackages.map((pkg, index) => (
+                    <div
+                      key={pkg.id}
+                      className={
+                        index < creditPackages.length - 1
+                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
+                          : ""
+                      }
+                    >
+                      <PackageCard
+                        pkg={pkg}
+                        onPurchase={handlePurchase}
+                        isHighlighted={index === 0}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
             </TabPanel>
           </TabPanels>
         </TabGroup>
