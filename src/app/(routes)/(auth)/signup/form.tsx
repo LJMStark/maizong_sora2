@@ -66,11 +66,22 @@ export default function SignUpForm() {
       const response = await signUp.email(data);
 
       if (response.error) {
-        console.log("SIGN_UP:", response.error.status);
-        const errorKey = response.error.message === 'User already exists'
-          ? 'userExists'
-          : 'unknown';
-        toast.error(tErrors(errorKey));
+        console.log("SIGN_UP:", response.error.message, response.error.code);
+        const msg = response.error.message ?? "";
+        const code = response.error.code ?? "";
+        let errorKey = "unknown";
+        if (msg === "User already exists" || code === "USER_ALREADY_EXISTS") {
+          errorKey = "userExists";
+        } else if (msg.includes("email") && msg.includes("already")) {
+          errorKey = "emailExists";
+        } else if (msg.includes("username") && msg.includes("already")) {
+          errorKey = "usernameExists";
+        } else if (code === "TOO_MANY_REQUESTS" || response.error.status === 429) {
+          errorKey = "tooManyRequests";
+        } else if (msg.includes("password") && msg.includes("short")) {
+          errorKey = "passwordTooShort";
+        }
+        toast.error(tErrors(errorKey, { message: msg }));
       } else {
         setEmailSent(true);
       }

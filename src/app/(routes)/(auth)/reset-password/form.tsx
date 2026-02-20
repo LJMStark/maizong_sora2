@@ -42,11 +42,18 @@ export default function ResetPasswordForm() {
       });
 
       if (response.error) {
-        toast.error(
-          response.error.message?.includes("INVALID")
-            ? t("invalidToken")
-            : tErrors("unknown")
-        );
+        console.log("RESET_PASSWORD:", response.error.message, response.error.code);
+        const msg = response.error.message ?? "";
+        const code = response.error.code ?? "";
+        let errorKey = "unknown";
+        if (msg.includes("INVALID") || msg.includes("expired") || code === "INVALID_TOKEN") {
+          errorKey = "invalidToken";
+        } else if (code === "TOO_MANY_REQUESTS" || response.error.status === 429) {
+          errorKey = "tooManyRequests";
+        } else if (msg.includes("password") && msg.includes("short")) {
+          errorKey = "passwordTooShort";
+        }
+        toast.error(tErrors(errorKey, { message: msg }));
       } else {
         toast.success(t("success"));
         router.push("/signin");

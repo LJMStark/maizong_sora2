@@ -42,14 +42,20 @@ export default function SignInForm() {
       const response = await signIn.username(data);
 
       if (response.error) {
-        console.log("SIGN_IN:", response.error.message);
-        let errorKey = 'unknown';
-        if (response.error.message === 'Invalid credentials') {
-          errorKey = 'invalidCredentials';
-        } else if (response.error.message?.includes('email is not verified') || response.error.code === 'EMAIL_NOT_VERIFIED') {
-          errorKey = 'emailNotVerified';
+        console.log("SIGN_IN:", response.error.message, response.error.code);
+        const msg = response.error.message ?? "";
+        const code = response.error.code ?? "";
+        let errorKey = "unknown";
+        if (msg === "Invalid credentials") {
+          errorKey = "invalidCredentials";
+        } else if (msg.includes("email is not verified") || code === "EMAIL_NOT_VERIFIED") {
+          errorKey = "emailNotVerified";
+        } else if (code === "TOO_MANY_REQUESTS" || response.error.status === 429) {
+          errorKey = "tooManyRequests";
+        } else if (msg.includes("User not found")) {
+          errorKey = "userNotFound";
         }
-        toast.error(tErrors(errorKey));
+        toast.error(tErrors(errorKey, { message: msg }));
       } else {
         router.push("/");
       }

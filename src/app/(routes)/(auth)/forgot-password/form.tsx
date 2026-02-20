@@ -40,7 +40,18 @@ export default function ForgotPasswordForm() {
       });
 
       if (response.error) {
-        toast.error(tErrors("unknown"));
+        console.log("FORGOT_PASSWORD:", response.error.message, response.error.code);
+        const msg = response.error.message ?? "";
+        const code = response.error.code ?? "";
+        let errorKey = "unknown";
+        if (msg.includes("User not found") || code === "USER_NOT_FOUND") {
+          errorKey = "userNotFound";
+        } else if (code === "TOO_MANY_REQUESTS" || response.error.status === 429) {
+          errorKey = "tooManyRequests";
+        } else if (msg.includes("send") || msg.includes("email")) {
+          errorKey = "sendEmailFailed";
+        }
+        toast.error(tErrors(errorKey, { message: msg }));
       } else {
         setSent(true);
       }
