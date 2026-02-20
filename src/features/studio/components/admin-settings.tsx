@@ -34,8 +34,8 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ isAdmin }) => {
           setLimits(data.data);
         }
       }
-    } catch {
-      // 忽略错误
+    } catch (error) {
+      console.error("加载管理员设置失败:", error);
     } finally {
       setIsLoading(false);
     }
@@ -64,10 +64,16 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ isAdmin }) => {
         setMessage({ type: "success", text: "设置已保存" });
         setLimits(data.data);
       } else {
-        setMessage({ type: "error", text: data.error || "保存失败" });
+        const detail =
+          typeof data.error === "string"
+            ? data.error
+            : `请求失败（状态码 ${res.status}）`;
+        setMessage({ type: "error", text: `保存失败：${detail}` });
       }
-    } catch {
-      setMessage({ type: "error", text: "网络错误" });
+    } catch (error) {
+      console.error("保存管理员设置失败:", error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setMessage({ type: "error", text: `网络错误：${detail}` });
     } finally {
       setIsSaving(false);
       setTimeout(() => setMessage(null), 3000);

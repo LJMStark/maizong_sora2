@@ -60,7 +60,7 @@ async function retryKieTask(
     }
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : "未知错误";
+      error instanceof Error ? error.message : String(error);
     console.error(`[KIE Callback] 重试创建任务失败:`, errorMessage);
 
     const updatedTask = await videoTaskService.getTaskById(task.id);
@@ -370,7 +370,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

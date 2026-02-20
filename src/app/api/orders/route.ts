@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { creditOrder, creditPackage } from "@/db/schema";
 import { getServerSession } from "@/lib/auth/get-session";
 import { eq } from "drizzle-orm";
+import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
 function generateOrderId(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -57,8 +58,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Orders] Error creating order:", error);
+    const message = sanitizeApiErrorMessage(error);
     return NextResponse.json(
-      { error: "Failed to create order" },
+      { error: `创建订单失败：${message}` },
       { status: 500 }
     );
   }

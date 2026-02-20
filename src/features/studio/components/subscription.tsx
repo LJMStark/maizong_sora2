@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { CreditPurchaseDialog } from "./credit-purchase-dialog";
 
 interface Package {
@@ -157,6 +158,8 @@ const Subscription: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to fetch packages:", error);
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error(`加载套餐失败：${message}`);
       } finally {
         setLoading(false);
       }

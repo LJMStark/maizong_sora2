@@ -32,6 +32,24 @@ export interface DuomiTaskStatusResponse {
 
 const DUOMI_API_BASE = "https://duomiapi.com";
 
+async function getDuomiImageErrorDetail(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const json = await response.json().catch(() => null);
+    if (json && typeof json === "object") {
+      const message =
+        typeof (json as { message?: unknown }).message === "string"
+          ? (json as { message: string }).message
+          : typeof (json as { error?: unknown }).error === "string"
+            ? (json as { error: string }).error
+            : "";
+      return message || JSON.stringify(json);
+    }
+  }
+
+  return (await response.text().catch(() => "")).trim();
+}
+
 export const duomiImageService = {
   async createTextToImageTask(
     params: DuomiTextToImageParams
@@ -65,7 +83,10 @@ export const duomiImageService = {
     });
 
     if (!response.ok) {
-      throw new Error(`Duomi API 错误: ${response.status}`);
+      const detail = await getDuomiImageErrorDetail(response);
+      throw new Error(
+        `Duomi API 错误: ${response.status}${detail ? ` - ${detail}` : ""}`
+      );
     }
 
     const result = await response.json();
@@ -112,7 +133,10 @@ export const duomiImageService = {
     );
 
     if (!response.ok) {
-      throw new Error(`Duomi API 错误: ${response.status}`);
+      const detail = await getDuomiImageErrorDetail(response);
+      throw new Error(
+        `Duomi API 错误: ${response.status}${detail ? ` - ${detail}` : ""}`
+      );
     }
 
     const result = await response.json();
@@ -141,7 +165,10 @@ export const duomiImageService = {
     );
 
     if (!response.ok) {
-      throw new Error(`Duomi API 错误: ${response.status}`);
+      const detail = await getDuomiImageErrorDetail(response);
+      throw new Error(
+        `Duomi API 错误: ${response.status}${detail ? ` - ${detail}` : ""}`
+      );
     }
 
     const result = await response.json();

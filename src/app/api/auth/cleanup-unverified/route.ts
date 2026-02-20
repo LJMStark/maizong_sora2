@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
 
     if (!email && !username) {
       return NextResponse.json(
-        { error: "email or username required" },
+        { error: "必须提供邮箱或用户名" },
         { status: 400 }
       );
     }
@@ -35,7 +35,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ deleted: unverifiedUsers.length });
-  } catch {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  } catch (error) {
+    console.error("[cleanup-unverified] 清理未验证用户失败:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json(
+      { error: `清理未验证用户失败：${message}` },
+      { status: 500 }
+    );
   }
 }

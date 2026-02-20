@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
       newBalance: result.newBalance,
     });
   } catch (error) {
+    console.error("[Redeem] 兑换失败:", error);
     const errorCode = error instanceof Error ? error.message : "SYSTEM_ERROR";
     const errorMessage = ERROR_MESSAGES[errorCode] || ERROR_MESSAGES.SYSTEM_ERROR;
 

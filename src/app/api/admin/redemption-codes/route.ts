@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       count: codes.length,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -158,7 +158,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

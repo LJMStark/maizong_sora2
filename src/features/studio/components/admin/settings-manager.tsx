@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type VideoProvider = "kie" | "duomi" | "veo";
 
@@ -20,6 +21,10 @@ interface GlobalSettings {
   creditCostVideoFast: number;
   creditCostVideoQuality: number;
   creditCostImage: number;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export default function SettingsManager() {
@@ -41,21 +46,26 @@ export default function SettingsManager() {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/settings");
-      const json = await res.json();
-      if (json.success) {
-        setSettings(json.data);
-        setForm({
-          dailyFastVideoLimit: json.data.dailyFastVideoLimit ?? -1,
-          dailyQualityVideoLimit: json.data.dailyQualityVideoLimit ?? 2,
-          videoFastProvider: json.data.videoFastProvider ?? "kie",
-          videoQualityProvider: json.data.videoQualityProvider ?? "kie",
-          creditCostVideoFast: json.data.creditCostVideoFast ?? 30,
-          creditCostVideoQuality: json.data.creditCostVideoQuality ?? 100,
-          creditCostImage: json.data.creditCostImage ?? 10,
-        });
+      if (!res.ok) {
+        throw new Error(`请求失败（状态码 ${res.status}）`);
       }
-    } catch {
-      // ignore
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || "加载设置失败");
+      }
+      setSettings(json.data);
+      setForm({
+        dailyFastVideoLimit: json.data.dailyFastVideoLimit ?? -1,
+        dailyQualityVideoLimit: json.data.dailyQualityVideoLimit ?? 2,
+        videoFastProvider: json.data.videoFastProvider ?? "kie",
+        videoQualityProvider: json.data.videoQualityProvider ?? "kie",
+        creditCostVideoFast: json.data.creditCostVideoFast ?? 30,
+        creditCostVideoQuality: json.data.creditCostVideoQuality ?? 100,
+        creditCostImage: json.data.creditCostImage ?? 10,
+      });
+    } catch (error) {
+      console.error("加载系统设置失败:", error);
+      toast.error(`加载设置失败：${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -74,14 +84,22 @@ export default function SettingsManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const json = await res.json();
-      if (json.success) {
-        setSettings(json.data);
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(
+          data?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      const json = await res.json();
+      if (!json.success) {
+        throw new Error(json.error || "保存设置失败");
+      }
+      setSettings(json.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (error) {
+      console.error("保存系统设置失败:", error);
+      toast.error(`保存设置失败：${getErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }

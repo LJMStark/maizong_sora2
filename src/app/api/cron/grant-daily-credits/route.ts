@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { userSubscription, creditTransaction, user } from "@/db/schema";
 import { eq, and, lte, lt, sql, or, isNull } from "drizzle-orm";
+import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -92,8 +93,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[Cron] Error granting daily credits:", error);
+    const message = sanitizeApiErrorMessage(error);
     return NextResponse.json(
-      { error: "Failed to grant daily credits" },
+      { error: `发放每日积分失败：${message}` },
       { status: 500 }
     );
   }

@@ -57,7 +57,8 @@ const UserCenter: React.FC = () => {
       try {
         const res = await fetch("/api/admin/settings");
         setIsAdmin(res.ok);
-      } catch {
+      } catch (error) {
+        console.error("检查管理员权限失败:", error);
         setIsAdmin(false);
       }
     };
@@ -89,15 +90,25 @@ const UserCenter: React.FC = () => {
         setRedeemCode("");
         refreshCredits();
       } else {
+        const serverMessage =
+          typeof data.error === "string" ? data.error : "";
+        const isInvalidCodeError =
+          res.status === 400 ||
+          serverMessage.includes("兑换码") ||
+          serverMessage.includes("格式");
         setRedeemStatus({
           type: "error",
-          msg: data.error || t("redeem.error"),
+          msg: isInvalidCodeError
+            ? serverMessage || t("redeem.error")
+            : `兑换失败：${serverMessage || "请稍后重试"}`,
         });
       }
-    } catch {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("兑换码请求失败:", error);
       setRedeemStatus({
         type: "error",
-        msg: t("redeem.error"),
+        msg: `网络错误，请检查连接后重试：${message}`,
       });
     } finally {
       setIsRedeeming(false);

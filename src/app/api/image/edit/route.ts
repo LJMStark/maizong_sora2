@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (duomiError) {
       const errorMessage =
-        duomiError instanceof Error ? duomiError.message : "未知错误";
+        duomiError instanceof Error ? duomiError.message : String(duomiError);
       await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
       await creditService.refundCredits({
         userId,

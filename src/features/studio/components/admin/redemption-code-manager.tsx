@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,10 @@ interface CodeListResponse {
   totalPages: number;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default function RedemptionCodeManager() {
   const [data, setData] = useState<CodeListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,12 +54,16 @@ export default function RedemptionCodeManager() {
         status: statusFilter,
       });
       const res = await fetch(`/api/admin/redemption-codes?${params}`);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setData(json.data);
+    } catch (error) {
+      console.error("加载兑换码列表失败:", error);
+      toast.error(`加载兑换码失败：${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -72,13 +81,17 @@ export default function RedemptionCodeManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(createForm),
       });
-      const json = await res.json();
-      if (json.success) {
-        setGeneratedCodes(json.codes);
-        fetchCodes();
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setGeneratedCodes(json.codes);
+      fetchCodes();
+    } catch (error) {
+      console.error("生成兑换码失败:", error);
+      toast.error(`生成兑换码失败：${getErrorMessage(error)}`);
     } finally {
       setCreating(false);
     }
@@ -87,14 +100,21 @@ export default function RedemptionCodeManager() {
   const handleDisable = async (code: RedemptionCode) => {
     if (!confirm(`确定禁用兑换码「${code.code}」？`)) return;
     try {
-      await fetch(`/api/admin/redemption-codes/${code.id}`, {
+      const res = await fetch(`/api/admin/redemption-codes/${code.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "disabled" }),
       });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.success === false) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
+      }
       fetchCodes();
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error("禁用兑换码失败:", error);
+      toast.error(`禁用兑换码失败：${getErrorMessage(error)}`);
     }
   };
 

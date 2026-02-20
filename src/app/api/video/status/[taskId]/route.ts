@@ -118,7 +118,13 @@ export async function GET(
         let finalVideoUrl = providerVideoUrl;
         try {
           finalVideoUrl = await storageService.uploadVideoFromUrl(task.userId, task.id, providerVideoUrl);
-        } catch {
+        } catch (uploadError) {
+          console.error("[Video Status] 上传视频到存储失败:", {
+            taskId: task.id,
+            userId: task.userId,
+            providerVideoUrl,
+            error: uploadError,
+          });
           // If upload fails, use the original provider URL
         }
 
@@ -172,7 +178,7 @@ export async function GET(
       }));
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

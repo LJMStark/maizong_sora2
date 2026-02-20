@@ -35,8 +35,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setAppState((prev) => ({ ...prev, credits: data.credits }));
       }
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error("刷新积分失败:", error);
     }
   }, []);
 
@@ -66,8 +66,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         );
         setAppState((prev) => ({ ...prev, creditHistory: formattedHistory }));
       }
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error("刷新积分历史失败:", error);
     }
   }, []);
 
@@ -125,8 +125,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           };
         });
       }
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error("刷新视频任务失败:", error);
     }
   }, []);
 
@@ -183,8 +183,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           };
         });
       }
-    } catch {
-      // Silently fail
+    } catch (error) {
+      console.error("刷新图片任务失败:", error);
     }
   }, []);
 

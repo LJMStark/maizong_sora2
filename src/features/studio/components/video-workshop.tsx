@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { AspectRatio } from "../types";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
@@ -116,7 +117,8 @@ const VideoWorkshop: React.FC = () => {
             setMode("Fast");
           }
         }
-      } catch {
+      } catch (error) {
+        console.error("获取视频配置失败:", error);
         // fallback to defaults
       }
     };
@@ -229,7 +231,8 @@ const VideoWorkshop: React.FC = () => {
         const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
         setPrompt(random);
       }
-    } catch {
+    } catch (error) {
+      console.error("随机提示词生成失败:", error);
       const random = VIDEO_PROMPTS[Math.floor(Math.random() * VIDEO_PROMPTS.length)];
       setPrompt(random);
     } finally {
@@ -261,15 +264,16 @@ const VideoWorkshop: React.FC = () => {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "润色失败");
+        throw new Error(data.error || `润色失败（状态码 ${res.status}）`);
       }
 
       setEnhancedPrompt(data.enhancedPrompt);
       setEnhanceDialogOpen(true);
     } catch (error) {
       console.error("Enhance prompt error:", error);
-      const message = error instanceof Error ? error.message : "润色失败";
-      alert(message);
+      const detail = error instanceof Error ? error.message : String(error);
+      const message = `润色失败：${detail}`;
+      toast.error(message);
     } finally {
       setEnhancing(false);
     }
@@ -334,9 +338,10 @@ const VideoWorkshop: React.FC = () => {
       refreshCredits();
     } catch (e) {
       setLoading(false);
-      const message = e instanceof Error ? e.message : t("errors.generationFailed");
+      const detail = e instanceof Error ? e.message : String(e);
+      const message = `视频生成失败：${detail}`;
       setErrorMessage(message);
-      alert(message);
+      toast.error(message);
     }
   };
 

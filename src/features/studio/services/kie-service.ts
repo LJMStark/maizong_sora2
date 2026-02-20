@@ -24,6 +24,26 @@ export interface KieVideoTaskStatusResponse {
 
 const KIE_API_BASE = "https://api.kie.ai/api/v1";
 
+async function getKieErrorDetail(response: Response): Promise<string> {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const json = await response.json().catch(() => null);
+    if (json && typeof json === "object") {
+      const message =
+        typeof (json as { msg?: unknown }).msg === "string"
+          ? (json as { msg: string }).msg
+          : typeof (json as { message?: unknown }).message === "string"
+            ? (json as { message: string }).message
+            : typeof (json as { error?: unknown }).error === "string"
+              ? (json as { error: string }).error
+              : "";
+      return message || JSON.stringify(json);
+    }
+  }
+
+  return (await response.text().catch(() => "")).trim();
+}
+
 function mapAspectRatio(aspectRatio: string): "portrait" | "landscape" {
   return aspectRatio === "9:16" ? "portrait" : "landscape";
 }
@@ -140,7 +160,10 @@ export const kieService = {
     );
 
     if (!response.ok) {
-      throw new Error(`KIE AI API 错误: ${response.status}`);
+      const detail = await getKieErrorDetail(response);
+      throw new Error(
+        `KIE AI API 错误: ${response.status}${detail ? ` - ${detail}` : ""}`
+      );
     }
 
     const result = await response.json();

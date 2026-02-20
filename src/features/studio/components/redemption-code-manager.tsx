@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 
 interface RedemptionCode {
   id: string;
@@ -46,6 +47,10 @@ const STATUS_STYLES: Record<string, string> = {
   expired: "bg-yellow-100 text-yellow-700",
   disabled: "bg-red-100 text-red-700",
 };
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
   isAdmin,
@@ -94,6 +99,7 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
       }
     } catch (err) {
       console.error("Failed to fetch codes:", err);
+      toast.error(`加载兑换码失败：${getErrorMessage(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -111,6 +117,7 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
       }
     } catch (err) {
       console.error("Failed to fetch stats:", err);
+      toast.error(`加载兑换码统计失败：${getErrorMessage(err)}`);
     } finally {
       setIsLoadingStats(false);
     }
@@ -142,15 +149,24 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
 
       const data = await res.json();
 
-      if (data.success) {
+      if (res.ok && data.success) {
         setGeneratedCodes(data.codes);
         fetchCodes();
         fetchStats();
       } else {
-        setGenerateError(data.error || "生成失败");
+        const detail =
+          typeof data.error === "string"
+            ? data.error
+            : `请求失败（状态码 ${res.status}）`;
+        const message = `生成失败：${detail}`;
+        setGenerateError(message);
+        toast.error(message);
       }
-    } catch {
-      setGenerateError("网络错误，请重试");
+    } catch (error) {
+      const message = `生成失败：${getErrorMessage(error)}`;
+      console.error("Failed to generate codes:", error);
+      setGenerateError(message);
+      toast.error(message);
     } finally {
       setIsGenerating(false);
     }
@@ -164,19 +180,24 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
         params.set("status", statusFilter);
       }
       const res = await fetch(`/api/admin/redemption-codes/export?${params}`);
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `redemption-codes-${new Date().toISOString().split("T")[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(
+          data?.error || `导出失败（状态码 ${res.status}）`
+        );
       }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `redemption-codes-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (err) {
       console.error("Failed to export:", err);
+      toast.error(`导出失败：${getErrorMessage(err)}`);
     } finally {
       setIsExporting(false);
     }
@@ -192,12 +213,17 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
         body: JSON.stringify({ status: "disabled" }),
       });
 
-      if (res.ok) {
-        fetchCodes();
-        fetchStats();
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(
+          data?.error || `禁用失败（状态码 ${res.status}）`
+        );
       }
+      fetchCodes();
+      fetchStats();
     } catch (err) {
       console.error("Failed to disable code:", err);
+      toast.error(`禁用兑换码失败：${getErrorMessage(err)}`);
     }
   };
 
@@ -206,8 +232,9 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
       await navigator.clipboard.writeText(code);
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
-    } catch {
-      console.error("Failed to copy");
+    } catch (error) {
+      console.error("Failed to copy:", error);
+      toast.error(`复制失败：${getErrorMessage(error)}`);
     }
   };
 

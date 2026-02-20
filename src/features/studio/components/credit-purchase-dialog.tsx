@@ -56,12 +56,16 @@ export function CreditPurchaseDialog({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "创建订单失败");
+        throw new Error(
+          data.error || `创建订单失败（状态码 ${res.status}）`
+        );
       }
 
       setOrderId(data.orderId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "创建订单失败");
+      console.error("创建订单失败:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`创建订单失败：${detail}`);
     } finally {
       setLoading(false);
     }

@@ -73,8 +73,8 @@ export function useTaskPolling<T extends BaseTaskStatus>({
 
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`获取任务状态失败：${detail}`);
       return null;
     }
   }, [taskId, taskType, onComplete, onError]);

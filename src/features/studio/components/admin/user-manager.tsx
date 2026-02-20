@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,10 @@ interface UserListResponse {
   totalPages: number;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default function UserManager() {
   const [data, setData] = useState<UserListResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,12 +58,16 @@ export default function UserManager() {
         params.set("search", search.trim());
       }
       const res = await fetch(`/api/admin/users?${params}`);
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setData(json.data);
+    } catch (error) {
+      console.error("加载用户列表失败:", error);
+      toast.error(`加载用户失败：${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -87,13 +96,17 @@ export default function UserManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editForm),
       });
-      const json = await res.json();
-      if (json.success) {
-        setEditUser(null);
-        fetchUsers();
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setEditUser(null);
+      fetchUsers();
+    } catch (error) {
+      console.error("保存用户信息失败:", error);
+      toast.error(`保存用户失败：${getErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }
@@ -102,10 +115,17 @@ export default function UserManager() {
   const handleDisable = async (user: User) => {
     if (!confirm(`确定禁用用户「${user.name}」？`)) return;
     try {
-      await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.success === false) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
+      }
       fetchUsers();
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error("禁用用户失败:", error);
+      toast.error(`禁用用户失败：${getErrorMessage(error)}`);
     }
   };
 

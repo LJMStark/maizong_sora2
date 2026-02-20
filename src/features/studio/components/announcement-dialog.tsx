@@ -44,8 +44,8 @@ export default function AnnouncementDialog() {
           setOpen(true);
         }
       })
-      .catch(() => {
-        // silently ignore fetch errors
+      .catch((error) => {
+        console.error("获取公告失败:", error);
       });
   }, []);
 

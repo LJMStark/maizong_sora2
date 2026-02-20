@@ -177,7 +177,8 @@ const ImageWorkshop: React.FC = () => {
     } catch (e) {
       console.error(e);
       setLoading(false);
-      alert(e instanceof Error ? e.message : t('errors.operationFailed'));
+      const message = e instanceof Error ? e.message : String(e);
+      alert(`操作失败：${message}`);
     }
   };
 

@@ -45,7 +45,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: userResult[0] });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -176,7 +176,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updatedUser[0] });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -224,7 +224,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: "用户已禁用" });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

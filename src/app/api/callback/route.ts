@@ -60,7 +60,7 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
       throw new Error("重试创建 Duomi 任务失败：无返回 ID");
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "未知错误";
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[Callback] 重试创建任务失败:`, errorMessage);
 
     // 检查是否还有重试次数
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "未知错误";
+    const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

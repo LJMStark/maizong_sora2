@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServerSession } from "@/lib/auth/get-session";
+import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
 const SORA_SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Director），专门将用户的创意愿景转译为可制作、可连贯的视频提示词。
 
@@ -214,9 +215,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[EnhancePrompt] Error:", error);
+    const message = sanitizeApiErrorMessage(error);
 
     return NextResponse.json(
-      { error: "Failed to enhance prompt" },
+      { error: `润色提示词失败：${message}` },
       { status: 500 }
     );
   }

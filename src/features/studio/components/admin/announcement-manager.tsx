@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,10 @@ interface Announcement {
   updatedAt: string;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default function AnnouncementManager() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,12 +39,16 @@ export default function AnnouncementManager() {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/announcements");
-      const json = await res.json();
-      if (json.success) {
-        setAnnouncements(json.data);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setAnnouncements(json.data);
+    } catch (error) {
+      console.error("加载公告失败:", error);
+      toast.error(`加载公告失败：${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -78,13 +87,17 @@ export default function AnnouncementManager() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const json = await res.json();
-      if (json.success) {
-        setDialogOpen(false);
-        fetchAnnouncements();
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
       }
-    } catch {
-      // ignore
+      setDialogOpen(false);
+      fetchAnnouncements();
+    } catch (error) {
+      console.error("保存公告失败:", error);
+      toast.error(`保存公告失败：${getErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }
@@ -92,24 +105,40 @@ export default function AnnouncementManager() {
 
   const handleToggleActive = async (item: Announcement) => {
     try {
-      await fetch(`/api/admin/announcements/${item.id}`, {
+      const res = await fetch(`/api/admin/announcements/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !item.isActive }),
       });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.success === false) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
+      }
       fetchAnnouncements();
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error("更新公告状态失败:", error);
+      toast.error(`更新公告状态失败：${getErrorMessage(error)}`);
     }
   };
 
   const handleDelete = async (item: Announcement) => {
     if (!confirm(`确定删除公告「${item.title}」？`)) return;
     try {
-      await fetch(`/api/admin/announcements/${item.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/announcements/${item.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.success === false) {
+        throw new Error(
+          json?.error || `请求失败（状态码 ${res.status}）`
+        );
+      }
       fetchAnnouncements();
-    } catch {
-      // ignore
+    } catch (error) {
+      console.error("删除公告失败:", error);
+      toast.error(`删除公告失败：${getErrorMessage(error)}`);
     }
   };
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { creditPackage } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +15,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ packages });
   } catch (error) {
     console.error("[Packages] Error fetching packages:", error);
+    const message = sanitizeApiErrorMessage(error);
     return NextResponse.json(
-      { error: "Failed to fetch packages" },
+      { error: `获取套餐失败：${message}` },
       { status: 500 }
     );
   }
