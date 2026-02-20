@@ -332,7 +332,8 @@
       "contactInfo": "请添加客服微信完成支付",
       "orderNote": "备注您的订单号",
       "cancel": "取消",
-      "confirm": "已添加客服"
+      "confirm": "已添加客服",
+      "createOrder": "生成订单号"
     },
     "period": "/月"
   }

@@ -89,20 +89,28 @@ export async function POST(request: NextRequest) {
 
     // 一次查询获取积分和供应商配置（带缓存）
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
-    const configuredProvider = generationConfig.providers.fast;
+    const requestedVideoType: "fast" | "quality" =
+      mode === "Quality" ? "quality" : "fast";
+    const configuredProvider = generationConfig.providers[requestedVideoType];
 
     console.log("[Generate] generationConfig:", JSON.stringify(generationConfig));
     console.log("[Generate] configuredProvider:", configuredProvider);
 
-    // VEO provider 时固定模型和时长，统一归类为 fast
+    // 当前模式对应供应商为 VEO 时，固定模型和时长，统一归类为 fast
     const isVeo = configuredProvider === "veo";
-    const model = isVeo ? "veo3.1-fast" : (mode === "Quality" ? "sora-2-pro" : "sora-2-temporary");
-    const videoType: "fast" | "quality" = isVeo ? "fast" : (model === "sora-2-temporary" ? "fast" : "quality");
+    const model = isVeo
+      ? "veo3.1-fast"
+      : requestedVideoType === "quality"
+        ? "sora-2-pro"
+        : "sora-2-temporary";
+    const videoType: "fast" | "quality" = isVeo ? "fast" : requestedVideoType;
 
     const creditCost = videoType === "fast"
       ? generationConfig.creditCosts.videoFast
       : generationConfig.creditCosts.videoQuality;
-    const actualProvider: "veo" | "kie" | "duomi" = isVeo ? "veo" : generationConfig.providers[videoType];
+    const actualProvider: "veo" | "kie" | "duomi" = isVeo
+      ? "veo"
+      : configuredProvider;
 
     // VEO 不检查每日限额，仅受积分限制
     if (!isVeo) {
@@ -144,7 +152,7 @@ export async function POST(request: NextRequest) {
     const { transactionId } = await creditService.deductCredits({
       userId,
       amount: creditCost,
-      reason: `Video Generation (${mode} Mode)`,
+      reason: `视频生成（${mode === "fast" ? "快速" : "质量"}模式）`,
       referenceType: "video_task",
     });
 
@@ -203,7 +211,7 @@ export async function POST(request: NextRequest) {
       await creditService.refundCredits({
         userId,
         amount: creditCost,
-        reason: "Video generation failed - refund",
+        reason: "视频生成失败 - 退款",
         referenceType: "video_task",
         referenceId: task.id,
       });

@@ -77,12 +77,6 @@ export function CreditPurchaseDialog({
     onOpenChange(false);
   };
 
-  React.useEffect(() => {
-    if (open && selectedPackage) {
-      handleConfirm();
-    }
-  }, [open, selectedPackage?.id]);
-
   if (!selectedPackage) return null;
 
   return (
@@ -183,11 +177,11 @@ export function CreditPurchaseDialog({
             {t("cancel")}
           </button>
           <button
-            onClick={handleClose}
-            disabled={loading || !!error}
+            onClick={orderId ? handleClose : handleConfirm}
+            disabled={loading}
             className="flex-1 py-4 px-6 bg-[#8C7355] text-white text-[12px] font-bold uppercase tracking-widest hover:bg-[#7a6349] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {t("confirm")}
+            {loading ? "生成中..." : orderId ? t("confirm") : t("createOrder")}
           </button>
         </DialogFooter>
       </DialogContent>

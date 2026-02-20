@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const { transactionId } = await creditService.deductCredits({
       userId,
       amount: imageCreditCost,
-      reason: `Image Generation (${selectedModel})`,
+      reason: `图片生成（${selectedModel}）`,
       referenceType: "image_task",
     });
 
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         await creditService.refundCredits({
           userId,
           amount: imageCreditCost,
-          reason: "Image generation failed - refund",
+          reason: "图片生成失败 - 退款",
           referenceType: "image_task",
           referenceId: task.id,
         });
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       await creditService.refundCredits({
         userId,
         amount: imageCreditCost,
-        reason: "Image generation failed - refund",
+        reason: "图片生成失败 - 退款",
         referenceType: "image_task",
         referenceId: task.id,
       });

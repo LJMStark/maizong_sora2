@@ -4,11 +4,10 @@ import { creditService } from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { storageService } from "@/features/studio/services/storage-service";
+import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { EditImageSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
-
-const IMAGE_CREDIT_COST = 10;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -19,7 +18,7 @@ export async function POST(request: NextRequest) {
 
   const userId = session.user.id;
 
-  const { success } = await rateLimiter.limit(userId);
+  const { success } = await rateLimiter.limit(userId, "imageGenerate");
   if (!success) {
     return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
@@ -41,12 +40,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "无效的模型" }, { status: 400 });
     }
 
+    const generationConfig = await videoLimitService.getVideoGenerationConfig();
+    const imageCreditCost = generationConfig.creditCosts.image;
+
     const currentCredits = await creditService.getUserCredits(userId);
-    if (currentCredits < IMAGE_CREDIT_COST) {
+    if (currentCredits < imageCreditCost) {
       return NextResponse.json(
         {
           error: "积分不足",
-          required: IMAGE_CREDIT_COST,
+          required: imageCreditCost,
           current: currentCredits,
         },
         { status: 400 }
@@ -65,8 +67,8 @@ export async function POST(request: NextRequest) {
 
     const { transactionId } = await creditService.deductCredits({
       userId,
-      amount: IMAGE_CREDIT_COST,
-      reason: `Image Editing (${selectedModel})`,
+      amount: imageCreditCost,
+      reason: `图片编辑（${selectedModel}）`,
       referenceType: "image_task",
     });
 
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
       prompt,
       aspectRatio,
       sourceImageUrl,
-      creditCost: IMAGE_CREDIT_COST,
+      creditCost: imageCreditCost,
       creditTransactionId: transactionId,
     });
 
@@ -101,8 +103,8 @@ export async function POST(request: NextRequest) {
         );
         await creditService.refundCredits({
           userId,
-          amount: IMAGE_CREDIT_COST,
-          reason: "Image editing failed - refund",
+          amount: imageCreditCost,
+          reason: "图片编辑失败 - 退款",
           referenceType: "image_task",
           referenceId: task.id,
         });
@@ -113,8 +115,8 @@ export async function POST(request: NextRequest) {
       await imageTaskService.updateTaskStatus(task.id, "error", errorMessage);
       await creditService.refundCredits({
         userId,
-        amount: IMAGE_CREDIT_COST,
-        reason: "Image editing failed - refund",
+        amount: imageCreditCost,
+        reason: "图片编辑失败 - 退款",
         referenceType: "image_task",
         referenceId: task.id,
       });
@@ -123,7 +125,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId: task.id,
-      creditCost: IMAGE_CREDIT_COST,
+      creditCost: imageCreditCost,
     });
   } catch (error) {
     const message = sanitizeError(error);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AspectRatio, ImageQuality } from '../types';
@@ -13,8 +13,6 @@ import { useImageTaskPolling } from '../hooks/use-image-task-polling';
 import { useSimulatedProgress } from '../hooks/use-simulated-progress';
 
 type Mode = 'generate' | 'edit' | 'analyze';
-
-const IMAGE_CREDIT_COST = 10;
 
 const ImageWorkshop: React.FC = () => {
   const router = useRouter();
@@ -35,8 +33,29 @@ const ImageWorkshop: React.FC = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [taskStatus, setTaskStatus] = useState<"pending" | "running" | "succeeded" | "error">("pending");
+  const [imageCreditCost, setImageCreditCost] = useState(10);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/video/config');
+        const data = await response.json();
+        if (
+          response.ok &&
+          data?.success &&
+          typeof data?.data?.creditCosts?.image === 'number'
+        ) {
+          setImageCreditCost(data.data.creditCosts.image);
+        }
+      } catch (error) {
+        console.error('获取图片积分配置失败:', error);
+      }
+    };
+
+    fetchConfig();
+  }, []);
 
   // Polling for image task status
   useImageTaskPolling({
@@ -130,7 +149,7 @@ const ImageWorkshop: React.FC = () => {
       return;
     }
 
-    if (credits < IMAGE_CREDIT_COST) {
+    if (credits < imageCreditCost) {
       alert(t('errors.insufficientCredits'));
       return;
     }
@@ -331,7 +350,7 @@ const ImageWorkshop: React.FC = () => {
             <div className="p-4 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[#4b5563] uppercase tracking-widest">{t('cost.label')}</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">{IMAGE_CREDIT_COST} {t('cost.credits')}</span>
+                <span className="text-sm font-bold text-[#1a1a1a]">{imageCreditCost} {t('cost.credits')}</span>
               </div>
             </div>
           </div>

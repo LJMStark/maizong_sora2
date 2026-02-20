@@ -75,7 +75,7 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
       await creditService.refundCredits({
         userId: task.userId,
         amount: task.creditCost,
-        reason: "Video generation failed - refund",
+        reason: "视频生成失败 - 退款",
         referenceType: "video_task",
         referenceId: task.id,
       });
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
         await creditService.refundCredits({
           userId: task.userId,
           amount: task.creditCost,
-          reason: "Video generation failed - missing video URL",
+          reason: "视频生成失败 - 缺少视频地址",
           referenceType: "video_task",
           referenceId: task.id,
         });
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
       await creditService.refundCredits({
         userId: task.userId,
         amount: task.creditCost,
-        reason: "Video generation failed - refund",
+        reason: "视频生成失败 - 退款",
         referenceType: "video_task",
         referenceId: task.id,
       });

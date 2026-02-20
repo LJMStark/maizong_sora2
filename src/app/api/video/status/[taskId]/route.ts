@@ -145,7 +145,7 @@ export async function GET(
         await creditService.refundCredits({
           userId: task.userId,
           amount: task.creditCost,
-          reason: "Video generation failed - refund",
+          reason: "视频生成失败 - 退款",
           referenceType: "video_task",
           referenceId: task.id,
         });

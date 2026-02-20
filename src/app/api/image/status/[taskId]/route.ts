@@ -91,7 +91,7 @@ export async function GET(
         await creditService.refundCredits({
           userId: task.userId,
           amount: task.creditCost,
-          reason: "Image generation failed - refund",
+          reason: "图片生成失败 - 退款",
           referenceType: "image_task",
           referenceId: task.id,
         });
