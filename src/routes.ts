@@ -5,6 +5,7 @@ export const publicRoutes: string[] = [
   "/studio/video",
   "/studio/assets",
   "/studio/subscription",
+  "/studio/profile",
 ];
 
 export const authRoutes: string[] = ["/signin", "/signup", "/forgot-password", "/reset-password"];
