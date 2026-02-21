@@ -5,6 +5,8 @@ import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { CreditPurchaseDialog } from "./credit-purchase-dialog";
+import { useSession } from "@/lib/auth/client";
+import { LoginDialog } from "./shared/login-dialog";
 
 interface Package {
   id: string;
@@ -67,8 +69,9 @@ function PackageCard({
         </div>
 
         {pkg.type === "subscription" && (
-          <div className="mb-6 text-xs uppercase tracking-[0.15em] text-[#8C7355] font-medium">
-            每日发放 {pkg.dailyCredits} 积分
+          <div className="mb-6 flex flex-col gap-1 text-xs uppercase tracking-[0.15em] text-[#8C7355] font-medium">
+            <span>月初始 {pkg.credits ?? 0} 积分</span>
+            <span>每日赠送 {pkg.dailyCredits ?? 0} 积分</span>
           </div>
         )}
 
@@ -147,6 +150,8 @@ const Subscription: React.FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [loginDialogOpen, setLoginDialogOpen] = useState(false);
+  const { data: session, isPending } = useSession();
 
   useEffect(() => {
     async function fetchPackages() {
@@ -169,8 +174,29 @@ const Subscription: React.FC = () => {
 
   const creditPackages = packages.filter((p) => p.type === "package");
   const subscriptionPackages = packages.filter((p) => p.type === "subscription");
+  const recommendedSubscriptionId =
+    subscriptionPackages.find((pkg) =>
+      pkg.id.toLowerCase().includes("pro")
+    )?.id ??
+    subscriptionPackages[1]?.id ??
+    subscriptionPackages[0]?.id;
+  const recommendedCreditPackageId =
+    creditPackages.find((pkg) => pkg.id === "package_max_998")?.id ??
+    creditPackages.find((pkg) => pkg.name.includes("高级版"))?.id ??
+    creditPackages.find((pkg) => pkg.price === 99800)?.id ??
+    creditPackages[0]?.id;
 
   const handlePurchase = (pkg: Package) => {
+    if (isPending) {
+      toast.error("正在验证登录状态，请稍后重试");
+      return;
+    }
+
+    if (!session?.user) {
+      setLoginDialogOpen(true);
+      return;
+    }
+
     setSelectedPackage(pkg);
     setDialogOpen(true);
   };
@@ -228,7 +254,7 @@ const Subscription: React.FC = () => {
                       <PackageCard
                         pkg={pkg}
                         onPurchase={handlePurchase}
-                        isHighlighted={index === 1}
+                        isHighlighted={pkg.id === recommendedSubscriptionId}
                       />
                     </div>
                   ))
@@ -265,7 +291,7 @@ const Subscription: React.FC = () => {
                       <PackageCard
                         pkg={pkg}
                         onPurchase={handlePurchase}
-                        isHighlighted={index === 0}
+                        isHighlighted={pkg.id === recommendedCreditPackageId}
                       />
                     </div>
                   ))
@@ -280,7 +306,12 @@ const Subscription: React.FC = () => {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         selectedPackage={selectedPackage}
+        onUnauthorized={() => {
+          setDialogOpen(false);
+          setLoginDialogOpen(true);
+        }}
       />
+      <LoginDialog open={loginDialogOpen} onOpenChange={setLoginDialogOpen} />
     </div>
   );
 };

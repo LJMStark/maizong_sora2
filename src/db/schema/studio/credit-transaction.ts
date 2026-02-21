@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
 
 export const creditTransactionTypeEnum = pgEnum("credit_transaction_type", [
@@ -19,6 +19,7 @@ export const creditTransaction = pgTable("credit_transaction", {
   reason: text("reason").notNull(),
   referenceType: text("reference_type"),
   referenceId: text("reference_id"),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }).enableRLS();
 

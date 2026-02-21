@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
         reason: "图片任务创建失败 - 退款",
         referenceType: "credit_transaction",
         referenceId: transactionId,
+        sourceTransactionId: transactionId,
       });
       throw createTaskError;
     }
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
             reason: "图片编辑失败 - 退款",
             referenceType: "image_task",
             referenceId: task.id,
+            sourceTransactionId: task.creditTransactionId ?? undefined,
           });
         }
       }
@@ -142,6 +144,7 @@ export async function POST(request: NextRequest) {
           reason: "图片编辑失败 - 退款",
           referenceType: "image_task",
           referenceId: task.id,
+          sourceTransactionId: task.creditTransactionId ?? undefined,
         });
       }
     }

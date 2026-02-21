@@ -24,6 +24,7 @@ interface CreditPurchaseDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   selectedPackage: Package | null;
+  onUnauthorized?: () => void;
 }
 
 function formatPrice(priceInCents: number): string {
@@ -34,6 +35,7 @@ export function CreditPurchaseDialog({
   open,
   onOpenChange,
   selectedPackage,
+  onUnauthorized,
 }: CreditPurchaseDialogProps) {
   const t = useTranslations("studio.subscription.purchase");
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -56,6 +58,14 @@ export function CreditPurchaseDialog({
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401) {
+          onUnauthorized?.();
+          if (!onUnauthorized) {
+            setError("请先登录后再创建订单");
+          }
+          return;
+        }
+
         throw new Error(
           data.error || `创建订单失败（状态码 ${res.status}）`
         );
@@ -115,6 +125,14 @@ export function CreditPurchaseDialog({
                 <>
                   <div className="flex justify-between items-center border-b border-[#e5e5e1] pb-4">
                     <span className="text-xs uppercase tracking-[0.15em] text-[#4b5563]">
+                      月初始
+                    </span>
+                    <span className="text-[#1a1a1a] font-medium">
+                      {selectedPackage.credits ?? 0} 积分/月
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-[#e5e5e1] pb-4">
+                    <span className="text-xs uppercase tracking-[0.15em] text-[#4b5563]">
                       {t("durationLabel")}
                     </span>
                     <span className="text-[#1a1a1a] font-medium">
@@ -123,7 +141,7 @@ export function CreditPurchaseDialog({
                   </div>
                   <div className="flex justify-between items-center border-b border-[#e5e5e1] pb-4">
                     <span className="text-xs uppercase tracking-[0.15em] text-[#4b5563]">
-                      {t("dailyLabel")}
+                      每日赠送
                     </span>
                     <span className="text-[#8C7355] font-medium">
                       {selectedPackage.dailyCredits} 积分/天

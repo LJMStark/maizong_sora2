@@ -45,6 +45,7 @@ async function transitionTaskToErrorAndRefund(params: {
     reason: params.refundReason,
     referenceType: "video_task",
     referenceId: params.task.id,
+    sourceTransactionId: params.task.creditTransactionId ?? undefined,
   });
 
   return true;

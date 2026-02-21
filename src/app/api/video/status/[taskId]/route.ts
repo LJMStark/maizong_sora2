@@ -118,6 +118,7 @@ export async function GET(
               reason: "视频生成失败 - 缺少视频地址",
               referenceType: "video_task",
               referenceId: task.id,
+              sourceTransactionId: task.creditTransactionId ?? undefined,
             });
           }
 
@@ -183,6 +184,7 @@ export async function GET(
             reason: "视频生成失败 - 退款",
             referenceType: "video_task",
             referenceId: task.id,
+            sourceTransactionId: task.creditTransactionId ?? undefined,
           });
         }
 

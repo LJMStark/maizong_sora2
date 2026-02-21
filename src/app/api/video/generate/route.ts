@@ -186,6 +186,7 @@ export async function POST(request: NextRequest) {
         reason: "视频任务创建失败 - 退款",
         referenceType: "credit_transaction",
         referenceId: transactionId,
+        sourceTransactionId: transactionId,
       });
       throw createTaskError;
     }
@@ -238,6 +239,7 @@ export async function POST(request: NextRequest) {
           reason: "视频生成失败 - 退款",
           referenceType: "video_task",
           referenceId: task.id,
+          sourceTransactionId: task.creditTransactionId ?? undefined,
         });
       }
     }

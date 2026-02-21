@@ -315,10 +315,10 @@
     "memberIntro": {
       "title": "会员简介",
       "benefits": {
-        "autoGrant": "开通即享每日积分自动发放",
-        "noExpire": "积分可累计使用（不过期）",
-        "autoCollect": "无需登录也能自动领取",
-        "costEffective": "长期使用性价比超高"
+        "autoGrant": "开通即享月初始额度 + 每日赠送",
+        "noExpire": "购买积分永久有效，订阅额度按日/月重置",
+        "autoCollect": "每日赠送按天刷新，次日不累计",
+        "costEffective": "高频创作更划算，低频可搭配积分包"
       }
     },
     "purchase": {

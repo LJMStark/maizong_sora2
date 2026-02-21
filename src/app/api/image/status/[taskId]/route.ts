@@ -111,6 +111,7 @@ export async function GET(
             reason: "图片生成失败 - 退款",
             referenceType: "image_task",
             referenceId: task.id,
+            sourceTransactionId: task.creditTransactionId ?? undefined,
           });
         }
 

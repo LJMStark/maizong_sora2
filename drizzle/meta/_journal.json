@@ -57,6 +57,41 @@
       "when": 1770606612137,
       "tag": "0007_right_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771732800000,
+      "tag": "0008_monthly_quota_trial_plan",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1771736400000,
+      "tag": "0009_credit_pack_reprice",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1771738200000,
+      "tag": "0010_subscription_plan_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1771740000000,
+      "tag": "0011_restore_yearly_and_rename_tiers",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1771741200000,
+      "tag": "0012_trial_card_three_days",
+      "breakpoints": true
     }
   ]
 }

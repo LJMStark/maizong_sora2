@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { checkAdmin, isAdminError, adminErrorResponse } from "@/lib/auth/check-admin";
 import { db } from "@/db";
 import {
@@ -123,6 +123,9 @@ export async function PATCH(
       if (pkg.type === "subscription" && (!pkg.dailyCredits || pkg.dailyCredits <= 0)) {
         return { error: "会员套餐每日积分配置无效", status: 400 as const };
       }
+      if (pkg.type === "subscription" && pkg.credits !== null && pkg.credits < 0) {
+        return { error: "会员套餐月初始积分配置无效", status: 400 as const };
+      }
       if (pkg.type === "subscription" && (!pkg.durationDays || pkg.durationDays <= 0)) {
         return { error: "会员套餐时长配置无效", status: 400 as const };
       }
@@ -145,6 +148,7 @@ export async function PATCH(
 
       if (pkg.type === "package") {
         const packageCredits = pkg.credits as number;
+        const today = formatDateOnly(new Date());
 
         const userUpdated = await tx
           .update(user)
@@ -160,8 +164,29 @@ export async function PATCH(
           throw new Error(`订单用户不存在: ${order.userId}`);
         }
 
-        const newBalance = userUpdated[0].newBalance;
-        const balanceBefore = newBalance - packageCredits;
+        const purchasedBalance = userUpdated[0].newBalance;
+        const activeSubscriptionRows = await tx
+          .select({
+            dailyCreditsRemaining: userSubscription.dailyCreditsRemaining,
+            monthlyCreditsRemaining: userSubscription.monthlyCreditsRemaining,
+          })
+          .from(userSubscription)
+          .where(
+            and(
+              eq(userSubscription.userId, order.userId),
+              eq(userSubscription.status, "active"),
+              lte(userSubscription.startDate, today),
+              gte(userSubscription.endDate, today)
+            )
+          )
+          .orderBy(desc(userSubscription.createdAt))
+          .limit(1);
+
+        const subscriptionBalance =
+          (activeSubscriptionRows[0]?.dailyCreditsRemaining ?? 0) +
+          (activeSubscriptionRows[0]?.monthlyCreditsRemaining ?? 0);
+        const balanceAfter = purchasedBalance + subscriptionBalance;
+        const balanceBefore = balanceAfter - packageCredits;
 
         await tx.insert(creditTransaction).values({
           id: crypto.randomUUID(),
@@ -169,7 +194,7 @@ export async function PATCH(
           type: "addition",
           amount: packageCredits,
           balanceBefore,
-          balanceAfter: newBalance,
+          balanceAfter,
           reason: `订单支付发放积分 - ${order.id}`,
           referenceType: "order",
           referenceId: order.id,
@@ -186,11 +211,23 @@ export async function PATCH(
       }
 
       const subscriptionDailyCredits = pkg.dailyCredits as number;
+      const subscriptionMonthlyCredits = Math.max(0, pkg.credits ?? 0);
       const subscriptionDurationDays = pkg.durationDays as number;
 
       const now = new Date();
       const startDate = formatDateOnly(now);
       const endDate = formatDateOnly(addDays(now, subscriptionDurationDays - 1));
+
+      // 同一时间仅保留一条有效订阅，避免多订阅叠加导致额度冲突
+      await tx
+        .update(userSubscription)
+        .set({ status: "expired" })
+        .where(
+          and(
+            eq(userSubscription.userId, order.userId),
+            eq(userSubscription.status, "active")
+          )
+        );
 
       const createdSubscriptions = await tx
         .insert(userSubscription)
@@ -201,6 +238,10 @@ export async function PATCH(
           startDate,
           endDate,
           dailyCredits: subscriptionDailyCredits,
+          dailyCreditsRemaining: subscriptionDailyCredits,
+          monthlyCredits: subscriptionMonthlyCredits,
+          monthlyCreditsRemaining: subscriptionMonthlyCredits,
+          monthlyCycleIndex: 0,
           lastGrantDate: startDate,
           status: "active",
         })
@@ -213,35 +254,38 @@ export async function PATCH(
         throw new Error("创建订阅记录失败");
       }
 
-      // 开通当日立即发放一次积分，避免用户等待到次日 cron
-      const userUpdated = await tx
-        .update(user)
-        .set({
-          credits: sql`${user.credits} + ${subscriptionDailyCredits}`,
-        })
+      const userCreditsRows = await tx
+        .select({ purchasedCredits: user.credits })
+        .from(user)
         .where(eq(user.id, order.userId))
-        .returning({
-          newBalance: user.credits,
-        });
+        .limit(1);
 
-      if (userUpdated.length === 0) {
+      if (userCreditsRows.length === 0) {
         throw new Error(`订单用户不存在: ${order.userId}`);
       }
 
-      const newBalance = userUpdated[0].newBalance;
-      const balanceBefore = newBalance - subscriptionDailyCredits;
+      const purchasedCredits = userCreditsRows[0].purchasedCredits;
+      const openingCredits = subscriptionDailyCredits + subscriptionMonthlyCredits;
 
-      await tx.insert(creditTransaction).values({
-        id: crypto.randomUUID(),
-        userId: order.userId,
-        type: "addition",
-        amount: subscriptionDailyCredits,
-        balanceBefore,
-        balanceAfter: newBalance,
-        reason: `会员开通当日发放 - ${order.id}`,
-        referenceType: "subscription",
-        referenceId: subscriptionId,
-      });
+      if (openingCredits > 0) {
+        await tx.insert(creditTransaction).values({
+          id: crypto.randomUUID(),
+          userId: order.userId,
+          type: "addition",
+          amount: openingCredits,
+          balanceBefore: purchasedCredits,
+          balanceAfter: purchasedCredits + openingCredits,
+          reason: `会员开通额度生效 - ${order.id}`,
+          referenceType: "subscription",
+          referenceId: subscriptionId,
+          metadata: {
+            openingCredits: {
+              monthly: subscriptionMonthlyCredits,
+              daily: subscriptionDailyCredits,
+            },
+          },
+        });
+      }
 
       return {
         success: true as const,
@@ -249,6 +293,7 @@ export async function PATCH(
         entitlement: {
           type: "subscription" as const,
           subscriptionId,
+          monthlyCredits: subscriptionMonthlyCredits,
           dailyCredits: subscriptionDailyCredits,
           durationDays: subscriptionDurationDays,
           startDate,
