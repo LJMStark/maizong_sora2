@@ -12,6 +12,13 @@ import { PromptEnhanceDialog } from "./prompt-enhance-dialog";
 import { useStudio } from "../context/studio-context";
 import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
 import { useSimulatedProgress } from "../hooks/use-simulated-progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 // 工具函数 - 返回完整 data URI (data:mime;base64,xxx)
 const fileToBase64 = (file: File): Promise<string> => {
@@ -69,6 +76,10 @@ interface VideoConfig {
     videoQuality: number;
     image: number;
   };
+  dailyLimits: {
+    fast: number;
+    quality: number;
+  };
 }
 
 const DEFAULT_CREDIT_COSTS = {
@@ -98,12 +109,24 @@ const VideoWorkshop: React.FC = () => {
   const [enhanceDialogOpen, setEnhanceDialogOpen] = useState(false);
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const [videoConfig, setVideoConfig] = useState<VideoConfig | null>(null);
+  const [unavailableDialogOpen, setUnavailableDialogOpen] = useState(false);
 
-  const isVeo = videoConfig?.fastProvider === "veo";
+  const isVeo = mode === "Fast"
+    ? videoConfig?.fastProvider === "veo"
+    : videoConfig?.qualityProvider === "veo";
+  const allVeo = videoConfig?.fastProvider === "veo" && videoConfig?.qualityProvider === "veo";
   const creditCosts = {
     Fast: videoConfig?.creditCosts.videoFast ?? DEFAULT_CREDIT_COSTS.Fast,
     Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.Quality,
   };
+
+  useEffect(() => {
+    if (isVeo) {
+      setDuration(8);
+    } else {
+      setDuration(prev => prev === 8 ? 10 : prev);
+    }
+  }, [isVeo]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -112,9 +135,8 @@ const VideoWorkshop: React.FC = () => {
         const json = await res.json();
         if (json.success) {
           setVideoConfig(json.data);
-          if (json.data.fastProvider === "veo") {
+          if (json.data.fastProvider === "veo" && json.data.qualityProvider === "veo") {
             setDuration(8);
-            setMode("Fast");
           }
         }
       } catch (error) {
@@ -290,6 +312,14 @@ const VideoWorkshop: React.FC = () => {
       return;
     }
 
+    const currentLimit = mode === "Fast"
+      ? videoConfig?.dailyLimits?.fast
+      : videoConfig?.dailyLimits?.quality;
+    if (currentLimit === 0) {
+      setUnavailableDialogOpen(true);
+      return;
+    }
+
     const cost = creditCosts[mode];
     if (credits < cost) {
       alert(
@@ -370,6 +400,23 @@ const VideoWorkshop: React.FC = () => {
         enhancedPrompt={enhancedPrompt}
         onConfirm={handleConfirmEnhanced}
       />
+
+      <Dialog open={unavailableDialogOpen} onOpenChange={setUnavailableDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>渠道暂不可用</DialogTitle>
+            <DialogDescription>
+              该渠道因上游供应原因暂时不可用，请耐心等待恢复。
+            </DialogDescription>
+          </DialogHeader>
+          <button
+            onClick={() => setUnavailableDialogOpen(false)}
+            className="w-full py-2.5 bg-[#1a1a1a] text-white text-sm font-medium rounded hover:bg-[#2d3436] transition-colors"
+          >
+            知道了
+          </button>
+        </DialogContent>
+      </Dialog>
 
       <div className="w-full md:w-[380px] border-b md:border-b-0 md:border-r border-[#e5e5e1] flex flex-col bg-white overflow-y-auto custom-scrollbar p-4 md:p-8 gap-6 md:gap-8 order-1 md:order-1">
         <div className="border-b border-[#e5e5e1] pb-6">
@@ -541,14 +588,20 @@ const VideoWorkshop: React.FC = () => {
           </div>
         </div>
 
-        {!isVeo && (
+        {!allVeo && (
           <div className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
               {t("sections.renderMode")}
             </p>
             <div className="flex border border-[#e5e5e1]">
               <button
-                onClick={() => setMode("Fast")}
+                onClick={() => {
+                  if (videoConfig?.dailyLimits.fast === 0) {
+                    setUnavailableDialogOpen(true);
+                    return;
+                  }
+                  setMode("Fast");
+                }}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Fast" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
               >
                 <span>{t("mode.fast")}</span>
@@ -557,7 +610,13 @@ const VideoWorkshop: React.FC = () => {
                 </span>
               </button>
               <button
-                onClick={() => setMode("Quality")}
+                onClick={() => {
+                  if (videoConfig?.dailyLimits.quality === 0) {
+                    setUnavailableDialogOpen(true);
+                    return;
+                  }
+                  setMode("Quality");
+                }}
                 className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-colors flex flex-col items-center ${mode === "Quality" ? "bg-[#1a1a1a] text-white" : "bg-white text-gray-500 hover:bg-[#faf9f6]"}`}
               >
                 <span>{t("mode.quality")}</span>
@@ -569,7 +628,7 @@ const VideoWorkshop: React.FC = () => {
           </div>
         )}
 
-        {isVeo && (
+        {allVeo && (
           <div className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-widest text-gray-600">
               {t("sections.renderMode")}

@@ -12,12 +12,21 @@ export async function GET() {
   try {
     const config = await videoLimitService.getVideoGenerationConfig();
 
+    const [fastLimit, qualityLimit] = await Promise.all([
+      videoLimitService.getEffectiveLimit(session.user.id, "fast"),
+      videoLimitService.getEffectiveLimit(session.user.id, "quality"),
+    ]);
+
     return NextResponse.json({
       success: true,
       data: {
         fastProvider: config.providers.fast,
         qualityProvider: config.providers.quality,
         creditCosts: config.creditCosts,
+        dailyLimits: {
+          fast: fastLimit,
+          quality: qualityLimit,
+        },
       },
     });
   } catch (error) {
