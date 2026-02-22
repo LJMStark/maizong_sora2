@@ -167,6 +167,8 @@
       "download": "下载 MP4",
       "delete": "删除",
       "tryAgain": "重试",
+      "retryGentle": "再来一次",
+      "comeBackLater": "好的，我晚点再来",
       "fullScreen": "全屏"
     },
     "canvas": {
@@ -177,7 +179,11 @@
       "progress": "进度",
       "waitMessage": "这可能需要几分钟...",
       "previewWindow": "预览窗口",
-      "generationFailed": "生成失败"
+      "generationFailed": "生成失败",
+      "minorIssue": "生成遇到了一点小状况",
+      "minorIssueDesc": "别担心，积分已经原路返还啦。喝杯咖啡，再试一次吧~",
+      "busyPeriod": "这个时段有点拥挤",
+      "busyPeriodDesc": "上游服务暂时有些繁忙，建议过一会儿再试试。积分不会扣除，放心~"
     },
     "status": {
       "pending": "等待中",

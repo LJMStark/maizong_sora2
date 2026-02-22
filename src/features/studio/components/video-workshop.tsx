@@ -8,6 +8,7 @@ import { AspectRatio } from "../types";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
+import { PixelCoffee, PixelLeaf, PixelMoon } from "./pixel-icons";
 import { PromptEnhanceDialog } from "./prompt-enhance-dialog";
 import { useStudio } from "../context/studio-context";
 import { useTaskPolling, VideoTaskStatus } from "../hooks/use-task-polling";
@@ -110,6 +111,7 @@ const VideoWorkshop: React.FC = () => {
   const [enhancedPrompt, setEnhancedPrompt] = useState("");
   const [videoConfig, setVideoConfig] = useState<VideoConfig | null>(null);
   const [unavailableDialogOpen, setUnavailableDialogOpen] = useState(false);
+  const [failCount, setFailCount] = useState(0);
 
   const isVeo = mode === "Fast"
     ? videoConfig?.fastProvider === "veo"
@@ -156,6 +158,7 @@ const VideoWorkshop: React.FC = () => {
         setGeneratedVideo(task.videoUrl);
       }
       setCurrentTaskId(null);
+      setFailCount(0);
       refreshCredits();
       refreshVideoTasks();
     },
@@ -167,6 +170,7 @@ const VideoWorkshop: React.FC = () => {
       setLoading(false);
       setErrorMessage(task.errorMessage || t("errors.generationFailed"));
       setCurrentTaskId(null);
+      setFailCount(prev => prev + 1);
       refreshCredits();
       refreshVideoTasks();
     },
@@ -371,6 +375,7 @@ const VideoWorkshop: React.FC = () => {
       const detail = e instanceof Error ? e.message : String(e);
       const message = `视频生成失败：${detail}`;
       setErrorMessage(message);
+      setFailCount(prev => prev + 1);
       toast.error(message);
     }
   };
@@ -731,26 +736,51 @@ const VideoWorkshop: React.FC = () => {
             </div>
           ) : errorMessage ? (
             <div
-              className={`bg-white border border-red-200 p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"}`}
+              className={`bg-[#faf9f6] border border-[#e5e5e1] p-1 shadow-sm flex flex-col items-center justify-center ${aspectRatio === AspectRatio.SOCIAL ? "aspect-9/16 h-[600px]" : "aspect-video w-full"}`}
             >
-              <span className="material-symbols-outlined text-4xl text-red-400 mb-6">
-                error
-              </span>
-              <h3 className="text-lg font-serif italic mb-2 text-red-600">
-                {t("canvas.generationFailed")}
-              </h3>
-              <p className="text-red-500/80 text-[11px] leading-relaxed text-center max-w-xs">
-                {errorMessage}
-              </p>
-              <button
-                onClick={() => {
-                  setErrorMessage(null);
-                  handleGenerate();
-                }}
-                className="mt-6 px-6 py-2 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest"
-              >
-                {t("actions.tryAgain")}
-              </button>
+              {failCount >= 3 ? (
+                <>
+                  <PixelMoon size={48} className="text-[#8C7355] mb-6" />
+                  <h3 className="text-lg font-serif italic mb-2 text-[#5a4a3a]">
+                    {t("canvas.busyPeriod")}
+                  </h3>
+                  <p className="text-[#8C7355]/80 text-[11px] leading-relaxed text-center max-w-xs">
+                    {t("canvas.busyPeriodDesc")}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setFailCount(0);
+                    }}
+                    className="mt-6 px-6 py-2 bg-[#8C7355] text-white text-[10px] uppercase tracking-widest hover:bg-[#7a6349] transition-colors"
+                  >
+                    {t("actions.comeBackLater")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {failCount % 2 === 0 ? (
+                    <PixelCoffee size={48} className="text-[#8C7355] mb-6" />
+                  ) : (
+                    <PixelLeaf size={48} className="text-[#8C7355] mb-6" />
+                  )}
+                  <h3 className="text-lg font-serif italic mb-2 text-[#5a4a3a]">
+                    {t("canvas.minorIssue")}
+                  </h3>
+                  <p className="text-[#8C7355]/80 text-[11px] leading-relaxed text-center max-w-xs">
+                    {t("canvas.minorIssueDesc")}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setErrorMessage(null);
+                      handleGenerate();
+                    }}
+                    className="mt-6 px-6 py-2 bg-[#1a1a1a] text-white text-[10px] uppercase tracking-widest hover:bg-[#2d3436] transition-colors"
+                  >
+                    {t("actions.retryGentle")}
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div
