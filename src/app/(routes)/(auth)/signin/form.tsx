@@ -46,7 +46,9 @@ export default function SignInForm() {
         const msg = response.error.message ?? "";
         const code = response.error.code ?? "";
         let errorKey = "unknown";
-        if (msg === "Invalid credentials") {
+        if (msg.includes("Invalid") && (msg.includes("password") || msg.includes("credentials"))) {
+          errorKey = "invalidCredentials";
+        } else if (code === "INVALID_EMAIL_OR_PASSWORD") {
           errorKey = "invalidCredentials";
         } else if (msg.includes("email is not verified") || code === "EMAIL_NOT_VERIFIED") {
           errorKey = "emailNotVerified";
