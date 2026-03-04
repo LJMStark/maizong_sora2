@@ -1,6 +1,10 @@
 import { createAuthClient } from "better-auth/react";
 import { usernameClient } from "better-auth/client/plugins";
 import { nextCookies } from "better-auth/next-js";
+const baseURL =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_BASE_URL;
 
 export const {
   signIn,
@@ -13,7 +17,7 @@ export const {
   sendVerificationEmail,
 } =
   createAuthClient({
-    baseURL: process.env.NEXT_PUBLIC_BASE_URL!,
+    baseURL,
     emailAndPassword: {
       enabled: true,
     },

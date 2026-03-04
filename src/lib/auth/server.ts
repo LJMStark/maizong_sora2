@@ -6,7 +6,9 @@ import { restrictedUsernames } from "./usernames";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
 
 const baseURL =
-  process.env.BETTER_AUTH_BASE_URL || process.env.NEXT_PUBLIC_BASE_URL;
+  process.env.BETTER_AUTH_BASE_URL ||
+  process.env.BETTER_AUTH_URL ||
+  process.env.NEXT_PUBLIC_BASE_URL;
 
 export const auth = betterAuth({
   baseURL,
