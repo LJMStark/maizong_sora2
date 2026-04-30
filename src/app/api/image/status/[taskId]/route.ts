@@ -25,13 +25,14 @@ export async function GET(
     }
 
     if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: "禁止访问" }, { status: 403 });
+      return NextResponse.json({ error: "任务未找到" }, { status: 404 });
     }
 
     // If task is already completed or has an error, return current state
     if (task.status === "succeeded" || task.status === "error") {
       return NextResponse.json({
         taskId: task.id,
+        sessionId: task.sessionId,
         status: task.status,
         imageUrl: task.finalImageUrl,
         errorMessage: task.errorMessage,
@@ -42,6 +43,7 @@ export async function GET(
     if (!task.duomiTaskId) {
       return NextResponse.json({
         taskId: task.id,
+        sessionId: task.sessionId,
         status: task.status,
         errorMessage: task.errorMessage || "任务创建中",
       });
@@ -85,6 +87,7 @@ export async function GET(
           }
           return NextResponse.json({
             taskId: latestTask.id,
+            sessionId: latestTask.sessionId,
             status: latestTask.status,
             imageUrl: latestTask.finalImageUrl,
             errorMessage: latestTask.errorMessage,
@@ -93,6 +96,7 @@ export async function GET(
 
         return NextResponse.json({
           taskId: updatedTask.id,
+          sessionId: updatedTask.sessionId,
           status: "succeeded",
           imageUrl: finalImageUrl,
         });
@@ -117,6 +121,7 @@ export async function GET(
 
         return NextResponse.json({
           taskId: task.id,
+          sessionId: task.sessionId,
           status: "error",
           errorMessage,
         });
@@ -128,6 +133,7 @@ export async function GET(
 
         return NextResponse.json({
           taskId: task.id,
+          sessionId: task.sessionId,
           status: duomiStatus.state,
         });
       }
@@ -136,6 +142,7 @@ export async function GET(
         pollError instanceof Error ? pollError.message : "获取状态失败";
       return NextResponse.json({
         taskId: task.id,
+        sessionId: task.sessionId,
         status: task.status,
         errorMessage,
       });

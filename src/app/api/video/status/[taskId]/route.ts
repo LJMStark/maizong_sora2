@@ -22,6 +22,7 @@ function buildTaskResponse(
 ) {
   return {
     id: task.id,
+    sessionId: task.sessionId,
     status: overrides.status ?? task.status,
     progress: overrides.progress ?? task.progress,
     videoUrl: overrides.videoUrl !== undefined ? overrides.videoUrl : (task.finalVideoUrl || task.duomiVideoUrl || null),
@@ -67,7 +68,7 @@ export async function GET(
     }
 
     if (task.userId !== session.user.id) {
-      return NextResponse.json({ error: "禁止访问" }, { status: 403 });
+      return NextResponse.json({ error: "任务未找到" }, { status: 404 });
     }
 
     if (task.status === "succeeded" || task.status === "error") {

@@ -1,6 +1,7 @@
 export * from "./video-task";
 export * from "./credit-transaction";
 export * from "./image-task";
+export * from "./studio-session";
 export * from "./credit-package";
 export * from "./user-subscription";
 export * from "./credit-order";

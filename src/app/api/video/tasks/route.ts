@@ -14,6 +14,7 @@ export async function GET() {
 
     const formattedTasks = tasks.map((task) => ({
       id: task.id,
+      sessionId: task.sessionId,
       status: task.status,
       progress: task.progress,
       prompt: task.prompt,

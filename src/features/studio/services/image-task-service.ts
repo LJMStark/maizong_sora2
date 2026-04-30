@@ -4,6 +4,7 @@ import { eq, desc, and, ne } from "drizzle-orm";
 
 export interface CreateImageTaskParams {
   userId: string;
+  sessionId?: string;
   mode: "generate" | "edit";
   model: "gemini-3-pro-image-preview" | "gemini-2.5-flash-image";
   prompt: string;
@@ -22,6 +23,7 @@ export const imageTaskService = {
       .values({
         id: taskId,
         userId: params.userId,
+        sessionId: params.sessionId,
         mode: params.mode,
         model: params.model,
         prompt: params.prompt,
@@ -124,6 +126,17 @@ export const imageTaskService = {
       .where(eq(imageTask.userId, userId))
       .orderBy(desc(imageTask.createdAt))
       .limit(limit);
+  },
+
+  async getUserTasksBySession(
+    userId: string,
+    sessionId: string
+  ): Promise<ImageTaskType[]> {
+    return db
+      .select()
+      .from(imageTask)
+      .where(and(eq(imageTask.userId, userId), eq(imageTask.sessionId, sessionId)))
+      .orderBy(desc(imageTask.createdAt));
   },
 
   async getActiveTasks(userId: string): Promise<ImageTaskType[]> {

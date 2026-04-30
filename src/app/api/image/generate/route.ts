@@ -4,6 +4,10 @@ import { creditService } from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
+import {
+  studioSessionService,
+  StudioSessionAccessError,
+} from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateImageSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
-    const { prompt, model, aspectRatio, imageSize } = validation.data;
+    const { prompt, model, aspectRatio, imageSize, sessionId } = validation.data;
 
     const selectedModel = model || "gemini-2.5-flash-image";
     if (
@@ -62,6 +66,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const studioSession = await studioSessionService.getOrCreateSession({
+      userId,
+      type: "image",
+      title: prompt,
+      sessionId,
+    });
+
     const { transactionId } = await creditService.deductCredits({
       userId,
       amount: imageCreditCost,
@@ -73,6 +84,7 @@ export async function POST(request: NextRequest) {
     try {
       task = await imageTaskService.createTask({
         userId,
+        sessionId: studioSession.id,
         mode: "generate",
         model: selectedModel,
         prompt,
@@ -141,9 +153,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId: task.id,
+      sessionId: studioSession.id,
       creditCost: imageCreditCost,
     });
   } catch (error) {
+    if (error instanceof StudioSessionAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+
     const message = sanitizeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

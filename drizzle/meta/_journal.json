@@ -92,6 +92,20 @@
       "when": 1771741200000,
       "tag": "0012_trial_card_three_days",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777520700000,
+      "tag": "0013_studio_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777520760000,
+      "tag": "0014_backfill_studio_sessions",
+      "breakpoints": true
     }
   ]
 }

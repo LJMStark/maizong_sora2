@@ -18,6 +18,7 @@ export enum ImageQuality {
 export interface GenerationResult {
   id: string;
   type: 'image' | 'video' | 'analysis';
+  sessionId?: string | null;
   url?: string;
   text?: string;
   thumbnail?: string;
@@ -38,6 +39,7 @@ export interface CreditTransaction {
 
 export interface VideoTask {
   id: string;
+  sessionId?: string | null;
   status: 'pending' | 'running' | 'succeeded' | 'error' | 'retrying';
   progress: number;
   prompt: string;
@@ -54,6 +56,7 @@ export interface VideoTask {
 
 export interface ImageTask {
   id: string;
+  sessionId?: string | null;
   mode: 'generate' | 'edit';
   model: string;
   prompt: string;

@@ -7,8 +7,9 @@ import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
 
 type Tab = "all" | "video" | "image";
+type UserCenterTranslator = ReturnType<typeof useTranslations>;
 
-const getStatusBadge = (status: VideoTask["status"], t: any) => {
+const getStatusBadge = (status: VideoTask["status"], t: UserCenterTranslator) => {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700",
     running: "bg-blue-100 text-blue-700",
@@ -36,7 +37,7 @@ const getStatusBadge = (status: VideoTask["status"], t: any) => {
 
 const GalleryGrid: React.FC<{
   items: GenerationResult[];
-  t: any;
+  t: UserCenterTranslator;
   onItemClick: (item: GenerationResult) => void;
 }> = ({ items, t, onItemClick }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">

@@ -55,6 +55,7 @@ export function useSimulatedProgress({
   useEffect(() => {
     if (!isRunning) {
       // 任务未运行，重置进度
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProgress(0);
       startTimeRef.current = null;
       if (animationFrameRef.current) {

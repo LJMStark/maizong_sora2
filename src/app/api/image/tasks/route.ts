@@ -16,6 +16,7 @@ export async function GET() {
       success: true,
       tasks: tasks.map((task) => ({
         id: task.id,
+        sessionId: task.sessionId,
         mode: task.mode,
         model: task.model,
         prompt: task.prompt,

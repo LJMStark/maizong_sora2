@@ -1,5 +1,6 @@
 import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
+import { studioSession } from "./studio-session";
 
 export const imageModelEnum = pgEnum("image_model", [
   "gemini-3-pro-image-preview",
@@ -20,6 +21,9 @@ export const imageTask = pgTable("image_task", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").references(() => studioSession.id, {
+    onDelete: "set null",
+  }),
   duomiTaskId: text("duomi_task_id"),
   mode: imageModeEnum("mode").notNull(),
   model: imageModelEnum("model").notNull(),

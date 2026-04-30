@@ -1,7 +1,7 @@
 import { StudioProvider } from "@/features/studio/context/studio-context";
-import Sidebar from "@/features/studio/components/sidebar";
-import MobileNav from "@/features/studio/components/mobile-nav";
+import StudioShell from "@/features/studio/components/studio-shell";
 import AnnouncementDialog from "@/features/studio/components/announcement-dialog";
+import { Suspense } from "react";
 
 export default function StudioLayout({
   children,
@@ -10,13 +10,9 @@ export default function StudioLayout({
 }) {
   return (
     <StudioProvider>
-      <div className="flex flex-col md:flex-row h-screen bg-[#faf9f6] text-[#1a1a1a] overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
-        <MobileNav />
-        <Sidebar />
-        <main className="flex-1 h-full overflow-hidden relative">
-          {children}
-        </main>
-      </div>
+      <Suspense fallback={<div className="h-screen bg-white" />}>
+        <StudioShell>{children}</StudioShell>
+      </Suspense>
       <AnnouncementDialog />
     </StudioProvider>
   );

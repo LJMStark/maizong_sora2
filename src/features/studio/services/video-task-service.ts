@@ -6,6 +6,7 @@ export type VideoProvider = "duomi" | "kie" | "veo";
 
 export interface CreateVideoTaskParams {
   userId: string;
+  sessionId?: string;
   model: "sora-2" | "sora-2-temporary" | "sora-2-pro" | "veo3.1-fast";
   prompt: string;
   aspectRatio: string;
@@ -25,6 +26,7 @@ export const videoTaskService = {
       .values({
         id: taskId,
         userId: params.userId,
+        sessionId: params.sessionId,
         provider: params.provider ?? "duomi",
         model: params.model,
         prompt: params.prompt,
@@ -153,6 +155,17 @@ export const videoTaskService = {
       .where(eq(videoTask.userId, userId))
       .orderBy(desc(videoTask.createdAt))
       .limit(limit);
+  },
+
+  async getUserTasksBySession(
+    userId: string,
+    sessionId: string
+  ): Promise<VideoTaskType[]> {
+    return db
+      .select()
+      .from(videoTask)
+      .where(and(eq(videoTask.userId, userId), eq(videoTask.sessionId, sessionId)))
+      .orderBy(desc(videoTask.createdAt));
   },
 
   async getActiveTasks(userId: string): Promise<VideoTaskType[]> {

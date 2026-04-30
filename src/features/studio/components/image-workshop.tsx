@@ -1,63 +1,186 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
-import { AspectRatio, ImageQuality } from '../types';
-import { IMAGE_PROMPTS, EDIT_PROMPTS, ANALYZE_PROMPTS } from '../utils/prompt-library';
-import Lightbox from './lightbox';
-import AssetPicker from './asset-picker';
-import ShowcaseGallery from './showcase-gallery';
-import { useStudio } from '../context/studio-context';
-import { useImageTaskPolling } from '../hooks/use-image-task-polling';
-import { useSimulatedProgress } from '../hooks/use-simulated-progress';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  ArrowUp,
+  Download,
+  Film,
+  ImageIcon,
+  Maximize2,
+  Paperclip,
+  Plus,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import { AspectRatio, ImageQuality } from "../types";
+import { IMAGE_PROMPTS, EDIT_PROMPTS } from "../utils/prompt-library";
+import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
+import Lightbox from "./lightbox";
+import AssetPicker from "./asset-picker";
+import { useStudio } from "../context/studio-context";
+import { useImageTaskPolling } from "../hooks/use-image-task-polling";
+import { useSimulatedProgress } from "../hooks/use-simulated-progress";
+import { cn } from "@/lib/utils";
 
-type Mode = 'generate' | 'edit' | 'analyze';
+type Mode = "generate" | "edit";
 
-const ImageWorkshop: React.FC = () => {
+interface ImageSessionTask {
+  id: string;
+  sessionId?: string | null;
+  mode: Mode;
+  model: string;
+  prompt: string;
+  aspectRatio?: string | null;
+  status: "pending" | "running" | "succeeded" | "error";
+  errorMessage?: string | null;
+  sourceImageUrl?: string | null;
+  imageUrl?: string | null;
+  creditCost: number;
+  createdAt: string;
+  completedAt?: string | null;
+}
+
+function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      const result = reader.result as string;
+      const [header, base64] = result.split(",");
+      const mimeType = header.match(/^data:([^;]+);base64$/)?.[1] || file.type;
+      resolve({ base64, mimeType });
+    };
+    reader.onerror = reject;
+  });
+}
+
+async function imageUrlToBase64(url: string) {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return fileToBase64(new File([blob], "source-image", { type: blob.type || "image/png" }));
+}
+
+function taskDate(value: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+const aspectOptions = Object.values(AspectRatio);
+const qualityOptions = Object.values(ImageQuality);
+
+export default function ImageWorkshop() {
   const router = useRouter();
-  const t = useTranslations('studio.image');
-  const { state, refreshCredits, refreshImageTasks, addToHistory } = useStudio();
-  const { credits, history } = state;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeSessionId = searchParams.get("session");
+  const { state, refreshCredits, refreshImageTasks } = useStudio();
 
-  const [mode, setMode] = useState<Mode>('generate');
-  const [prompt, setPrompt] = useState('');
+  const [mode, setMode] = useState<Mode>("generate");
+  const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.SQUARE);
   const [quality, setQuality] = useState<ImageQuality>(ImageQuality.STANDARD);
   const [refImage, setRefImage] = useState<File | null>(null);
   const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
-  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [taskStatus, setTaskStatus] = useState<"pending" | "running" | "succeeded" | "error">("pending");
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
+  const [optimisticTask, setOptimisticTask] = useState<ImageSessionTask | null>(null);
+  const [sessionTasks, setSessionTasks] = useState<ImageSessionTask[]>([]);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [imageCreditCost, setImageCreditCost] = useState(10);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sessionRequestRef = useRef(0);
+
+  const loadSession = useCallback(async () => {
+    const requestId = sessionRequestRef.current + 1;
+    sessionRequestRef.current = requestId;
+
+    if (!activeSessionId) {
+      setSessionTasks([]);
+      setCurrentTaskId(null);
+      setLoading(false);
+      setTaskStatus("pending");
+      return;
+    }
+
+    const response = await fetch(`/api/studio/sessions/${activeSessionId}?type=image`);
+    if (requestId !== sessionRequestRef.current) return;
+
+    if (!response.ok) {
+      setSessionTasks([]);
+      setCurrentTaskId(null);
+      setLoading(false);
+      setTaskStatus("pending");
+      return;
+    }
+
+    const data = await response.json();
+    const nextTasks = (data.tasks ?? []) as ImageSessionTask[];
+    const activeTask = [...nextTasks]
+      .reverse()
+      .find((task) => task.status === "pending" || task.status === "running");
+
+    setSessionTasks(nextTasks);
+    setCurrentTaskId(activeTask?.id ?? null);
+    setLoading(Boolean(activeTask));
+    setTaskStatus(activeTask?.status ?? "pending");
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    void loadSession();
+  }, [loadSession]);
+
+  useEffect(() => {
+    setOptimisticTask((prev) =>
+      prev && prev.sessionId === activeSessionId ? prev : null
+    );
+    setCurrentTaskId(null);
+    setLoading(false);
+    setTaskStatus("pending");
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    const handler = () => {
+      setPrompt("");
+      setRefImage(null);
+      setRefImagePreview(null);
+      setOptimisticTask(null);
+      setCurrentTaskId(null);
+      setLoading(false);
+    };
+    window.addEventListener("studio:new-session", handler);
+    return () => window.removeEventListener("studio:new-session", handler);
+  }, []);
 
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch('/api/video/config');
+        const response = await fetch("/api/video/config");
         const data = await response.json();
         if (
           response.ok &&
           data?.success &&
-          typeof data?.data?.creditCosts?.image === 'number'
+          typeof data?.data?.creditCosts?.image === "number"
         ) {
           setImageCreditCost(data.data.creditCosts.image);
         }
       } catch (error) {
-        console.error('获取图片积分配置失败:', error);
+        console.error("获取图片积分配置失败:", error);
       }
     };
 
-    fetchConfig();
+    void fetchConfig();
   }, []);
 
-  // Polling for image task status
   useImageTaskPolling({
     taskId: currentTaskId,
     interval: 3000,
@@ -65,379 +188,435 @@ const ImageWorkshop: React.FC = () => {
       setLoading(false);
       setCurrentTaskId(null);
       setTaskStatus("succeeded");
-      if (task.imageUrl) {
-        setGeneratedImage(task.imageUrl);
-        refreshCredits();
-        refreshImageTasks();
-      }
+      setOptimisticTask((prev) =>
+        prev && prev.id === task.taskId
+          ? { ...prev, status: "succeeded", imageUrl: task.imageUrl }
+          : prev
+      );
+      void refreshCredits();
+      void refreshImageTasks();
+      void loadSession();
+      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
     },
     onError: (task) => {
       setLoading(false);
       setCurrentTaskId(null);
       setTaskStatus("error");
-      alert(task.errorMessage || t('errors.generationFailed'));
-      refreshCredits();
-      refreshImageTasks();
+      setOptimisticTask((prev) =>
+        prev && prev.id === task.taskId
+          ? { ...prev, status: "error", errorMessage: task.errorMessage }
+          : prev
+      );
+      toast.error(task.errorMessage || "图像生成失败，积分已退还");
+      void refreshCredits();
+      void refreshImageTasks();
+      void loadSession();
     },
   });
 
-  // 模拟进度：30秒，最多到95%
   const simulatedProgress = useSimulatedProgress({
     isRunning: loading,
     actualStatus: taskStatus,
-    estimatedDuration: 30000, // 30秒
+    estimatedDuration: 30000,
     maxProgress: 95,
   });
 
   const progress = taskStatus === "succeeded" ? 100 : simulatedProgress;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setRefImage(file);
-      const url = URL.createObjectURL(file);
-      setRefImagePreview(url);
+  const tasks = useMemo(() => {
+    const map = new Map<string, ImageSessionTask>();
+    sessionTasks.forEach((task) => map.set(task.id, task));
+    if (optimisticTask?.sessionId === activeSessionId) {
+      map.set(optimisticTask.id, optimisticTask);
     }
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [activeSessionId, sessionTasks, optimisticTask]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [tasks.length, progress]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setRefImage(file);
+    setRefImagePreview(URL.createObjectURL(file));
+    setMode("edit");
   };
 
   const handleAssetSelect = (url: string) => {
     setRefImagePreview(url);
     setRefImage(null);
-  };
-
-  const addTag = (tag: string) => {
-    setPrompt(prev => {
-      if (prev.includes(tag)) return prev;
-      return prev ? `${prev}, ${tag}` : tag;
-    });
+    setMode("edit");
   };
 
   const handleRandomPrompt = () => {
-    const list = mode === 'generate' ? IMAGE_PROMPTS : mode === 'edit' ? EDIT_PROMPTS : ANALYZE_PROMPTS;
+    const list = mode === "generate" ? IMAGE_PROMPTS : EDIT_PROMPTS;
     const random = list[Math.floor(Math.random() * list.length)];
     setPrompt(random);
   };
 
-  const handleToVideo = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (generatedImage) {
-      router.push(`/studio/video?image=${encodeURIComponent(generatedImage)}`);
-    }
+  const clearAttachment = () => {
+    setRefImage(null);
+    setRefImagePreview(null);
+    setMode("generate");
   };
 
-  const fileToBase64 = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-    });
-  };
+  const handleSubmit = async () => {
+    const trimmedPrompt = prompt.trim();
+    if (!trimmedPrompt) return;
 
-  const handleAction = async () => {
-    if (!prompt && mode !== 'analyze') return;
-    if (mode === 'analyze') {
-      alert(t('errors.analysisNotSupported'));
-      return;
-    }
-    if (mode === 'edit' && !refImage && !refImagePreview) {
-      alert(t('errors.imageRequired'));
+    if (mode === "edit" && !refImage && !refImagePreview) {
+      toast.error("编辑图像需要先上传或选择一张图");
       return;
     }
 
-    if (credits < imageCreditCost) {
-      alert(t('errors.insufficientCredits'));
+    if (state.credits < imageCreditCost) {
+      toast.error(`积分不足，本次需要 ${imageCreditCost} 积分`);
       return;
     }
 
     setLoading(true);
-    setGeneratedImage(null);
-    setAnalysisResult(null);
     setTaskStatus("pending");
 
     try {
       let imageBase64: string | undefined;
       let imageMimeType: string | undefined;
 
-      if (refImage) {
-        imageBase64 = await fileToBase64(refImage);
-        imageMimeType = refImage.type;
+      if (mode === "edit") {
+        const imageData = refImage
+          ? await fileToBase64(refImage)
+          : refImagePreview
+            ? await imageUrlToBase64(refImagePreview)
+            : null;
+
+        if (!imageData) {
+          throw new Error("缺少输入图像");
+        }
+
+        imageBase64 = imageData.base64;
+        imageMimeType = imageData.mimeType;
       }
 
-      const model = quality === ImageQuality.UHD ? "gemini-3-pro-image-preview" : "gemini-2.5-flash-image";
-      const endpoint = mode === 'edit' ? '/api/image/edit' : '/api/image/generate';
+      const model =
+        quality === ImageQuality.UHD
+          ? "gemini-3-pro-image-preview"
+          : "gemini-2.5-flash-image";
+      const endpoint = mode === "edit" ? "/api/image/edit" : "/api/image/generate";
 
       const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt,
+          prompt: trimmedPrompt,
           model,
           aspectRatio,
+          sessionId: activeSessionId ?? undefined,
           imageBase64,
           imageMimeType,
         }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || t('errors.taskCreationFailed'));
+        throw new Error(data.error || "创建图像任务失败");
       }
 
-      const data = await response.json();
+      const nextSessionId = data.sessionId as string;
+      const nextTask: ImageSessionTask = {
+        id: data.taskId,
+        sessionId: nextSessionId,
+        mode,
+        model,
+        prompt: trimmedPrompt,
+        aspectRatio,
+        status: "running",
+        sourceImageUrl: refImagePreview,
+        creditCost: data.creditCost ?? imageCreditCost,
+        createdAt: new Date().toISOString(),
+      };
+
+      setOptimisticTask(nextTask);
       setCurrentTaskId(data.taskId);
       setTaskStatus("running");
-    } catch (e) {
-      console.error(e);
+      setPrompt("");
+      if (!activeSessionId) {
+        router.replace(`${pathname}?session=${nextSessionId}`);
+      }
+      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+    } catch (error) {
       setLoading(false);
-      const message = e instanceof Error ? e.message : String(e);
-      alert(`操作失败：${message}`);
+      setTaskStatus("error");
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`操作失败：${message}`);
     }
   };
 
-  return (
-    <div className="flex flex-col md:flex-row h-full overflow-hidden font-sans">
-      {lightboxOpen && generatedImage && (
-        <Lightbox src={generatedImage} type="image" onClose={() => setLightboxOpen(false)} />
+  const renderComposer = (centered = false) => (
+    <div
+      className={cn(
+        "mx-auto w-full min-w-0 max-w-[980px]",
+        centered ? "px-4" : "px-4 pb-4 md:px-8 md:pb-6"
       )}
+    >
+      <div className="min-w-0 rounded-[28px] border border-black/15 bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
+        {refImagePreview && (
+          <div className="mb-3 flex items-center gap-3">
+            <div className="relative size-24 overflow-hidden rounded-2xl bg-[#f4f4f4]">
+              <img src={refImagePreview} alt="参考图" className="size-full object-cover" />
+              <button
+                type="button"
+                onClick={clearAttachment}
+                className="absolute right-1 top-1 flex size-7 items-center justify-center rounded-full bg-black text-white"
+                aria-label="移除参考图"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <span className="text-sm text-[#6f6f6f]">将作为编辑输入图像</span>
+          </div>
+        )}
 
+        <textarea
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              void handleSubmit();
+            }
+          }}
+          rows={centered ? 2 : 1}
+          maxLength={10000}
+          placeholder={mode === "edit" ? "描述或编辑图像" : "描述你想生成的图像"}
+          className="max-h-40 min-h-12 w-full min-w-0 resize-none bg-transparent px-3 py-2 text-[17px] leading-relaxed outline-none placeholder:text-[#8b8b8b]"
+        />
+
+        <div className="relative px-1 pb-12 sm:pb-1">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 pr-12">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
+              aria-label="上传图像"
+            >
+              <Plus className="size-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#0b84ff] hover:bg-[#edf6ff]"
+            >
+              <ImageIcon className="size-4" />
+              历史图像
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode(mode === "generate" ? "edit" : "generate")}
+              className="rounded-full px-3 py-2 text-sm hover:bg-black/5"
+            >
+              {mode === "generate" ? "生成" : "编辑"}
+            </button>
+            <button
+              type="button"
+              onClick={handleRandomPrompt}
+              className="rounded-full px-3 py-2 text-sm hover:bg-black/5"
+            >
+              随机
+            </button>
+            <select
+              value={aspectRatio}
+              onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
+              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+            >
+              {aspectOptions.map((ratio) => (
+                <option key={ratio} value={ratio}>
+                  {ratio}
+                </option>
+              ))}
+            </select>
+            <select
+              value={quality}
+              onChange={(event) => setQuality(event.target.value as ImageQuality)}
+              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+            >
+              {qualityOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+            <span className="rounded-full bg-[#f4f4f4] px-3 py-2 text-sm text-[#666]">
+              {imageCreditCost} 积分
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading || !prompt.trim() || (mode === "edit" && !refImage && !refImagePreview)}
+            className="absolute bottom-1 right-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-[#333] disabled:bg-[#d7d7d7]"
+            aria-label="发送"
+          >
+            <ArrowUp className="size-5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const empty = tasks.length === 0;
+
+  return (
+    <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-white">
+      {lightboxImage && (
+        <Lightbox src={lightboxImage} type="image" onClose={() => setLightboxImage(null)} />
+      )}
       {pickerOpen && (
         <AssetPicker
-          history={history}
+          history={state.history}
           onClose={() => setPickerOpen(false)}
           onSelect={handleAssetSelect}
         />
       )}
 
-      {/* Controls Panel */}
-      <div className="w-full md:w-[440px] overflow-y-auto border-b md:border-b-0 md:border-r border-[#e5e5e1] bg-white p-4 md:p-8 flex flex-col gap-6 md:gap-8 custom-scrollbar order-1 md:order-1">
-
-        {/* Mode Switcher */}
-        <div className="flex p-1 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
-          {(['generate', 'edit'] as Mode[]).map(m => (
-            <button
-              key={m}
-              onClick={() => { setMode(m); setGeneratedImage(null); setAnalysisResult(null); }}
-              className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-all rounded-sm ${mode === m ? 'bg-white text-[#1a1a1a] shadow-sm' : 'text-[#4b5563] hover:text-[#1a1a1a]'}`}
-            >
-              {t(`mode.${m}`)}
-            </button>
-          ))}
-        </div>
-
-        {/* Prompt Section */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <label className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">
-                {mode === 'edit' ? t('prompt.labelEdit') : t('prompt.labelGenerate')}
-              </label>
-              <button
-                onClick={handleRandomPrompt}
-                className="text-[#4b5563] hover:text-[#1a1a1a] transition-colors flex items-center justify-center p-1 rounded-full hover:bg-[#faf9f6]"
-                title={t('prompt.randomTitle')}
-              >
-                <span className="material-symbols-outlined text-sm">casino</span>
-              </button>
-            </div>
-            <span className="text-xs text-[#4b5563] tabular-nums">{prompt.length} / 3000</span>
-          </div>
-          <div className="flex flex-col gap-3">
-            <div className="group relative">
-              <textarea
-                className="w-full h-32 p-5 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm text-base text-[#1a1a1a] focus:ring-1 focus:ring-[#1a1a1a] focus:border-[#1a1a1a] transition-all placeholder:text-[#4b5563]/60 leading-relaxed resize-none focus:outline-none"
-                placeholder={
-                  mode === 'edit' ? t('prompt.placeholderEdit') : t('prompt.placeholder')
-                }
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
-            </div>
-            {mode === 'generate' && (
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { key: 'studioLighting', label: t('tags.studioLighting') },
-                  { key: 'minimalist', label: t('tags.minimalist') },
-                  { key: 'nature', label: t('tags.nature') },
-                  { key: 'luxury', label: t('tags.luxury') },
-                  { key: 'bokeh', label: t('tags.bokeh') }
-                ].map(tag => (
-                  <button
-                    key={tag.key}
-                    onClick={() => addTag(tag.label)}
-                    className="text-xs font-semibold text-[#1a1a1a] bg-[#faf9f6] border border-[#e5e5e1] px-3 py-1.5 rounded-sm tracking-wide hover:border-[#1a1a1a] transition-colors"
-                  >
-                    {tag.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Input Image */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">
-              {mode === 'generate' ? t('inputImage.labelOptional') : t('inputImage.labelRequired')}
-            </h3>
+      {empty ? (
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 pb-10 pt-8 md:justify-center md:pt-0">
+          <h1 className="mb-8 text-center text-3xl font-normal tracking-normal md:text-4xl">
+            想创作什么图像？
+          </h1>
+          {renderComposer(true)}
+          <div className="mt-8 w-full max-w-[980px] overflow-x-auto pb-2">
             <div className="flex gap-4">
-              <button onClick={() => setPickerOpen(true)} className="text-xs text-[#1a1a1a] hover:text-[#2d3436] underline font-medium">{t('inputImage.historyAssets')}</button>
-              {refImagePreview && (
-                <button onClick={() => { setRefImage(null); setRefImagePreview(null); }} className="text-xs text-[#4b5563] hover:text-[#1a1a1a] underline">{t('inputImage.clear')}</button>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-4 gap-3">
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
-
-            {refImagePreview ? (
-              <div
-                className="aspect-square bg-center bg-cover border border-[#1a1a1a] relative group cursor-pointer"
-                style={{ backgroundImage: `url(${refImagePreview})` }}
-              ></div>
-            ) : (
-              <div
+              <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className={`aspect-square border border-dashed border-[#e5e5e1] hover:border-[#1a1a1a] bg-[#faf9f6] flex flex-col items-center justify-center cursor-pointer transition-all ${mode !== 'generate' && !refImage ? 'border-[#1a1a1a]/50 bg-[#1a1a1a]/5' : ''}`}
+                className="flex h-36 w-28 shrink-0 flex-col items-center justify-center gap-3 rounded-3xl bg-[#f6f6f6] text-sm text-[#777] hover:bg-[#efefef]"
               >
-                <span className="material-symbols-outlined text-[#4b5563] text-lg">add</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Parameters (Generate Only) */}
-        {mode === 'generate' && (
-          <div className="flex flex-col gap-8">
-            <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">{t('dimensions.label')}</span>
-              <div className="grid grid-cols-4 gap-2">
-                {Object.values(AspectRatio).map((ratio) => (
-                  <button
-                    key={ratio}
-                    onClick={() => setAspectRatio(ratio)}
-                    className={`flex flex-col items-center justify-center py-2 border transition-all ${aspectRatio === ratio ? 'border-[#1a1a1a] bg-white text-[#1a1a1a] shadow-sm' : 'border-[#e5e5e1] bg-[#faf9f6] text-[#4b5563] hover:border-[#1a1a1a]'}`}
-                  >
-                    <span className="text-[10px] font-bold tracking-widest">{t(`aspectRatio.${ratio.toLowerCase()}`)}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <span className="text-[#1a1a1a] text-xs font-bold uppercase tracking-[0.15em]">{t('quality.label')}</span>
-              <div className="flex border border-[#e5e5e1] p-1 bg-[#faf9f6]">
-                {Object.values(ImageQuality).map(q => (
-                  <button
-                    key={q}
-                    onClick={() => setQuality(q)}
-                    className={`flex-1 py-1.5 text-xs font-bold tracking-widest transition-colors ${quality === q ? 'bg-white text-[#1a1a1a] border border-[#e5e5e1] shadow-sm' : 'text-[#4b5563] hover:text-[#1a1a1a]'}`}
-                  >
-                    {t(`quality.${q.toLowerCase()}`)}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Credit Cost Info */}
-            <div className="p-4 bg-[#faf9f6] border border-[#e5e5e1] rounded-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#4b5563] uppercase tracking-widest">{t('cost.label')}</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">{imageCreditCost} {t('cost.credits')}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Generate Button */}
-        <div className="mt-auto pt-8 border-t border-[#e5e5e1]">
-          <button
-            onClick={handleAction}
-            disabled={loading || (mode === 'generate' && !prompt) || (mode === 'edit' && !refImage && !refImagePreview)}
-            className="w-full bg-[#1a1a1a] text-white py-5 text-sm font-bold uppercase tracking-[0.2em] hover:bg-[#2d3436] disabled:bg-gray-400 transition-all flex items-center justify-center gap-3"
-          >
-            <span className="material-symbols-outlined text-sm">auto_awesome</span>
-            {loading ? t('actions.processing') : mode === 'edit' ? t('actions.applyEdits') : t('actions.generate')}
-          </button>
-        </div>
-
-      </div>
-
-      {/* Canvas Area */}
-      <div className="flex-1 p-4 md:p-12 flex flex-col relative bg-[#faf9f6] order-2 md:order-2 min-h-[250px] md:min-h-0">
-        <div className="flex-1 border border-[#e5e5e1] bg-white flex items-center justify-center relative overflow-hidden shadow-sm p-4 md:p-8">
-          {loading ? (
-            <div className="flex flex-col items-center text-center animate-soft-pulse">
-              <span className="material-symbols-outlined text-4xl text-[#4b5563]/50 mb-4 animate-spin">blur_on</span>
-              <p className="font-serif text-xl text-[#1a1a1a] italic">
-                {t('canvas.generating')}
-              </p>
-
-              <div className="w-64 mt-6">
-                <div className="flex justify-between text-xs text-[#4b5563] mb-2">
-                  <span>{t('canvas.progress')}</span>
-                  <span>{progress}%</span>
-                </div>
-                <div className="h-2 bg-[#e5e5e1] rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#1a1a1a] transition-all duration-500"
-                    style={{ width: `${progress}%` }}
+                <Paperclip className="size-5" />
+                编辑图像
+              </button>
+              {SHOWCASE_EXAMPLES.slice(0, 8).map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setPrompt(item.promptZh)}
+                  className="w-28 shrink-0 text-left"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="h-36 w-28 rounded-3xl object-cover"
                   />
-                </div>
-              </div>
-
-              <p className="text-xs text-[#4b5563] mt-4">{t('canvas.waitMessage')}</p>
+                  <span className="mt-2 block text-center text-sm text-[#777]">
+                    {item.title}
+                  </span>
+                </button>
+              ))}
             </div>
-          ) : analysisResult ? (
-            <div className="max-w-2xl w-full h-full overflow-y-auto custom-scrollbar">
-              <div className="flex items-center gap-4 mb-6 pb-6 border-b border-[#e5e5e1]">
-                {refImagePreview && <img src={refImagePreview} className="w-16 h-16 object-cover border border-[#e5e5e1]" alt="已分析" />}
-                <div>
-                  <h4 className="font-serif text-2xl text-[#1a1a1a] italic">{t('canvas.analysisReport')}</h4>
-                  <p className="text-sm text-[#4b5563]">Gemini 3 Pro Vision</p>
-                </div>
-              </div>
-              <p className="text-base leading-relaxed text-[#1a1a1a] whitespace-pre-wrap font-normal">
-                {analysisResult}
-              </p>
-            </div>
-          ) : generatedImage ? (
-            <div className="relative group cursor-zoom-in h-full flex items-center justify-center" onClick={() => setLightboxOpen(true)}>
-              <img src={generatedImage} alt="已生成" className="max-w-full max-h-full object-contain shadow-lg" />
-
-              {/* Actions Overlay */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-end justify-center pb-8 opacity-0 group-hover:opacity-100">
-                <div className="flex gap-4">
-                  <button className="bg-white/90 text-[#1a1a1a] px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-white transition-all">
-                    <span className="material-symbols-outlined text-base">open_in_full</span>
-                    {t('canvas.expand')}
-                  </button>
-                  <button
-                    onClick={handleToVideo}
-                    className="bg-[#1a1a1a]/90 text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-2 hover:bg-[#1a1a1a] transition-all"
-                  >
-                    <span className="material-symbols-outlined text-base">movie</span>
-                    {t('canvas.animate')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="w-full h-full p-4">
-              <ShowcaseGallery onSelectPrompt={(selectedPrompt) => setPrompt(selectedPrompt)} />
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-8 md:px-8">
+            <div className="mx-auto flex max-w-[980px] flex-col gap-10">
+              {tasks.map((task) => {
+                const isWorking =
+                  task.status === "pending" ||
+                  task.status === "running" ||
+                  (optimisticTask?.id === task.id && loading);
+                const imageUrl = task.imageUrl;
+
+                return (
+                  <article key={task.id} className="flex flex-col gap-5">
+                    <div className="ml-auto max-w-[760px] rounded-[24px] bg-[#f4f4f4] px-5 py-3 text-[16px] leading-relaxed">
+                      {task.prompt}
+                    </div>
+                    <div className="max-w-[760px]">
+                      <div className="mb-3 flex items-center gap-2 text-sm text-[#777]">
+                        <Sparkles className="size-4" />
+                        <span>
+                          {task.mode === "edit" ? "图像编辑" : "图像生成"} ·{" "}
+                          {taskDate(task.createdAt)}
+                        </span>
+                      </div>
+                      {task.sourceImageUrl && (
+                        <img
+                          src={task.sourceImageUrl}
+                          alt="输入图像"
+                          className="mb-4 size-28 rounded-2xl object-cover"
+                        />
+                      )}
+                      {isWorking ? (
+                        <div className="w-full rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
+                          <p className="text-base">正在生成图像</p>
+                          <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#ececec]">
+                            <div
+                              className="h-full rounded-full bg-black transition-all duration-500"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                          <p className="mt-3 text-sm text-[#777]">{progress}%</p>
+                        </div>
+                      ) : task.status === "error" ? (
+                        <div className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">
+                          {task.errorMessage || "图像生成失败，积分已退还"}
+                        </div>
+                      ) : imageUrl ? (
+                        <div className="group w-fit">
+                          <img
+                            src={imageUrl}
+                            alt="生成结果"
+                            className="max-h-[640px] max-w-full rounded-3xl object-contain"
+                          />
+                          <div className="mt-3 flex items-center gap-2 text-[#555]">
+                            <button
+                              type="button"
+                              onClick={() => setLightboxImage(imageUrl)}
+                              className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
+                              aria-label="放大"
+                            >
+                              <Maximize2 className="size-5" />
+                            </button>
+                            <a
+                              href={imageUrl}
+                              download
+                              className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
+                              aria-label="下载"
+                            >
+                              <Download className="size-5" />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => router.push(`/studio/video?image=${encodeURIComponent(imageUrl)}`)}
+                              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-black/5"
+                            >
+                              <Film className="size-4" />
+                              转视频
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+          {renderComposer(false)}
+        </>
+      )}
     </div>
   );
-};
-
-export default ImageWorkshop;
+}

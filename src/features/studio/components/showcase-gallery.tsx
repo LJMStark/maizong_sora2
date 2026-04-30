@@ -2,22 +2,11 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { SHOWCASE_EXAMPLES, ShowcaseExample, shuffleExamples } from '../data/showcase-examples';
+import { SHOWCASE_EXAMPLES, ShowcaseExample } from '../data/showcase-examples';
 
 interface ShowcaseGalleryProps {
   onSelectPrompt: (prompt: string) => void;
 }
-
-const SkeletonCard: React.FC = () => (
-  <div className="bg-white border border-[#e5e5e1] rounded-sm overflow-hidden animate-pulse">
-    <div className="aspect-[4/3] bg-[#e5e5e1]" />
-    <div className="p-3">
-      <div className="h-3 bg-[#e5e5e1] rounded w-3/4 mb-2" />
-      <div className="h-2 bg-[#e5e5e1] rounded w-full mb-1" />
-      <div className="h-2 bg-[#e5e5e1] rounded w-2/3" />
-    </div>
-  </div>
-);
 
 const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => {
   const t = useTranslations('studio.image');
@@ -25,15 +14,7 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const rightColumnRef = useRef<HTMLDivElement>(null);
 
-  // Randomize examples only on client side to avoid hydration mismatch
-  const [randomizedExamples, setRandomizedExamples] = useState<ShowcaseExample[]>(SHOWCASE_EXAMPLES);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    // Only shuffle on client side after hydration
-    setRandomizedExamples(shuffleExamples(SHOWCASE_EXAMPLES));
-    setIsClient(true);
-  }, []);
+  const randomizedExamples = SHOWCASE_EXAMPLES;
 
   // Split randomized examples into two columns
   const leftExamples = randomizedExamples.filter((_, i) => i % 2 === 0);
@@ -88,24 +69,6 @@ const ShowcaseGallery: React.FC<ShowcaseGalleryProps> = ({ onSelectPrompt }) => 
   };
 
   const usePromptLabel = t('showcase.usePrompt');
-
-  // Show skeleton while loading on client side
-  if (!isClient) {
-    return (
-      <div className="w-full h-full flex gap-3 overflow-hidden">
-        <div className="flex-1 flex flex-col gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={`skeleton-left-${i}`} />
-          ))}
-        </div>
-        <div className="flex-1 flex flex-col gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <SkeletonCard key={`skeleton-right-${i}`} />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div

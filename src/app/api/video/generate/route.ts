@@ -7,6 +7,10 @@ import { duomiService } from "@/features/studio/services/duomi-service";
 import { kieService } from "@/features/studio/services/kie-service";
 import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
+import {
+  studioSessionService,
+  StudioSessionAccessError,
+} from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateVideoSchema } from "@/lib/validations/schemas";
 import { sanitizeError } from "@/lib/security/error-handler";
@@ -91,7 +95,7 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
-    const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType } = validation.data;
+    const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType, sessionId } = validation.data;
 
     // 一次查询获取积分和供应商配置（带缓存）
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
@@ -143,6 +147,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const studioSession = await studioSessionService.getOrCreateSession({
+      userId,
+      type: "video",
+      title: prompt,
+      sessionId,
+    });
+
     let sourceImageUrl: string | undefined;
     if (imageBase64 && imageMimeType) {
       const imageBuffer = Buffer.from(imageBase64, "base64");
@@ -170,6 +181,7 @@ export async function POST(request: NextRequest) {
     try {
       task = await videoTaskService.createTask({
         userId,
+        sessionId: studioSession.id,
         model,
         prompt,
         aspectRatio: aspectRatio || "16:9",
@@ -247,9 +259,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       taskId: task.id,
+      sessionId: studioSession.id,
       creditCost,
     });
   } catch (error) {
+    if (error instanceof StudioSessionAccessError) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+
     const message = sanitizeError(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
+import { studioSession } from "./studio-session";
 
 export const videoModelEnum = pgEnum("video_model", ["sora-2", "sora-2-temporary", "sora-2-pro", "veo3.1-fast"]);
 
@@ -18,6 +19,9 @@ export const videoTask = pgTable("video_task", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  sessionId: text("session_id").references(() => studioSession.id, {
+    onDelete: "set null",
+  }),
   duomiTaskId: text("duomi_task_id"),
   provider: videoProviderEnum("provider").notNull().default("duomi"),
   model: videoModelEnum("model").notNull(),

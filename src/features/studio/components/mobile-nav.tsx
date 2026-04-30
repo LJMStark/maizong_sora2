@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession, signOut } from "@/lib/auth/client";
@@ -17,13 +17,8 @@ export default function MobileNav() {
   const { data: session, isPending } = useSession();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const t = useTranslations("studio.nav");
   const tCommon = useTranslations("common.app");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isActive = (path: string) => pathname === path;
 
@@ -56,16 +51,14 @@ export default function MobileNav() {
               {getInitials(session.user.name || "U")}
             </div>
           )}
-          {mounted ? (
-            <>
-              <button
-                onClick={() => setSheetOpen(true)}
-                className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors"
-              >
-                <span className="material-symbols-outlined text-2xl">menu</span>
-              </button>
-              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetContent side="left" className="w-[280px] p-0 bg-white">
+          <button
+            onClick={() => setSheetOpen(true)}
+            className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-2xl">menu</span>
+          </button>
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetContent side="left" className="w-[280px] p-0 bg-white">
               <SheetTitle className="sr-only">{t("menu")}</SheetTitle>
               <div className="flex flex-col h-full">
                 <div className="p-6 border-b border-[#e5e5e1]">
@@ -142,13 +135,7 @@ export default function MobileNav() {
                 </div>
               </div>
             </SheetContent>
-              </Sheet>
-            </>
-          ) : (
-            <button className="p-2 hover:bg-[#faf9f6] rounded-lg transition-colors">
-              <span className="material-symbols-outlined text-2xl">menu</span>
-            </button>
-          )}
+          </Sheet>
         </div>
       </header>
 

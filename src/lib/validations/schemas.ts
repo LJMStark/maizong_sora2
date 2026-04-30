@@ -5,6 +5,7 @@ export const GenerateImageSchema = z.object({
   model: z.string().optional(),
   aspectRatio: z.string().optional(),
   imageSize: z.string().optional(),
+  sessionId: z.string().optional(),
 });
 
 export const EditImageSchema = z.object({
@@ -12,6 +13,7 @@ export const EditImageSchema = z.object({
   model: z.string().optional(),
   aspectRatio: z.string().optional(),
   imageSize: z.string().optional(),
+  sessionId: z.string().optional(),
   imageBase64: z.string().min(1, "图像为必填项"),
   imageMimeType: z.string().min(1, "图像类型为必填项"),
 });
@@ -20,6 +22,7 @@ export const GenerateVideoSchema = z.object({
   prompt: z.string().min(1, "提示词为必填项").max(10000, "提示词过长（最多 10000 字符）"),
   mode: z.string().optional(),
   model: z.string().optional(),
+  sessionId: z.string().optional(),
   aspectRatio: z.string().optional(),
   duration: z
     .number()

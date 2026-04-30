@@ -95,6 +95,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const formattedTasks: VideoTask[] = data.tasks.map(
           (task: {
             id: string;
+            sessionId?: string | null;
             status: "pending" | "running" | "succeeded" | "error" | "retrying";
             progress: number;
             prompt: string;
@@ -123,6 +124,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const videoHistory: GenerationResult[] = completedVideos.map(
           (task: VideoTask) => ({
             id: task.id,
+            sessionId: task.sessionId,
             type: "video" as const,
             url: task.videoUrl,
             prompt: task.prompt,
@@ -162,6 +164,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const formattedTasks: ImageTask[] = data.tasks.map(
           (task: {
             id: string;
+            sessionId?: string | null;
             mode: "generate" | "edit";
             model: string;
             prompt: string;
@@ -189,6 +192,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const imageHistory: GenerationResult[] = completedImages.map(
           (task: ImageTask) => ({
             id: task.id,
+            sessionId: task.sessionId,
             type: "image" as const,
             url: task.imageUrl,
             prompt: task.prompt,
@@ -213,6 +217,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     refreshCredits();
     refreshCreditHistory();
     refreshVideoTasks();
