@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 
 interface RedemptionCode {
@@ -229,7 +230,7 @@ const RedemptionCodeManager: React.FC<RedemptionCodeManagerProps> = ({
 
   const handleCopy = async (code: string) => {
     try {
-      await navigator.clipboard.writeText(code);
+      await copyTextToClipboard(code);
       setCopiedCode(code);
       setTimeout(() => setCopiedCode(null), 2000);
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -120,7 +121,7 @@ export default function RedemptionCodeManager() {
 
   const copyToClipboard = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       toast.success("已复制");
     } catch (error) {
       console.error("复制到剪贴板失败:", error);

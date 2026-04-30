@@ -7,6 +7,11 @@
     "profile": "用户中心",
     "subscription": "订阅"
   },
+  "assetPicker": {
+    "title": "资源库",
+    "subtitle": "从生成的历史内容中选择",
+    "empty": "未找到有效的历史资源"
+  },
   "image": {
     "title": "图像工作室",
     "mode": {
