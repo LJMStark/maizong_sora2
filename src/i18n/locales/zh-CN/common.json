@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "ChatGPT",
-    "description": "AI 工作台"
+    "name": "小象万象",
+    "description": "多模型图像与视频创作工作台"
   },
   "common": {
     "loading": "加载中...",

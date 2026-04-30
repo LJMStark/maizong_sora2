@@ -6,8 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   CircleDashed,
-  Code2,
-  FolderPlus,
   Grid2X2,
   ImageIcon,
   Menu,
@@ -16,7 +14,9 @@ import {
   Settings,
   Sparkles,
   SquarePen,
+  User,
   UserPlus,
+  Video,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useSession, signOut } from "@/lib/auth/client";
@@ -24,6 +24,7 @@ import { LoginDialog } from "./shared/login-dialog";
 import { UserProfile } from "./shared/user-profile";
 import { isAdmin } from "../utils/user-helpers";
 import { cn } from "@/lib/utils";
+import { APP_BRAND } from "@/lib/brand";
 
 type StudioMode = "image" | "video";
 
@@ -35,18 +36,18 @@ interface StudioSessionSummary {
 }
 
 const APP_NAV = [
-  { href: "/studio", label: "Images", icon: ImageIcon },
-  { href: "/studio/assets", label: "Apps", icon: Grid2X2 },
-  { href: "/studio/video", label: "Codex", icon: Code2 },
-  { href: "/studio/profile", label: "Projects", icon: FolderPlus },
+  { href: "/studio", label: "图像创作", icon: ImageIcon },
+  { href: "/studio/video", label: "视频创作", icon: Video },
+  { href: "/studio/assets", label: "作品库", icon: Grid2X2 },
+  { href: "/studio/profile", label: "用户中心", icon: User },
 ];
 
-const FALLBACK_CHATS = [
-  "Plushie Style Transformation",
-  "Best Matcha Latte Recipe",
-  "Example chat: Ask anything",
-  "Example chat: Easy uploads",
-  "Example chat: Picture this",
+const FALLBACK_PROJECTS = [
+  "产品主图优化",
+  "短视频分镜草稿",
+  "海报视觉探索",
+  "模特试穿方案",
+  "社媒封面生成",
 ];
 
 function getMode(pathname: string): StudioMode | null {
@@ -62,10 +63,18 @@ function getSessionHref(mode: StudioMode, sessionId: string) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en-US", {
+  return new Intl.DateTimeFormat("zh-CN", {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
+}
+
+function BrandMark() {
+  return (
+    <span className="flex size-8 items-center justify-center rounded-lg bg-[#0d0d0d] text-[11px] font-semibold leading-none text-white">
+      象
+    </span>
+  );
 }
 
 export default function StudioShell({ children }: { children: React.ReactNode }) {
@@ -137,18 +146,14 @@ export default function StudioShell({ children }: { children: React.ReactNode })
           href="/studio"
           className="flex size-8 items-center justify-center rounded-lg hover:bg-black/5"
           onClick={() => setMobileOpen(false)}
-          aria-label="ChatGPT"
+          aria-label={APP_BRAND}
         >
-          <img
-            src="/chatgpt-clone/openai-mark.png"
-            alt=""
-            className="size-8 object-contain"
-          />
+          <BrandMark />
         </Link>
         <button
           type="button"
           className="flex size-8 items-center justify-center rounded-lg text-[#5f5f5f] hover:bg-black/5"
-          aria-label="Collapse sidebar"
+          aria-label="收起侧边栏"
         >
           <PanelLeft className="size-5" />
         </button>
@@ -161,14 +166,14 @@ export default function StudioShell({ children }: { children: React.ReactNode })
           className="flex h-11 w-full items-center gap-3 rounded-lg px-2 text-[17px] hover:bg-black/5"
         >
           <SquarePen className="size-5" strokeWidth={1.9} />
-          <span>New chat</span>
+          <span>新建创作</span>
         </button>
         <div className="flex h-11 items-center gap-3 rounded-lg px-2 text-[17px] text-[#0d0d0d] hover:bg-black/5">
           <Search className="size-5" strokeWidth={1.9} />
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search chats"
+            placeholder="搜索创作记录"
             className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#0d0d0d]"
           />
         </div>
@@ -206,7 +211,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
             )}
           >
             <Settings className="size-5" strokeWidth={1.9} />
-            <span>Admin</span>
+            <span>管理后台</span>
           </Link>
         )}
       </nav>
@@ -215,7 +220,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
         {mode && (
           <>
             <p className="px-2 pb-3 text-[16px] leading-5 text-[#8a8a8a]">
-              Your chats
+              最近项目
             </p>
             <div className="space-y-1">
               {sessions.length > 0
@@ -235,7 +240,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                       </span>
                     </Link>
                   ))
-                : FALLBACK_CHATS.map((title, index) => (
+                : FALLBACK_PROJECTS.map((title, index) => (
                     <Link
                       key={title}
                       href={index === 0 ? "/studio" : "/studio/video"}
@@ -258,7 +263,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
             onClick={() => setMobileOpen(false)}
             className="flex h-9 flex-1 items-center justify-center rounded-full border border-black/15 bg-white px-4 text-[15px] hover:bg-[#f3f3f3]"
           >
-            Upgrade
+            购买积分
           </Link>
         </div>
         <UserProfile
@@ -284,7 +289,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                 type="button"
                 onClick={() => setMobileOpen(true)}
                 className="flex size-9 items-center justify-center rounded-lg hover:bg-black/5 md:hidden"
-                aria-label="Open menu"
+                aria-label="打开菜单"
               >
                 <Menu className="size-5" />
               </button>
@@ -292,7 +297,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                 href={mode === "video" ? "/studio/video" : "/studio"}
                 className="flex min-w-0 items-center gap-1.5 text-[22px] font-medium leading-none"
               >
-                <span className="truncate">ChatGPT</span>
+                <span className="truncate">{APP_BRAND}</span>
                 <ChevronDown className="mt-0.5 size-4 text-[#777]" />
               </Link>
             </div>
@@ -302,21 +307,21 @@ export default function StudioShell({ children }: { children: React.ReactNode })
               className="absolute left-1/2 top-3 flex h-10 -translate-x-1/2 items-center gap-2 rounded-full bg-[#f0edff] px-5 text-[16px] font-medium text-[#5941d2] hover:bg-[#e9e3ff]"
             >
               <Sparkles className="size-4 fill-current" />
-              <span>Get Plus</span>
+              <span>购买积分</span>
             </Link>
 
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
-                aria-label="Invite"
+                aria-label="邀请成员"
               >
                 <UserPlus className="size-5" strokeWidth={1.9} />
               </button>
               <button
                 type="button"
                 className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
-                aria-label="Account"
+                aria-label="账号"
                 onClick={() => setLoginOpen(true)}
               >
                 <CircleDashed className="size-6" strokeWidth={1.8} />
@@ -329,7 +334,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
 
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="w-[330px] p-0">
-          <SheetTitle className="sr-only">Studio navigation</SheetTitle>
+          <SheetTitle className="sr-only">工作台导航</SheetTitle>
           {sidebar}
         </SheetContent>
       </Sheet>

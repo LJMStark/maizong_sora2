@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Bot,
   Brain,
-  Code2,
   FlaskConical,
   ImageIcon,
   MessageCircle,
@@ -38,15 +37,12 @@ type FeatureIcon =
   | typeof Bot
   | typeof Workflow
   | typeof Video
-  | typeof Code2
   | typeof FlaskConical;
 
 interface Plan {
   name: string;
-  price: string;
   description: string;
   button: string;
-  current?: boolean;
   highlighted?: boolean;
   badge?: string;
   packageIndex?: number;
@@ -55,71 +51,65 @@ interface Plan {
 
 const PLANS: Plan[] = [
   {
-    name: "Free",
-    price: "0",
-    description: "See what AI can do",
-    button: "Your current plan",
-    current: true,
-    features: [
-      { icon: Sparkles, text: "Get simple explanations" },
-      { icon: MessageCircle, text: "Have short chats for common questions" },
-      { icon: ImageIcon, text: "Try out image generation" },
-      { icon: Brain, text: "Save limited memory and context" },
-    ],
-  },
-  {
-    name: "Go",
-    price: "8",
-    description: "Keep chatting with expanded access",
-    button: "Upgrade to Go",
+    name: "小象体验卡",
+    description: "适合先试完整创作流程",
+    button: "购买体验卡",
     packageIndex: 0,
     features: [
-      { icon: Sparkles, text: "Explore topics in depth" },
-      { icon: MessageCircle, text: "Chat longer and upload more content" },
-      { icon: ImageIcon, text: "Make more images for your projects" },
-      { icon: Brain, text: "Get more memory for smarter replies" },
-      { icon: Workflow, text: "Get help with planning and tasks" },
-      { icon: Bot, text: "Explore projects, tasks, and custom GPTs" },
+      { icon: Sparkles, text: "体验多模型图像生成" },
+      { icon: Video, text: "试用 AI 视频生成" },
+      { icon: ImageIcon, text: "保存生成后的作品" },
+      { icon: Brain, text: "尝试不同提示词模板" },
     ],
   },
   {
-    name: "Plus",
-    price: "20",
-    description: "Unlock the full experience",
-    button: "Upgrade to Plus",
-    highlighted: true,
-    badge: "POPULAR",
+    name: "小象月卡",
+    description: "适合持续产出日常素材",
+    button: "购买月卡",
     packageIndex: 1,
     features: [
-      { icon: Sparkles, text: "Solve complex problems" },
-      { icon: MessageCircle, text: "Have long chats over multiple sessions" },
-      { icon: ImageIcon, text: "Create more images, faster" },
-      { icon: Brain, text: "Remember goals and past conversations" },
-      { icon: Workflow, text: "Plan travel and tasks with agent mode" },
-      { icon: Bot, text: "Organize projects and customize GPTs" },
-      { icon: Video, text: "Produce and share videos on Sora" },
-      { icon: Code2, text: "Write code and build apps with Codex" },
+      { icon: Sparkles, text: "每月发放初始积分" },
+      { icon: MessageCircle, text: "每日积分自动到账" },
+      { icon: ImageIcon, text: "生成商品图、封面和海报" },
+      { icon: Bot, text: "按场景选择不同模型" },
+      { icon: Workflow, text: "作品和任务统一管理" },
+      { icon: Video, text: "覆盖常规短视频创作" },
     ],
   },
   {
-    name: "Pro",
-    price: "200",
-    description: "Maximize your productivity",
-    button: "Upgrade to Pro",
+    name: "小象专业卡",
+    description: "适合高频图像和视频制作",
+    button: "购买专业月卡",
+    highlighted: true,
+    badge: "热门",
     packageIndex: 2,
     features: [
-      { icon: Sparkles, text: "Master advanced tasks and topics" },
-      { icon: MessageCircle, text: "Tackle big projects with unlimited GPT-5.2" },
-      { icon: ImageIcon, text: "Create high-quality images at any scale" },
-      { icon: Brain, text: "Keep full context with maximum memory" },
-      { icon: Workflow, text: "Run research and plan tasks with agents" },
-      { icon: Bot, text: "Scale your projects and automate workflows" },
-      { icon: Video, text: "Expand your limits with Sora video creation" },
-      { icon: Code2, text: "Deploy code faster with Codex" },
-      { icon: FlaskConical, text: "Get early access to experimental features" },
+      { icon: Sparkles, text: "更高的月度初始积分" },
+      { icon: ImageIcon, text: "适合批量生成产品视觉" },
+      { icon: Video, text: "支持更多 AI 视频任务" },
+      { icon: MessageCircle, text: "保存常用提示词方案" },
+      { icon: Workflow, text: "适合电商上新和内容排期" },
+      { icon: Bot, text: "减少临时补积分的次数" },
+    ],
+  },
+  {
+    name: "小象年卡",
+    description: "适合长期稳定使用",
+    button: "购买年卡",
+    packageIndex: 3,
+    features: [
+      { icon: Sparkles, text: "年度使用成本更可控" },
+      { icon: MessageCircle, text: "每日积分覆盖长期创作" },
+      { icon: ImageIcon, text: "适合团队素材生产" },
+      { icon: Video, text: "覆盖连续视频制作需求" },
+      { icon: FlaskConical, text: "适合深度测试模型和风格" },
     ],
   },
 ];
+
+function formatYuan(priceInCents: number): string {
+  return (priceInCents / 100).toFixed(2).replace(/\.00$/, "");
+}
 
 function PackageSkeleton() {
   return (
@@ -138,14 +128,31 @@ function PackageSkeleton() {
 
 function PlanCard({
   plan,
+  packageInfo,
   loading,
   onPurchase,
 }: {
   plan: Plan;
+  packageInfo: Package | null;
   loading: boolean;
   onPurchase: () => void;
 }) {
   if (loading) return <PackageSkeleton />;
+
+  const displayName = plan.name;
+  const price = packageInfo ? formatYuan(packageInfo.price) : "--";
+  const period =
+    packageInfo?.type === "subscription"
+      ? packageInfo.durationDays && packageInfo.durationDays >= 365
+        ? "/年"
+        : "/期"
+      : "一次购买";
+  const creditText =
+    packageInfo?.type === "subscription"
+      ? `月初始 ${packageInfo.credits ?? 0} 积分，每日 ${packageInfo.dailyCredits ?? 0} 积分`
+      : packageInfo?.credits
+        ? `${packageInfo.credits} 积分`
+        : null;
 
   return (
     <article
@@ -158,44 +165,44 @@ function PlanCard({
     >
       <div className="mb-9 flex items-start justify-between">
         <h2 className="text-[54px] font-medium leading-none tracking-normal text-[#0d0d0d]">
-          {plan.name}
+          {displayName}
         </h2>
         {plan.badge && (
-          <span className="rounded-full bg-[#e5e0ff] px-4 py-2 text-[13px] font-semibold tracking-[0.12em] text-[#6254d9]">
+          <span className="rounded-full bg-[#e5e0ff] px-4 py-2 text-[13px] font-semibold tracking-normal text-[#6254d9]">
             {plan.badge}
           </span>
         )}
       </div>
 
       <div className="mb-7 flex items-start gap-1">
-        <span className="mt-2 text-[28px] leading-none text-[#999]">$</span>
+        <span className="mt-2 text-[28px] leading-none text-[#999]">¥</span>
         <span className="text-[58px] font-normal leading-none text-[#0d0d0d]">
-          {plan.price}
+          {price}
         </span>
-        <span className="mt-5 text-[16px] leading-5 text-[#606060]">
-          USD /<br />
-          month
-        </span>
+        <span className="mt-5 text-[16px] leading-5 text-[#606060]">{period}</span>
       </div>
 
-      <p className="mb-12 text-[22px] font-medium leading-7 text-[#111]">
+      <p className="mb-3 text-[22px] font-medium leading-7 text-[#111]">
         {plan.description}
       </p>
+      {creditText && (
+        <p className="mb-9 text-[16px] leading-6 text-[#606060]">{creditText}</p>
+      )}
 
       <button
         type="button"
         onClick={onPurchase}
-        disabled={plan.current}
+        disabled={!packageInfo}
         className={cn(
           "mb-9 flex h-[54px] w-full items-center justify-center rounded-full text-[18px] font-medium transition",
-          plan.current
+          !packageInfo
             ? "border border-[#e5e5e5] bg-white text-[#777]"
             : plan.highlighted
               ? "bg-[#615ced] text-white hover:bg-[#514be5]"
               : "bg-[#0d0d0d] text-white hover:bg-[#2a2a2a]"
         )}
       >
-        {plan.button}
+        {packageInfo ? plan.button : "暂未配置"}
       </button>
 
       <ul className="flex flex-col gap-6">
@@ -256,6 +263,7 @@ const Subscription: React.FC = () => {
       source[0] ?? null,
       source[1] ?? source[0] ?? null,
       source[2] ?? source[source.length - 1] ?? null,
+      source[3] ?? source[source.length - 1] ?? null,
     ];
   }, [creditPackages, subscriptionPackages]);
 
@@ -291,11 +299,11 @@ const Subscription: React.FC = () => {
 
       <div className="mx-auto flex w-full max-w-[1880px] flex-col px-5 pb-24 pt-[95px]">
         <h1 className="text-center text-[36px] font-normal leading-tight">
-          Upgrade your plan
+          选择小象万象套餐
         </h1>
 
         <div className="mx-auto mt-8 flex rounded-full bg-[#f0f0f0] p-1">
-          {["Personal", "Business"].map((label, index) => (
+          {["个人创作", "团队采购"].map((label, index) => (
             <button
               key={label}
               type="button"
@@ -322,6 +330,7 @@ const Subscription: React.FC = () => {
               <PlanCard
                 key={plan.name}
                 plan={plan}
+                packageInfo={pkg}
                 loading={loading}
                 onPurchase={() => handlePurchase(pkg)}
               />

@@ -221,8 +221,8 @@
   },
   "userCenter": {
     "title": "用户中心",
-    "subtitle": "管理您的专业数字资产并监控资源分配。",
-    "header": "ChatGPT",
+    "subtitle": "管理你的图像、视频、积分和创作记录。",
+    "header": "小象万象",
     "searchPlaceholder": "搜索资源库...",
     "profile": "个人资料",
     "settings": "设置",
@@ -297,7 +297,7 @@
         "credits": "3000"
       },
       "flagship": {
-        "name": "银河旗舰包（旗舰版）",
+        "name": "银河尊享包（尊贵版）",
         "credits": "10000"
       }
     },

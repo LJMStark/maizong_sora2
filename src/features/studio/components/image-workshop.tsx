@@ -88,42 +88,42 @@ function getHydratedServerSnapshot() {
   return false;
 }
 
-const CHATGPT_IMAGE_EXAMPLES = [
+const STUDIO_IMAGE_EXAMPLES = [
   {
     id: "caricature-trend",
-    title: "Caricature Trend",
-    image: "/chatgpt-clone/caricature-trend.png",
-    prompt: "Create a rich caricature illustration with playful details, bright colors, and a dense pop-culture collage background.",
+    title: "漫画肖像",
+    image: "/studio-showcase/caricature-trend.png",
+    prompt: "把主体做成细节丰富的漫画肖像，色彩明亮，背景加入流行文化拼贴元素。",
   },
   {
     id: "lunar-new-year",
-    title: "Lunar New Year",
-    image: "/chatgpt-clone/lunar-new-year.png",
-    prompt: "Create a warm Lunar New Year portrait with lanterns, red envelopes, cozy lighting, and festive decorative details.",
+    title: "新年海报",
+    image: "/studio-showcase/lunar-new-year.png",
+    prompt: "生成一张温暖的新年主题人像海报，加入灯笼、红包、柔和光线和节日装饰。",
   },
   {
     id: "flower-petals",
-    title: "Flower petals",
-    image: "/chatgpt-clone/flower-petals.png",
-    prompt: "Create an elegant side profile portrait made of soft flower petals with pale tones and painterly texture.",
+    title: "花瓣人像",
+    image: "/studio-showcase/flower-petals.png",
+    prompt: "生成优雅的侧脸人像，主体由柔软花瓣组成，色调清淡，带有绘画质感。",
   },
   {
     id: "gold",
-    title: "Gold",
-    image: "/chatgpt-clone/gold.png",
-    prompt: "Transform the subject into a polished golden statue with ornate detail, dramatic highlights, and luxury studio lighting.",
+    title: "金属质感",
+    image: "/studio-showcase/gold.png",
+    prompt: "把主体转成精致的金色雕塑，保留细节，加入强烈高光和高级影棚光。",
   },
   {
     id: "crayon",
-    title: "Crayon",
-    image: "/chatgpt-clone/crayon.png",
-    prompt: "Create a cheerful crayon-style portrait with handmade texture, soft outlines, and a friendly illustrated mood.",
+    title: "蜡笔插画",
+    image: "/studio-showcase/crayon.png",
+    prompt: "生成轻松可爱的蜡笔风插画，带手绘纹理、柔和轮廓和亲切氛围。",
   },
   {
     id: "paparazzi",
-    title: "Paparazzi",
-    image: "/chatgpt-clone/paparazzi.png",
-    prompt: "Create a cinematic paparazzi press photo with flash lighting, microphones, shallow depth of field, and nighttime contrast.",
+    title: "闪光大片",
+    image: "/studio-showcase/paparazzi.png",
+    prompt: "生成电影感闪光灯抓拍照片，加入麦克风、浅景深和夜间高反差光线。",
   },
 ];
 
@@ -567,7 +567,7 @@ export default function ImageWorkshop() {
       {empty ? (
         <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-0 pb-10 pt-8 md:pt-[284px]">
           <h1 className="mb-[58px] text-center text-[35px] font-normal leading-tight tracking-normal">
-            What&apos;s on your mind today?
+            今天让小象生成什么？
           </h1>
           {renderComposer(true)}
           <div className="mt-[18px] hidden w-full max-w-[1010px] justify-end gap-3 px-4 md:flex">
@@ -594,16 +594,16 @@ export default function ImageWorkshop() {
                 className="flex w-[124px] shrink-0 flex-col items-center gap-4 text-[#777]"
               >
                 <img
-                  src="/chatgpt-clone/edit-image-tile.png"
+                  src="/studio-showcase/edit-image-tile.png"
                   alt=""
                   className="h-[184px] w-[124px] rounded-[18px] object-cover hover:brightness-[0.98]"
                 />
                 <span className="block text-center text-[16px] leading-5">
-                  Edit an image
+                  编辑图片
                 </span>
               </button>
               <div className="h-[236px] w-px shrink-0 bg-[#dcdcdc]" />
-              {CHATGPT_IMAGE_EXAMPLES.map((item) => (
+              {STUDIO_IMAGE_EXAMPLES.map((item) => (
                 <button
                   type="button"
                   key={item.id}

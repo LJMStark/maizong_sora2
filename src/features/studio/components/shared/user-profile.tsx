@@ -39,7 +39,7 @@ const AuthenticatedUser: React.FC<{
           onClick={onSignOut}
           className="text-left text-[13px] leading-4 text-[#6f6f6f] transition-colors hover:text-[#0d0d0d]"
         >
-          Free
+          退出登录
         </button>
       </div>
     </div>
@@ -52,12 +52,12 @@ const GuestUser: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => 
       onClick={onLoginClick}
       className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left"
     >
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#45a9ff] text-xs font-medium text-white">
-        AS
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0d0d0d] text-xs font-medium text-white">
+        象
       </div>
       <div className="flex min-w-0 flex-col">
-        <p className="text-[15px] leading-5 text-[#0d0d0d]">Alex Smith</p>
-        <p className="text-[13px] leading-4 text-[#6f6f6f]">Free</p>
+        <p className="text-[15px] leading-5 text-[#0d0d0d]">登录小象万象</p>
+        <p className="text-[13px] leading-4 text-[#6f6f6f]">保存作品和提示词</p>
       </div>
     </button>
   );

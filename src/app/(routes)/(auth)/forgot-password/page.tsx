@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("auth.forgotPassword");
-  return { title: `${t("title")} - ChatGPT` };
+  return { title: t("title") };
 }
 
 export default async function ForgotPasswordPage() {
@@ -17,7 +17,7 @@ export default async function ForgotPasswordPage() {
         href="/"
         className="fixed left-[30px] top-[28px] text-[30px] font-semibold leading-none"
       >
-        ChatGPT
+        小象万象
       </Link>
 
       <section className="mx-auto flex min-h-screen w-full max-w-[432px] flex-col items-center px-5 pt-[185px]">

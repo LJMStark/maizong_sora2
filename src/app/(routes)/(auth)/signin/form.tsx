@@ -25,6 +25,7 @@ import { LoaderCircle } from "lucide-react";
 export default function SignInForm() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const t = useTranslations('auth.signin');
   const tErrors = useTranslations('auth.errors');
 
   const form = useForm<SignInValues>({
@@ -81,7 +82,7 @@ export default function SignInForm() {
             <FormItem>
               <FormControl>
                 <Input
-                  placeholder="Email address or username"
+                  placeholder={t("usernamePlaceholder")}
                   className={cn(
                     "h-16 rounded-full border-[#7a8db7] px-7 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
                     getInputClassName("username")
@@ -108,7 +109,7 @@ export default function SignInForm() {
                       "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
                       getInputClassName("password")
                     )}
-                    placeholder="Password"
+                    placeholder={t("passwordPlaceholder")}
                     disabled={isPending}
                     {...field}
                   />
@@ -123,7 +124,7 @@ export default function SignInForm() {
             href="/forgot-password"
             className="text-sm text-[#6b7280] transition-colors hover:text-[#0d0d0d]"
           >
-            Forgot password?
+            {t("forgotPassword")}
           </Link>
         </div>
         <Button
@@ -134,13 +135,13 @@ export default function SignInForm() {
           {isPending ? (
             <LoaderCircle className="size-5 animate-spin" />
           ) : (
-            "Continue"
+            t("submit")
           )}
         </Button>
         <p className="text-center text-sm text-[#5f5f5f]">
-          Don&apos;t have an account?{" "}
+          {t("noAccount")}{" "}
           <Link href="/signup" className="font-medium text-[#0d0d0d] underline-offset-4 hover:underline">
-            Sign up
+            {t("signupLink")}
           </Link>
         </p>
       </form>

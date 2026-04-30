@@ -5,6 +5,7 @@ import Providers from "@/providers";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { defaultLocale } from '@/i18n/config';
+import { APP_BRAND, APP_DESCRIPTION } from "@/lib/brand";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -19,35 +20,35 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "ChatGPT",
-    template: "%s | ChatGPT",
+    default: APP_BRAND,
+    template: `%s | ${APP_BRAND}`,
   },
-  description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
+  description: APP_DESCRIPTION,
   keywords: ["AI 图像生成", "AI 视频生成", "电商工作室", "产品摄影", "视频创作", "Sora", "图像编辑"],
-  authors: [{ name: "ChatGPT" }],
-  creator: "ChatGPT",
-  publisher: "ChatGPT",
+  authors: [{ name: APP_BRAND }],
+  creator: APP_BRAND,
+  publisher: APP_BRAND,
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   openGraph: {
     type: "website",
     locale: "zh_CN",
     url: "/",
-    siteName: "ChatGPT",
-    title: "ChatGPT",
-    description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
+    siteName: APP_BRAND,
+    title: APP_BRAND,
+    description: APP_DESCRIPTION,
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "ChatGPT",
+        alt: APP_BRAND,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ChatGPT",
-    description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
+    title: APP_BRAND,
+    description: APP_DESCRIPTION,
     images: ["/og-image.png"],
   },
   robots: {

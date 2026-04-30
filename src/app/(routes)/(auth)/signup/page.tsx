@@ -6,7 +6,7 @@ import { getTranslations } from 'next-intl/server';
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('auth.signup');
   return {
-    title: `${t('title')} - ChatGPT`,
+    title: t('title'),
   };
 }
 
@@ -19,7 +19,7 @@ export default async function SignUpPage() {
         href="/"
         className="fixed left-[30px] top-[28px] text-[30px] font-semibold leading-none"
       >
-        ChatGPT
+        小象万象
       </Link>
 
       <section className="mx-auto flex min-h-screen w-full max-w-[432px] flex-col items-center px-5 pt-[130px] pb-12">
