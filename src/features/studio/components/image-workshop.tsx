@@ -7,12 +7,14 @@ import {
   ArrowRight,
   ArrowUp,
   AudioLines,
+  ChevronDown,
   Download,
   Film,
   ImageIcon,
   Maximize2,
   Mic,
   Plus,
+  SlidersHorizontal,
   Sparkles,
   X,
 } from "lucide-react";
@@ -76,6 +78,30 @@ function taskDate(value: string) {
 const aspectOptions = Object.values(AspectRatio);
 const qualityOptions = Object.values(ImageQuality);
 
+const ASPECT_LABELS: Record<AspectRatio, string> = {
+  [AspectRatio.AUTO]: "Auto",
+  [AspectRatio.SQUARE]: "1:1",
+  [AspectRatio.PORTRAIT_ALT]: "2:3",
+  [AspectRatio.LANDSCAPE_ALT]: "3:2",
+  [AspectRatio.PORTRAIT]: "3:4",
+  [AspectRatio.STANDARD]: "4:3",
+  [AspectRatio.PORTRAIT_TALL]: "4:5",
+  [AspectRatio.LANDSCAPE_WIDE]: "5:4",
+  [AspectRatio.SOCIAL]: "9:16",
+  [AspectRatio.LANDSCAPE]: "16:9",
+  [AspectRatio.CINEMA]: "21:9",
+};
+
+function getImageModel(quality: ImageQuality) {
+  return quality === ImageQuality.STANDARD
+    ? "gemini-2.5-flash-image"
+    : "gemini-3-pro-image-preview";
+}
+
+function getImageSize(quality: ImageQuality) {
+  return quality === ImageQuality.STANDARD ? undefined : quality;
+}
+
 function subscribeHydration() {
   return () => undefined;
 }
@@ -136,7 +162,7 @@ export default function ImageWorkshop() {
 
   const [mode, setMode] = useState<Mode>("generate");
   const [prompt, setPrompt] = useState("");
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.SQUARE);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(AspectRatio.AUTO);
   const [quality, setQuality] = useState<ImageQuality>(ImageQuality.STANDARD);
   const [refImage, setRefImage] = useState<File | null>(null);
   const [refImagePreview, setRefImagePreview] = useState<string | null>(null);
@@ -209,6 +235,7 @@ export default function ImageWorkshop() {
   useEffect(() => {
     const handler = () => {
       setPrompt("");
+      setMode("generate");
       setRefImage(null);
       setRefImagePreview(null);
       setOptimisticTask(null);
@@ -361,10 +388,8 @@ export default function ImageWorkshop() {
         imageMimeType = imageData.mimeType;
       }
 
-      const model =
-        quality === ImageQuality.UHD
-          ? "gemini-3-pro-image-preview"
-          : "gemini-2.5-flash-image";
+      const model = getImageModel(quality);
+      const imageSize = getImageSize(quality);
       const endpoint = mode === "edit" ? "/api/image/edit" : "/api/image/generate";
 
       const response = await fetch(endpoint, {
@@ -374,6 +399,7 @@ export default function ImageWorkshop() {
           prompt: trimmedPrompt,
           model,
           aspectRatio,
+          imageSize,
           sessionId: activeSessionId ?? undefined,
           imageBase64,
           imageMimeType,
@@ -455,6 +481,74 @@ export default function ImageWorkshop() {
           className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
         />
 
+        <div className="mb-1 flex flex-wrap items-center gap-2 border-t border-[#eeeeee] pt-3">
+          <div className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-[#f4f4f4] px-3 text-sm text-[#555]">
+            <SlidersHorizontal className="size-4" strokeWidth={1.9} />
+            设置
+          </div>
+          <div className="inline-flex h-9 shrink-0 items-center rounded-full bg-[#f4f4f4] p-1">
+            {(["generate", "edit"] as const).map((item) => {
+              const disabled = item === "edit" && !refImagePreview;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => {
+                    if (!disabled) setMode(item);
+                  }}
+                  disabled={disabled}
+                  className={cn(
+                    "h-7 rounded-full px-3 text-sm transition disabled:cursor-not-allowed disabled:text-[#b5b5b5]",
+                    mode === item
+                      ? "bg-white text-[#0d0d0d] shadow-sm"
+                      : "text-[#777] hover:text-[#0d0d0d]"
+                  )}
+                >
+                  {item === "generate" ? "生成" : "编辑"}
+                </button>
+              );
+            })}
+          </div>
+          <label className="sr-only" htmlFor="image-aspect-ratio">
+            图片比例
+          </label>
+          <div className="relative shrink-0">
+            <select
+              id="image-aspect-ratio"
+              value={aspectRatio}
+              onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
+              className="h-9 appearance-none rounded-full bg-[#f4f4f4] pl-3 pr-8 text-sm text-[#0d0d0d] outline-none transition hover:bg-[#eeeeee] focus:ring-4 focus:ring-black/10"
+            >
+              {aspectOptions.map((ratio) => (
+                <option key={ratio} value={ratio}>
+                  {ASPECT_LABELS[ratio]}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#777]" />
+          </div>
+          <div className="inline-flex h-9 shrink-0 items-center rounded-full bg-[#f4f4f4] p-1">
+            {qualityOptions.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setQuality(item)}
+                className={cn(
+                  "h-7 rounded-full px-3 text-sm transition",
+                  quality === item
+                    ? "bg-white text-[#0d0d0d] shadow-sm"
+                    : "text-[#777] hover:text-[#0d0d0d]"
+                )}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <span className="inline-flex h-9 shrink-0 items-center rounded-full bg-[#f4f4f4] px-3 text-sm text-[#555]">
+            {imageCreditCost} 积分
+          </span>
+        </div>
+
         <div className="relative">
           <div className="flex h-12 w-full min-w-0 items-center gap-3 pr-24">
             <input
@@ -494,31 +588,6 @@ export default function ImageWorkshop() {
             >
               随机
             </button>
-            <select
-              value={aspectRatio}
-              onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
-              className="sr-only"
-            >
-              {aspectOptions.map((ratio) => (
-                <option key={ratio} value={ratio}>
-                  {ratio}
-                </option>
-              ))}
-            </select>
-            <select
-              value={quality}
-              onChange={(event) => setQuality(event.target.value as ImageQuality)}
-              className="sr-only"
-            >
-              {qualityOptions.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
-            <span className="sr-only">
-              {imageCreditCost} 积分
-            </span>
           </div>
           <button
             type="button"

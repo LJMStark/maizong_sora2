@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
   AudioLines,
+  ChevronDown,
   Download,
   ImageIcon,
   Maximize2,
@@ -12,6 +13,7 @@ import {
   Paperclip,
   Plus,
   Shuffle,
+  SlidersHorizontal,
   Sparkles,
   Wand2,
   X,
@@ -64,6 +66,13 @@ const DEFAULT_CREDIT_COSTS = {
   Fast: 30,
   Quality: 100,
 } as const;
+
+const VIDEO_ASPECT_OPTIONS = [
+  { value: AspectRatio.SOCIAL, label: "9:16" },
+  { value: AspectRatio.LANDSCAPE, label: "16:9" },
+] as const;
+
+const VIDEO_DURATION_OPTIONS = [8, 10, 15] as const;
 
 function subscribeHydration() {
   return () => undefined;
@@ -561,6 +570,72 @@ export default function VideoWorkshop() {
           className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
         />
 
+        <div className="mb-1 flex flex-wrap items-center gap-2 border-t border-[#eeeeee] pt-3">
+          <div className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-[#f4f4f4] px-3 text-sm text-[#555]">
+            <SlidersHorizontal className="size-4" strokeWidth={1.9} />
+            设置
+          </div>
+          {!allVeo && (
+            <div className="inline-flex h-9 shrink-0 items-center rounded-full bg-[#f4f4f4] p-1">
+              {(["Fast", "Quality"] as const).map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setMode(item)}
+                  className={cn(
+                    "h-7 rounded-full px-3 text-sm transition",
+                    mode === item
+                      ? "bg-white text-[#0d0d0d] shadow-sm"
+                      : "text-[#777] hover:text-[#0d0d0d]"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="sr-only" htmlFor="video-aspect-ratio">
+            视频比例
+          </label>
+          <div className="relative shrink-0">
+            <select
+              id="video-aspect-ratio"
+              value={aspectRatio}
+              onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
+              className="h-9 appearance-none rounded-full bg-[#f4f4f4] pl-3 pr-8 text-sm text-[#0d0d0d] outline-none transition hover:bg-[#eeeeee] focus:ring-4 focus:ring-black/10"
+            >
+              {VIDEO_ASPECT_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#777]" />
+          </div>
+          <label className="sr-only" htmlFor="video-duration">
+            视频时长
+          </label>
+          <div className="relative shrink-0">
+            <select
+              id="video-duration"
+              value={duration}
+              onChange={(event) => setDuration(Number(event.target.value) as 8 | 10 | 15)}
+              disabled={isVeo}
+              className="h-9 appearance-none rounded-full bg-[#f4f4f4] pl-3 pr-8 text-sm text-[#0d0d0d] outline-none transition hover:bg-[#eeeeee] focus:ring-4 focus:ring-black/10 disabled:text-[#9a9a9a]"
+            >
+              {VIDEO_DURATION_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {item} 秒
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#777]" />
+          </div>
+          <span className="inline-flex h-9 shrink-0 items-center rounded-full bg-[#f4f4f4] px-3 text-sm text-[#555]">
+            {currentCost} 积分
+          </span>
+        </div>
+
         <div className="relative">
           <div className="flex h-12 w-full min-w-0 items-center gap-3 pr-24">
             <input
@@ -604,37 +679,6 @@ export default function VideoWorkshop() {
               <Wand2 className="size-4" />
               {enhancing ? "润色中" : "润色"}
             </button>
-            <select
-              value={aspectRatio}
-              onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
-              className="sr-only"
-            >
-              <option value={AspectRatio.SOCIAL}>9:16</option>
-              <option value={AspectRatio.LANDSCAPE}>16:9</option>
-            </select>
-            <select
-              value={duration}
-              onChange={(event) => setDuration(Number(event.target.value) as 8 | 10 | 15)}
-              disabled={isVeo}
-              className="sr-only"
-            >
-              <option value={8}>8 秒</option>
-              <option value={10}>10 秒</option>
-              <option value={15}>15 秒</option>
-            </select>
-            {!allVeo && (
-            <select
-              value={mode}
-              onChange={(event) => setMode(event.target.value as RenderMode)}
-              className="sr-only"
-            >
-              <option value="Fast">快速</option>
-              <option value="Quality">高质量</option>
-            </select>
-            )}
-            <span className="sr-only">
-              {currentCost} 积分
-            </span>
           </div>
           <button
             type="button"
