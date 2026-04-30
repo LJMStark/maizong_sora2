@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { LogIn, Mail, UserPlus } from "lucide-react";
 
 interface LoginDialogProps {
   open: boolean;
@@ -33,34 +34,34 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border-[#e5e5e1] bg-white">
+      <DialogContent className="rounded-[18px] border-[#e5e5e5] bg-white sm:max-w-md">
         <DialogHeader className="text-center sm:text-center">
-          <div className="flex justify-center mb-4">
-            <span className="material-symbols-outlined text-5xl text-[#1a1a1a]">
-              filter_vintage
-            </span>
+          <div className="mb-4 flex justify-center">
+            <div className="flex size-14 items-center justify-center rounded-full bg-[#f0f0f0] text-[#0d0d0d]">
+              <LogIn className="size-7" strokeWidth={1.9} />
+            </div>
           </div>
-          <DialogTitle className="font-serif text-2xl text-[#1a1a1a]">
+          <DialogTitle className="text-[26px] font-normal text-[#0d0d0d]">
             {tAuth("welcomeDialog.title")}
           </DialogTitle>
-          <DialogDescription className="text-[#6b7280]">
+          <DialogDescription className="text-[#777]">
             {tAuth("welcomeDialog.description")}
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-3 mt-6">
+        <div className="mt-6 flex flex-col gap-3">
           <Button
             onClick={() => handleNavigation("/signin")}
-            className="w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-6"
+            className="h-[52px] w-full rounded-full bg-[#0d0d0d] text-[16px] font-medium text-white hover:bg-[#2a2a2a]"
           >
-            <span className="material-symbols-outlined mr-2">mail</span>
+            <Mail className="size-4" strokeWidth={1.9} />
             {tAuth("signInWithEmail")}
           </Button>
           <Button
             onClick={() => handleNavigation("/signup")}
             variant="outline"
-            className="w-full border-[#e5e5e1] hover:bg-[#faf9f6] text-[#1a1a1a] py-6"
+            className="h-[52px] w-full rounded-full border-[#d9d9d9] text-[16px] font-medium text-[#0d0d0d] hover:bg-[#f7f7f7]"
           >
-            <span className="material-symbols-outlined mr-2">person_add</span>
+            <UserPlus className="size-4" strokeWidth={1.9} />
             {tSignup("submit")}
           </Button>
         </div>

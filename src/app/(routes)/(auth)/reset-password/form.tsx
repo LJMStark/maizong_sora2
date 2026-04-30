@@ -20,6 +20,7 @@ import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { LoaderCircle } from "lucide-react";
 
 export default function ResetPasswordForm() {
   const [isPending, startTransition] = useTransition();
@@ -73,7 +74,7 @@ export default function ResetPasswordForm() {
         <p className="text-[#ef4444]">{t("invalidToken")}</p>
         <Link
           href="/forgot-password"
-          className="inline-block text-sm font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
+          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
         >
           {t("backToSignin")}
         </Link>
@@ -95,7 +96,10 @@ export default function ResetPasswordForm() {
               <FormControl>
                 <InputPasswordContainer>
                   <Input
-                    className={cn("pe-9", getInputClassName("password"))}
+                    className={cn(
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("password")
+                    )}
                     placeholder={t("passwordPlaceholder")}
                     disabled={isPending}
                     {...field}
@@ -114,7 +118,10 @@ export default function ResetPasswordForm() {
               <FormControl>
                 <InputPasswordContainer>
                   <Input
-                    className={cn("pe-9", getInputClassName("confirmPassword"))}
+                    className={cn(
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("confirmPassword")
+                    )}
                     placeholder={t("confirmPasswordPlaceholder")}
                     disabled={isPending}
                     {...field}
@@ -128,10 +135,10 @@ export default function ResetPasswordForm() {
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-5"
+          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
         >
           {isPending ? (
-            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+            <LoaderCircle className="size-5 animate-spin" />
           ) : (
             t("submit")
           )}

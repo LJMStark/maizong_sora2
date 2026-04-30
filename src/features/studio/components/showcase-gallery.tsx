@@ -127,10 +127,10 @@ const ShowcaseCard: React.FC<ShowcaseCardProps> = ({ example, onClick, usePrompt
   return (
     <div
       onClick={onClick}
-      className="group relative cursor-pointer bg-white border border-[#e5e5e1] rounded-sm overflow-hidden hover:border-[#1a1a1a] hover:shadow-md transition-all duration-300"
+      className="group relative cursor-pointer overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white transition-all duration-300 hover:border-[#b8b8b8] hover:shadow-sm"
     >
       {/* Image */}
-      <div className="aspect-[4/3] overflow-hidden bg-[#faf9f6]">
+      <div className="aspect-[4/3] overflow-hidden bg-[#f4f4f4]">
         {!imageError ? (
           <img
             src={example.image}
@@ -141,24 +141,24 @@ const ShowcaseCard: React.FC<ShowcaseCardProps> = ({ example, onClick, usePrompt
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-3xl text-[#e5e5e1]">image</span>
+            <span className="material-symbols-outlined text-3xl text-[#cfcfcf]">image</span>
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="p-3">
-        <h5 className="text-xs font-bold text-[#1a1a1a] mb-1.5 truncate">
+        <h5 className="mb-1.5 truncate text-xs font-medium text-[#0d0d0d]">
           {example.title}
         </h5>
-        <p className="text-[10px] text-[#4b5563] line-clamp-2 leading-relaxed">
+        <p className="line-clamp-2 text-[10px] leading-relaxed text-[#777]">
           {example.promptZh}
         </p>
       </div>
 
       {/* Hover overlay with click hint */}
-      <div className="absolute inset-0 bg-[#1a1a1a]/0 group-hover:bg-[#1a1a1a]/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-        <span className="bg-white/90 text-[#1a1a1a] px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg">
+      <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-colors group-hover:bg-black/10 group-hover:opacity-100">
+        <span className="rounded-full bg-white/90 px-3 py-1.5 text-[11px] font-medium text-[#0d0d0d] shadow-lg">
           {usePromptLabel}
         </span>
       </div>

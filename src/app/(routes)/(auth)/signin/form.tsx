@@ -20,6 +20,7 @@ import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import Link from "next/link";
+import { LoaderCircle } from "lucide-react";
 
 export default function SignInForm() {
   const [isPending, startTransition] = useTransition();
@@ -82,7 +83,7 @@ export default function SignInForm() {
                 <Input
                   placeholder="Email address or username"
                   className={cn(
-                    "h-16 rounded-full border-[#7a8db7] px-7 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20",
+                    "h-16 rounded-full border-[#7a8db7] px-7 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
                     getInputClassName("username")
                   )}
                   disabled={isPending}
@@ -104,7 +105,7 @@ export default function SignInForm() {
                   <Input
                     id="input-23"
                     className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20",
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
                       getInputClassName("password")
                     )}
                     placeholder="Password"
@@ -131,7 +132,7 @@ export default function SignInForm() {
           className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
         >
           {isPending ? (
-            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+            <LoaderCircle className="size-5 animate-spin" />
           ) : (
             "Continue"
           )}

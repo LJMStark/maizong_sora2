@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { ForgotPasswordSchema, ForgotPasswordValues } from "./validate";
 import InputStartIcon from "../components/input-start-icon";
 import { cn } from "@/lib/utils";
-import { MailIcon } from "lucide-react";
+import { LoaderCircle, MailCheck, MailIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
@@ -60,12 +60,14 @@ export default function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="text-center space-y-4">
-        <span className="material-symbols-outlined text-4xl text-[#8C7355]">mark_email_read</span>
-        <p className="text-[#4b5563]">{t("success")}</p>
+      <div className="space-y-4 text-center">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0f0f0] text-[#0d0d0d]">
+          <MailCheck className="size-7" strokeWidth={1.9} />
+        </div>
+        <p className="text-sm leading-6 text-[#5f5f5f]">{t("success")}</p>
         <Link
           href="/signin"
-          className="inline-block text-sm font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
+          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
         >
           {t("backToSignin")}
         </Link>
@@ -89,7 +91,7 @@ export default function ForgotPasswordForm() {
                   <Input
                     placeholder={t("emailPlaceholder")}
                     className={cn(
-                      "peer ps-9",
+                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
                       form.formState.errors.email &&
                         "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20"
                     )}
@@ -105,10 +107,10 @@ export default function ForgotPasswordForm() {
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-5"
+          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
         >
           {isPending ? (
-            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+            <LoaderCircle className="size-5 animate-spin" />
           ) : (
             t("submit")
           )}

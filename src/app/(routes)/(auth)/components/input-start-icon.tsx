@@ -11,8 +11,8 @@ export default function InputStartIcon({
     <div className="space-y-2">
       <div className="relative">
         {children}
-        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-3 text-muted-foreground/80 peer-disabled:opacity-50">
-          <Icon size={16} strokeWidth={2} aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-6 text-[#8a8a8a] peer-disabled:opacity-50">
+          <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
         </div>
       </div>
     </div>

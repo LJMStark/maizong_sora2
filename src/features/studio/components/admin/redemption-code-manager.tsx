@@ -163,7 +163,7 @@ export default function RedemptionCodeManager() {
           <option value="disabled">已禁用</option>
         </select>
         {data && (
-          <span className="text-sm text-[#4b5563]">共 {data.total} 条</span>
+          <span className="text-sm text-[#777]">共 {data.total} 条</span>
         )}
         <div className="ml-auto">
           <Button size="sm" onClick={() => { setCreateOpen(true); setGeneratedCodes([]); }}>
@@ -174,18 +174,18 @@ export default function RedemptionCodeManager() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-[#4b5563] animate-pulse">加载中...</div>
+        <div className="animate-pulse text-sm text-[#777]">加载中...</div>
       ) : !data || data.codes.length === 0 ? (
-        <div className="text-center py-12 text-[#4b5563]">
+        <div className="py-12 text-center text-[#777]">
           <span className="material-symbols-outlined text-4xl text-[#d1d5db]">confirmation_number</span>
           <p className="mt-2">暂无兑换码</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-[18px] border border-[#e5e5e5]">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#e5e5e1] text-left text-[#4b5563]">
+              <thead className="bg-[#f7f7f7]">
+                <tr className="border-b border-[#e5e5e5] text-left text-[#777]">
                   <th className="py-2 px-3 font-medium">兑换码</th>
                   <th className="py-2 px-3 font-medium">积分</th>
                   <th className="py-2 px-3 font-medium">状态</th>
@@ -196,13 +196,13 @@ export default function RedemptionCodeManager() {
               </thead>
               <tbody>
                 {data.codes.map((c) => (
-                  <tr key={c.id} className="border-b border-[#f3f4f6] hover:bg-white transition-colors">
+                  <tr key={c.id} className="border-b border-[#eeeeee] transition-colors hover:bg-[#f7f7f7]">
                     <td className="py-3 px-3 font-mono text-xs">
                       <div className="flex items-center gap-1">
                         {c.code}
                         <button
                           onClick={() => copyToClipboard(c.code)}
-                          className="p-0.5 rounded hover:bg-[#faf9f6] text-[#9ca3af] hover:text-[#4b5563]"
+                          className="rounded-full p-1 text-[#777] hover:bg-black/5 hover:text-[#0d0d0d]"
                           title="复制"
                         >
                           <span className="material-symbols-outlined text-sm">content_copy</span>
@@ -215,17 +215,17 @@ export default function RedemptionCodeManager() {
                         {statusLabel(c.status)}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-[#4b5563] max-w-[120px] truncate">
+                    <td className="max-w-[120px] truncate px-3 py-3 text-[#777]">
                       {c.note || "-"}
                     </td>
-                    <td className="py-3 px-3 text-[#4b5563]">
+                    <td className="px-3 py-3 text-[#777]">
                       {new Date(c.createdAt).toLocaleDateString("zh-CN")}
                     </td>
                     <td className="py-3 px-3">
                       {c.status === "active" && (
                         <button
                           onClick={() => handleDisable(c)}
-                          className="p-1 rounded hover:bg-red-50 text-[#4b5563] hover:text-red-600"
+                          className="rounded-full p-1.5 text-[#777] hover:bg-red-50 hover:text-red-600"
                           title="禁用"
                         >
                           <span className="material-symbols-outlined text-lg">block</span>
@@ -248,7 +248,7 @@ export default function RedemptionCodeManager() {
               >
                 上一页
               </Button>
-              <span className="text-sm text-[#4b5563]">
+              <span className="text-sm text-[#777]">
                 {data.page} / {data.totalPages}
               </span>
               <Button
@@ -276,13 +276,13 @@ export default function RedemptionCodeManager() {
               <p className="text-sm text-green-700 font-medium">
                 成功生成 {generatedCodes.length} 个兑换码
               </p>
-              <div className="bg-[#faf9f6] rounded-md p-3 space-y-1 max-h-48 overflow-y-auto">
+              <div className="max-h-48 space-y-1 overflow-y-auto rounded-[18px] bg-[#f7f7f7] p-3">
                 {generatedCodes.map((code) => (
                   <div key={code} className="flex items-center justify-between">
                     <span className="font-mono text-sm">{code}</span>
                     <button
                       onClick={() => copyToClipboard(code)}
-                      className="p-1 rounded hover:bg-white text-[#4b5563]"
+                      className="rounded-full p-1 text-[#777] hover:bg-white hover:text-[#0d0d0d]"
                     >
                       <span className="material-symbols-outlined text-sm">content_copy</span>
                     </button>
@@ -301,7 +301,7 @@ export default function RedemptionCodeManager() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">积分数量</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">积分数量</label>
                 <Input
                   type="number"
                   value={createForm.credits}
@@ -311,7 +311,7 @@ export default function RedemptionCodeManager() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">生成数量</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">生成数量</label>
                 <Input
                   type="number"
                   value={createForm.count}
@@ -321,7 +321,7 @@ export default function RedemptionCodeManager() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">备注</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">备注</label>
                 <Input
                   value={createForm.note}
                   onChange={(e) => setCreateForm({ ...createForm, note: e.target.value })}

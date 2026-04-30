@@ -143,13 +143,13 @@ export default function AnnouncementManager() {
   };
 
   if (loading) {
-    return <div className="text-sm text-[#4b5563] animate-pulse">加载中...</div>;
+    return <div className="animate-pulse text-sm text-[#777]">加载中...</div>;
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[#4b5563]">共 {announcements.length} 条公告</p>
+        <p className="text-sm text-[#777]">共 {announcements.length} 条公告</p>
         <Button onClick={openCreate} size="sm">
           <span className="material-symbols-outlined text-base">add</span>
           新建公告
@@ -157,7 +157,7 @@ export default function AnnouncementManager() {
       </div>
 
       {announcements.length === 0 ? (
-        <div className="text-center py-12 text-[#4b5563]">
+        <div className="py-12 text-center text-[#777]">
           <span className="material-symbols-outlined text-4xl text-[#d1d5db]">campaign</span>
           <p className="mt-2">暂无公告</p>
         </div>
@@ -166,12 +166,12 @@ export default function AnnouncementManager() {
           {announcements.map((item) => (
             <div
               key={item.id}
-              className="bg-white rounded-lg border border-[#e5e5e1] p-4"
+              className="rounded-[18px] border border-[#e5e5e5] bg-white p-4"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-[#1a1a1a] truncate">{item.title}</h3>
+                    <h3 className="truncate font-medium text-[#0d0d0d]">{item.title}</h3>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                         item.isActive
@@ -181,17 +181,17 @@ export default function AnnouncementManager() {
                     >
                       {item.isActive ? "启用" : "停用"}
                     </span>
-                    <span className="text-xs text-[#9ca3af]">排序: {item.sortOrder}</span>
+                    <span className="text-xs text-[#777]">排序: {item.sortOrder}</span>
                   </div>
-                  <p className="text-sm text-[#4b5563] mt-1 line-clamp-2">{item.content}</p>
-                  <p className="text-xs text-[#9ca3af] mt-2">
+                  <p className="mt-1 line-clamp-2 text-sm text-[#777]">{item.content}</p>
+                  <p className="mt-2 text-xs text-[#777]">
                     {new Date(item.createdAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => handleToggleActive(item)}
-                    className="p-1.5 rounded hover:bg-[#faf9f6] transition-colors text-[#4b5563] hover:text-[#1a1a1a]"
+                    className="rounded-full p-1.5 text-[#777] transition-colors hover:bg-black/5 hover:text-[#0d0d0d]"
                     title={item.isActive ? "停用" : "启用"}
                   >
                     <span className="material-symbols-outlined text-lg">
@@ -200,14 +200,14 @@ export default function AnnouncementManager() {
                   </button>
                   <button
                     onClick={() => openEdit(item)}
-                    className="p-1.5 rounded hover:bg-[#faf9f6] transition-colors text-[#4b5563] hover:text-[#1a1a1a]"
+                    className="rounded-full p-1.5 text-[#777] transition-colors hover:bg-black/5 hover:text-[#0d0d0d]"
                     title="编辑"
                   >
                     <span className="material-symbols-outlined text-lg">edit</span>
                   </button>
                   <button
                     onClick={() => handleDelete(item)}
-                    className="p-1.5 rounded hover:bg-red-50 transition-colors text-[#4b5563] hover:text-red-600"
+                    className="rounded-full p-1.5 text-[#777] transition-colors hover:bg-red-50 hover:text-red-600"
                     title="删除"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
@@ -229,7 +229,7 @@ export default function AnnouncementManager() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">标题</label>
+              <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">标题</label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -237,7 +237,7 @@ export default function AnnouncementManager() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">内容</label>
+              <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">内容</label>
               <textarea
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -248,7 +248,7 @@ export default function AnnouncementManager() {
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">排序值</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">排序值</label>
                 <Input
                   type="number"
                   value={form.sortOrder}

@@ -85,47 +85,47 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ isAdmin }) => {
   }
 
   return (
-    <div className="bg-white border border-[#e5e5e1]">
+    <div className="overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-6 hover:bg-[#faf9f6]/50 transition-colors"
+        className="flex w-full items-center justify-between p-6 transition-colors hover:bg-[#f7f7f7]"
       >
         <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[#8C7355]">
+          <span className="material-symbols-outlined text-[#0d0d0d]">
             settings
           </span>
-          <span className="text-sm font-bold uppercase tracking-[0.15em] text-[#1a1a1a]">
+          <span className="text-[16px] font-medium text-[#0d0d0d]">
             系统设置
           </span>
-          <span className="text-xs bg-[#8C7355] text-white px-2 py-0.5 rounded uppercase tracking-wider">
+          <span className="rounded-full bg-[#f0f0f0] px-3 py-1 text-xs font-medium text-[#777]">
             管理员
           </span>
         </div>
         <span
-          className={`material-symbols-outlined text-[#4b5563] transition-transform ${isExpanded ? "rotate-180" : ""}`}
+          className={`material-symbols-outlined text-[#777] transition-transform ${isExpanded ? "rotate-180" : ""}`}
         >
           expand_more
         </span>
       </button>
 
       {isExpanded && (
-        <div className="border-t border-[#e5e5e1] p-6">
+        <div className="border-t border-[#e5e5e5] p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <span className="material-symbols-outlined animate-spin text-[#4b5563]">
+              <span className="material-symbols-outlined animate-spin text-[#777]">
                 progress_activity
               </span>
-              <span className="ml-2 text-sm text-[#4b5563]">加载中...</span>
+              <span className="ml-2 text-sm text-[#777]">加载中...</span>
             </div>
           ) : (
             <div className="flex flex-col gap-6">
               <div>
-                <h4 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] mb-4">
+                <h4 className="mb-4 text-sm font-medium text-[#0d0d0d]">
                   每日视频生成限制（全局默认）
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-[#1a1a1a]">
+                    <label className="text-sm font-medium text-[#0d0d0d]">
                       普通视频 (Fast)
                     </label>
                     <div className="flex items-center gap-2">
@@ -139,15 +139,15 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ isAdmin }) => {
                             dailyFastVideoLimit: parseInt(e.target.value) || 0,
                           })
                         }
-                        className="bg-[#faf9f6] border border-[#e5e5e1] p-3 text-sm w-24 focus:outline-none focus:border-[#1a1a1a] transition-colors"
+                        className="h-11 w-24 rounded-full border border-[#d9d9d9] bg-white px-4 text-sm outline-none transition-colors focus:border-[#4d6fb6] focus:ring-4 focus:ring-[#4d6fb6]/20"
                       />
-                      <span className="text-sm text-[#4b5563]">条/天</span>
+                      <span className="text-sm text-[#777]">条/天</span>
                     </div>
-                    <p className="text-xs text-[#4b5563]">-1 = 不限制</p>
+                    <p className="text-xs text-[#777]">-1 = 不限制</p>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-[#1a1a1a]">
+                    <label className="text-sm font-medium text-[#0d0d0d]">
                       高质量视频 (Quality)
                     </label>
                     <div className="flex items-center gap-2">
@@ -162,20 +162,20 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ isAdmin }) => {
                               parseInt(e.target.value) || 0,
                           })
                         }
-                        className="bg-[#faf9f6] border border-[#e5e5e1] p-3 text-sm w-24 focus:outline-none focus:border-[#1a1a1a] transition-colors"
+                        className="h-11 w-24 rounded-full border border-[#d9d9d9] bg-white px-4 text-sm outline-none transition-colors focus:border-[#4d6fb6] focus:ring-4 focus:ring-[#4d6fb6]/20"
                       />
-                      <span className="text-sm text-[#4b5563]">条/天</span>
+                      <span className="text-sm text-[#777]">条/天</span>
                     </div>
-                    <p className="text-xs text-[#4b5563]">-1 = 不限制</p>
+                    <p className="text-xs text-[#777]">-1 = 不限制</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 pt-4 border-t border-[#e5e5e1]">
+              <div className="flex items-center gap-4 border-t border-[#e5e5e5] pt-4">
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="bg-[#8C7355] hover:bg-[#6b5a45] disabled:bg-[#c4b5a5] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest transition-colors shadow-sm"
+                  className="h-11 rounded-full bg-[#0d0d0d] px-6 text-sm font-medium text-white transition-colors hover:bg-[#2a2a2a] disabled:bg-[#9ca3af]"
                 >
                   {isSaving ? "保存中..." : "保存设置"}
                 </button>

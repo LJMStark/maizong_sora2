@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Download, Eye, Search } from "lucide-react";
 import { GenerationResult, VideoTask } from "../types";
 import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
@@ -28,7 +29,7 @@ const getStatusBadge = (status: VideoTask["status"], t: UserCenterTranslator) =>
 
   return (
     <span
-      className={`text-xs uppercase tracking-wider px-2 py-0.5 rounded ${styles[status]}`}
+      className={`rounded-full px-2.5 py-1 text-xs font-medium ${styles[status]}`}
     >
       {labels[status]}
     </span>
@@ -40,52 +41,57 @@ const GalleryGrid: React.FC<{
   t: UserCenterTranslator;
   onItemClick: (item: GenerationResult) => void;
 }> = ({ items, t, onItemClick }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-12">
+  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
     {items.map((item) => (
       <div
         key={item.id}
-        className="group flex flex-col gap-4 cursor-pointer"
+        className="group flex cursor-pointer flex-col overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white"
         onClick={() => onItemClick(item)}
       >
-        <div className="relative aspect-square bg-[#faf9f6] overflow-hidden border border-[#e5e5e1]">
+        <div className="relative aspect-square overflow-hidden bg-[#f4f4f4]">
           {item.type === "video" ? (
             <video
               src={item.url}
-              className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
             />
           ) : (
             <img
               src={item.url}
-              className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
               alt=""
             />
           )}
-          <div className="absolute inset-0 bg-white/90 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-4">
-            <div className="size-10 flex items-center justify-center text-[#1a1a1a] border border-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition-colors rounded-full">
-              <span className="material-symbols-outlined text-sm">visibility</span>
-            </div>
+          <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/20 group-hover:opacity-100">
+            <button
+              type="button"
+              className="flex size-10 items-center justify-center rounded-full bg-white text-[#0d0d0d] shadow-sm hover:bg-[#f7f7f7]"
+              aria-label="查看"
+            >
+              <Eye className="size-5" strokeWidth={1.9} />
+            </button>
             <a
               href={item.url}
               download
               onClick={(e) => e.stopPropagation()}
-              className="size-10 flex items-center justify-center text-[#1a1a1a] border border-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white transition-colors rounded-full"
+              className="flex size-10 items-center justify-center rounded-full bg-white text-[#0d0d0d] shadow-sm hover:bg-[#f7f7f7]"
+              aria-label="下载"
             >
-              <span className="material-symbols-outlined text-sm">download</span>
+              <Download className="size-5" strokeWidth={1.9} />
             </a>
           </div>
-          <div className="absolute top-4 left-4 text-xs uppercase tracking-[0.2em] bg-white/90 px-2 py-1 text-[#1a1a1a] shadow-sm">
+          <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-[#0d0d0d] shadow-sm backdrop-blur">
             {item.type === "video"
               ? t("assetType.video")
               : item.type === "image"
                 ? t("assetType.image")
-                : t("assetType.analysis")}
+              : t("assetType.analysis")}
           </div>
         </div>
-        <div className="flex flex-col gap-0.5">
-          <h4 className="text-sm font-semibold tracking-wide uppercase truncate">
+        <div className="flex flex-col gap-1 px-4 py-3">
+          <h4 className="truncate text-[15px] font-medium text-[#0d0d0d]">
             {item.prompt}
           </h4>
-          <p className="text-xs text-[#4b5563] italic">
+          <p className="text-sm text-[#777]">
             {item.createdAt.toLocaleDateString()}
           </p>
         </div>
@@ -110,7 +116,7 @@ const AssetsGallery: React.FC = () => {
   const videoTasks = state.videoTasks || [];
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-[#faf9f6] h-full font-sans">
+    <div className="flex h-full flex-1 flex-col overflow-y-auto bg-white font-sans text-[#0d0d0d]">
       {lightboxItem && lightboxItem.url && (
         <Lightbox
           src={lightboxItem.url}
@@ -120,40 +126,38 @@ const AssetsGallery: React.FC = () => {
         />
       )}
 
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#e5e5e1] px-4 md:px-10 py-4 md:py-6 bg-white sticky top-0 z-10">
-        <h2 className="text-base font-bold tracking-[0.2em] uppercase text-[#1a1a1a]">
+      <header className="sticky top-0 z-10 flex flex-col gap-4 border-b border-[#e5e5e5] bg-white px-5 py-4 md:flex-row md:items-center md:justify-between md:px-8">
+        <h2 className="text-[22px] font-medium leading-none text-[#0d0d0d]">
           {t("header")}
         </h2>
-        <div className="flex items-center gap-2 border-b border-[#e5e5e1] pb-1 w-full md:w-auto">
-          <span className="material-symbols-outlined text-[18px] text-[#6b7280]">
-            search
-          </span>
+        <div className="flex h-11 w-full items-center gap-3 rounded-full bg-[#f4f4f4] px-4 md:w-80">
+          <Search className="size-5 text-[#777]" strokeWidth={1.9} />
           <input
-            className="bg-transparent border-none text-sm focus:outline-none placeholder:text-[#4b5563]/50 w-full md:w-64 px-0"
+            className="min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-[#777]"
             placeholder={t("searchPlaceholder")}
           />
         </div>
       </header>
 
-      <div className="p-4 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-8 md:gap-12">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8">
         <section className="flex flex-col gap-8">
-          <div className="flex justify-between items-center border-b border-[#e5e5e1] overflow-x-auto">
-            <div className="flex gap-4 md:gap-8 lg:gap-12">
+          <div className="overflow-x-auto">
+            <div className="flex w-max rounded-full bg-[#f0f0f0] p-1">
               <button
                 onClick={() => setActiveTab("all")}
-                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "all" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`h-10 rounded-full px-5 text-[16px] transition whitespace-nowrap ${activeTab === "all" ? "bg-white text-[#0d0d0d] shadow-sm" : "text-[#777] hover:text-[#0d0d0d]"}`}
               >
                 {t("tabs.all")}
               </button>
               <button
                 onClick={() => setActiveTab("video")}
-                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "video" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`h-10 rounded-full px-5 text-[16px] transition whitespace-nowrap ${activeTab === "video" ? "bg-white text-[#0d0d0d] shadow-sm" : "text-[#777] hover:text-[#0d0d0d]"}`}
               >
                 {t("tabs.video")}
               </button>
               <button
                 onClick={() => setActiveTab("image")}
-                className={`pb-4 border-b-2 text-xs md:text-sm uppercase tracking-[0.15em] md:tracking-[0.2em] transition-colors whitespace-nowrap ${activeTab === "image" ? "border-[#1a1a1a] text-[#1a1a1a] font-bold" : "border-transparent text-[#4b5563] hover:text-[#1a1a1a]"}`}
+                className={`h-10 rounded-full px-5 text-[16px] transition whitespace-nowrap ${activeTab === "image" ? "bg-white text-[#0d0d0d] shadow-sm" : "text-[#777] hover:text-[#0d0d0d]"}`}
               >
                 {t("tabs.images")}
               </button>
@@ -168,8 +172,8 @@ const AssetsGallery: React.FC = () => {
                   t.status === "running" ||
                   t.status === "retrying"
               ).length > 0 && (
-                <div className="bg-blue-50 border border-blue-200 p-6">
-                  <h4 className="text-sm font-bold text-blue-800 mb-4">
+                <div className="rounded-[18px] border border-[#d5e7ff] bg-[#f5f9ff] p-6">
+                  <h4 className="mb-4 text-sm font-medium text-[#0757a6]">
                     {t("tasks.active")}
                   </h4>
                   <div className="space-y-4">
@@ -183,7 +187,7 @@ const AssetsGallery: React.FC = () => {
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="bg-white p-4 border border-blue-100"
+                          className="rounded-2xl border border-[#dcecff] bg-white p-4"
                         >
                           <div className="flex justify-between items-start mb-2">
                             <p className="text-sm text-[#1a1a1a] truncate max-w-[200px]">
@@ -209,7 +213,7 @@ const AssetsGallery: React.FC = () => {
               {filteredHistory.length === 0 &&
               videoTasks.filter((t) => t.status === "succeeded").length ===
                 0 ? (
-                <div className="py-20 text-center text-[#4b5563] text-base font-normal">
+                <div className="py-20 text-center text-base font-normal text-[#777]">
                   {t("empty.noVideos")}
                 </div>
               ) : (
@@ -217,7 +221,7 @@ const AssetsGallery: React.FC = () => {
               )}
             </div>
           ) : filteredHistory.length === 0 ? (
-            <div className="py-20 text-center text-[#4b5563] text-base font-normal">
+            <div className="py-20 text-center text-base font-normal text-[#777]">
               {t("empty.noAssets")}
             </div>
           ) : (

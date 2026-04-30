@@ -19,35 +19,35 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: "Little Elephant Studio - AI 驱动的创意工作室",
-    template: "%s | Little Elephant Studio",
+    default: "ChatGPT",
+    template: "%s | ChatGPT",
   },
-  description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频，提升您的品牌视觉效果",
+  description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
   keywords: ["AI 图像生成", "AI 视频生成", "电商工作室", "产品摄影", "视频创作", "Sora", "图像编辑"],
-  authors: [{ name: "Little Elephant Studio" }],
-  creator: "Little Elephant Studio",
-  publisher: "Little Elephant Studio",
+  authors: [{ name: "ChatGPT" }],
+  creator: "ChatGPT",
+  publisher: "ChatGPT",
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
   openGraph: {
     type: "website",
     locale: "zh_CN",
     url: "/",
-    siteName: "Little Elephant Studio",
-    title: "Little Elephant Studio - AI 驱动的创意工作室",
-    description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频",
+    siteName: "ChatGPT",
+    title: "ChatGPT",
+    description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "Little Elephant Studio",
+        alt: "ChatGPT",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Little Elephant Studio - AI 驱动的创意工作室",
-    description: "AI 驱动的电商工作室 - 生成专业的产品图像和视频",
+    title: "ChatGPT",
+    description: "ChatGPT 风格的 AI 图像、视频和项目工作台",
     images: ["/og-image.png"],
   },
   robots: {

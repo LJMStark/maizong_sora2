@@ -150,14 +150,14 @@
 
 /* Studio Theme Colors */
 :root {
-  --studio-primary: #1a1a1a;
-  --studio-accent: #2d3436;
-  --studio-bg-soft: #faf9f6;
+  --studio-primary: #0d0d0d;
+  --studio-accent: #2a2a2a;
+  --studio-bg-soft: #f7f7f7;
   --studio-bg-panel: #ffffff;
-  --studio-border-subtle: #e5e5e1;
-  --studio-text-main: #1a1a1a;
-  --studio-text-muted: #6b7280;
-  --studio-bronze: #8C7355;
+  --studio-border-subtle: #e5e5e5;
+  --studio-text-main: #0d0d0d;
+  --studio-text-muted: #777777;
+  --studio-bronze: #0d0d0d;
 }
 
 /* Studio Custom Scrollbar */
@@ -168,7 +168,7 @@
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e5e5e1;
+  background: #e5e5e5;
   border-radius: 4px;
 }
 

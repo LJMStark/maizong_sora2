@@ -106,7 +106,7 @@ export default function SettingsManager() {
   };
 
   if (loading) {
-    return <div className="text-sm text-[#4b5563] animate-pulse">加载中...</div>;
+    return <div className="animate-pulse text-sm text-[#777]">加载中...</div>;
   }
 
   if (!settings) {
@@ -114,57 +114,57 @@ export default function SettingsManager() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
-      <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
-        <h2 className="font-medium text-[#1a1a1a]">视频供应商配置</h2>
-        <p className="text-xs text-[#9ca3af]">为每种视频模式选择使用的供应商</p>
+    <div className="max-w-3xl space-y-5">
+      <div className="space-y-4 rounded-[18px] border border-[#e5e5e5] bg-white p-6">
+        <h2 className="text-[18px] font-medium text-[#0d0d0d]">视频供应商配置</h2>
+        <p className="text-sm text-[#777]">为每种视频模式选择使用的供应商</p>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+            <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
               快速视频 (Fast) 供应商
             </label>
             <select
               value={form.videoFastProvider}
               onChange={(e) => setForm({ ...form, videoFastProvider: e.target.value as VideoProvider })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-full border border-[#d9d9d9] bg-white px-4 text-sm outline-none focus:border-[#4d6fb6] focus:ring-4 focus:ring-[#4d6fb6]/20"
             >
               <option value="kie">KIE AI</option>
               <option value="duomi">Duomi</option>
               <option value="veo">VEO</option>
             </select>
-            <p className="text-xs text-[#9ca3af] mt-1">
+            <p className="mt-1 text-xs text-[#777]">
               当前: {PROVIDER_LABELS[settings.videoFastProvider]}
             </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+            <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
               高质量视频 (Quality) 供应商
             </label>
             <select
               value={form.videoQualityProvider}
               onChange={(e) => setForm({ ...form, videoQualityProvider: e.target.value as VideoProvider })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-11 w-full rounded-full border border-[#d9d9d9] bg-white px-4 text-sm outline-none focus:border-[#4d6fb6] focus:ring-4 focus:ring-[#4d6fb6]/20"
             >
               <option value="kie">KIE AI</option>
               <option value="duomi">Duomi</option>
               <option value="veo">VEO</option>
             </select>
-            <p className="text-xs text-[#9ca3af] mt-1">
+            <p className="mt-1 text-xs text-[#777]">
               当前: {PROVIDER_LABELS[settings.videoQualityProvider]}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
-        <h2 className="font-medium text-[#1a1a1a]">积分消耗配置</h2>
-        <p className="text-xs text-[#9ca3af]">设置各类生成任务的积分消耗</p>
+      <div className="space-y-4 rounded-[18px] border border-[#e5e5e5] bg-white p-6">
+        <h2 className="text-[18px] font-medium text-[#0d0d0d]">积分消耗配置</h2>
+        <p className="text-sm text-[#777]">设置各类生成任务的积分消耗</p>
 
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+            <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
               快速视频积分消耗
             </label>
             <Input
@@ -173,13 +173,13 @@ export default function SettingsManager() {
               onChange={(e) => setForm({ ...form, creditCostVideoFast: parseInt(e.target.value) || 0 })}
               min={0}
             />
-            <p className="text-xs text-[#9ca3af] mt-1">
+            <p className="mt-1 text-xs text-[#777]">
               当前值: {settings?.creditCostVideoFast ?? 30}
             </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+            <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
               高质量视频积分消耗
             </label>
             <Input
@@ -188,13 +188,13 @@ export default function SettingsManager() {
               onChange={(e) => setForm({ ...form, creditCostVideoQuality: parseInt(e.target.value) || 0 })}
               min={0}
             />
-            <p className="text-xs text-[#9ca3af] mt-1">
+            <p className="mt-1 text-xs text-[#777]">
               当前值: {settings?.creditCostVideoQuality ?? 100}
             </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+            <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
               图片生成积分消耗
             </label>
             <Input
@@ -203,19 +203,19 @@ export default function SettingsManager() {
               onChange={(e) => setForm({ ...form, creditCostImage: parseInt(e.target.value) || 0 })}
               min={0}
             />
-            <p className="text-xs text-[#9ca3af] mt-1">
+            <p className="mt-1 text-xs text-[#777]">
               当前值: {settings?.creditCostImage ?? 10}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-[#e5e5e1] p-6 space-y-4">
-        <h2 className="font-medium text-[#1a1a1a]">每日视频生成限额</h2>
-        <p className="text-xs text-[#9ca3af]">-1 = 无限制, 0 = 禁用, 正数 = 每日限额</p>
+      <div className="space-y-4 rounded-[18px] border border-[#e5e5e5] bg-white p-6">
+        <h2 className="text-[18px] font-medium text-[#0d0d0d]">每日视频生成限额</h2>
+        <p className="text-sm text-[#777]">-1 = 无限制, 0 = 禁用, 正数 = 每日限额</p>
 
         <div>
-          <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+          <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
             快速视频 (Fast) 每日限额
           </label>
           <Input
@@ -224,13 +224,13 @@ export default function SettingsManager() {
             onChange={(e) => setForm({ ...form, dailyFastVideoLimit: parseInt(e.target.value) || 0 })}
             min={-1}
           />
-          <p className="text-xs text-[#9ca3af] mt-1">
+          <p className="mt-1 text-xs text-[#777]">
             当前值: {settings?.dailyFastVideoLimit === -1 ? "无限制" : settings?.dailyFastVideoLimit}
           </p>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">
+          <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">
             质量视频 (Quality) 每日限额
           </label>
           <Input
@@ -239,7 +239,7 @@ export default function SettingsManager() {
             onChange={(e) => setForm({ ...form, dailyQualityVideoLimit: parseInt(e.target.value) || 0 })}
             min={-1}
           />
-          <p className="text-xs text-[#9ca3af] mt-1">
+          <p className="mt-1 text-xs text-[#777]">
             当前值: {settings?.dailyQualityVideoLimit === -1 ? "无限制" : settings?.dailyQualityVideoLimit}
           </p>
         </div>
@@ -249,6 +249,7 @@ export default function SettingsManager() {
         <Button
           onClick={handleSave}
           disabled={saving}
+          className="rounded-full bg-[#0d0d0d] px-5 hover:bg-[#2a2a2a]"
         >
           {saving ? "保存中..." : "保存设置"}
         </Button>

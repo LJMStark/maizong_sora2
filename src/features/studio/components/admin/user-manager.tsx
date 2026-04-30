@@ -161,25 +161,25 @@ export default function UserManager() {
           搜索
         </Button>
         {data && (
-          <span className="text-sm text-[#4b5563] ml-auto">
+          <span className="ml-auto text-sm text-[#777]">
             共 {data.total} 个用户
           </span>
         )}
       </div>
 
       {loading ? (
-        <div className="text-sm text-[#4b5563] animate-pulse">加载中...</div>
+        <div className="animate-pulse text-sm text-[#777]">加载中...</div>
       ) : !data || data.users.length === 0 ? (
-        <div className="text-center py-12 text-[#4b5563]">
+        <div className="py-12 text-center text-[#777]">
           <span className="material-symbols-outlined text-4xl text-[#d1d5db]">group</span>
           <p className="mt-2">暂无用户</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-[18px] border border-[#e5e5e5]">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-[#e5e5e1] text-left text-[#4b5563]">
+              <thead className="bg-[#f7f7f7]">
+                <tr className="border-b border-[#e5e5e5] text-left text-[#777]">
                   <th className="py-2 px-3 font-medium">用户</th>
                   <th className="py-2 px-3 font-medium">角色</th>
                   <th className="py-2 px-3 font-medium">积分</th>
@@ -189,11 +189,11 @@ export default function UserManager() {
               </thead>
               <tbody>
                 {data.users.map((u) => (
-                  <tr key={u.id} className="border-b border-[#f3f4f6] hover:bg-white transition-colors">
+                  <tr key={u.id} className="border-b border-[#eeeeee] transition-colors hover:bg-[#f7f7f7]">
                     <td className="py-3 px-3">
                       <div>
-                        <p className="font-medium text-[#1a1a1a]">{u.name}</p>
-                        <p className="text-xs text-[#9ca3af]">{u.email}</p>
+                        <p className="font-medium text-[#0d0d0d]">{u.name}</p>
+                        <p className="text-xs text-[#777]">{u.email}</p>
                       </div>
                     </td>
                     <td className="py-3 px-3">
@@ -202,14 +202,14 @@ export default function UserManager() {
                       </span>
                     </td>
                     <td className="py-3 px-3 font-mono">{u.credits}</td>
-                    <td className="py-3 px-3 text-[#4b5563]">
+                    <td className="py-3 px-3 text-[#777]">
                       {new Date(u.createdAt).toLocaleDateString("zh-CN")}
                     </td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => openEdit(u)}
-                          className="p-1 rounded hover:bg-[#faf9f6] text-[#4b5563] hover:text-[#1a1a1a]"
+                          className="rounded-full p-1.5 text-[#777] hover:bg-black/5 hover:text-[#0d0d0d]"
                           title="编辑"
                         >
                           <span className="material-symbols-outlined text-lg">edit</span>
@@ -217,7 +217,7 @@ export default function UserManager() {
                         {u.role !== "disabled" && (
                           <button
                             onClick={() => handleDisable(u)}
-                            className="p-1 rounded hover:bg-red-50 text-[#4b5563] hover:text-red-600"
+                            className="rounded-full p-1.5 text-[#777] hover:bg-red-50 hover:text-red-600"
                             title="禁用"
                           >
                             <span className="material-symbols-outlined text-lg">block</span>
@@ -241,7 +241,7 @@ export default function UserManager() {
               >
                 上一页
               </Button>
-              <span className="text-sm text-[#4b5563]">
+              <span className="text-sm text-[#777]">
                 {data.page} / {data.totalPages}
               </span>
               <Button
@@ -265,12 +265,12 @@ export default function UserManager() {
           </DialogHeader>
           {editUser && (
             <div className="space-y-4">
-              <div className="text-sm text-[#4b5563]">
-                <span className="font-medium text-[#1a1a1a]">{editUser.name}</span>
+              <div className="text-sm text-[#777]">
+                <span className="font-medium text-[#0d0d0d]">{editUser.name}</span>
                 {" "}({editUser.email})
               </div>
               <div>
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">角色</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">角色</label>
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
@@ -282,7 +282,7 @@ export default function UserManager() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-[#1a1a1a] mb-1 block">积分</label>
+                <label className="mb-1 block text-sm font-medium text-[#0d0d0d]">积分</label>
                 <Input
                   type="number"
                   value={editForm.credits}

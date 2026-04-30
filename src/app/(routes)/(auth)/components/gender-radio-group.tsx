@@ -21,16 +21,16 @@ export function GenderRadioGroup({
     <RadioGroup
       value={String(value)}
       onValueChange={(val) => onChange(val === "true")}
-      className="grid grid-cols-3 gap-4"
+      className="grid grid-cols-2 gap-3"
     >
       {options.map((opt) => (
         <div
           key={opt.id}
           className={cn(
-            "mt-2 flex items-center space-x-2 rounded-lg px-4 py-2 ring transition-all duration-300",
+            "mt-2 flex h-12 items-center rounded-full border px-4 transition-colors",
             value === opt.value
-              ? "ring-primary/10 bg-muted text-foreground"
-              : "ring-muted hover:bg-muted text-muted-foreground",
+              ? "border-[#0d0d0d] bg-[#0d0d0d] text-white"
+              : "border-[#d9d9d9] bg-white text-[#5f5f5f] hover:bg-[#f7f7f7]",
           )}
         >
           <RadioGroupItem

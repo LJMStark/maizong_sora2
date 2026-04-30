@@ -27,16 +27,13 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="hidden md:flex w-64 border-r border-[#e5e5e1] bg-white flex-col justify-between shrink-0 h-full">
+      <aside className="hidden h-full w-64 shrink-0 flex-col justify-between border-r border-[#e5e5e5] bg-[#f9f9f9] md:flex">
         <div className="flex flex-col">
           <div className="p-8 pb-10">
-            <h1 className="font-serif text-2xl tracking-tight text-[#1a1a1a] flex items-center gap-2">
-              <span className="material-symbols-outlined text-3xl">
-                filter_vintage
-              </span>
+            <h1 className="flex items-center gap-2 text-[22px] font-medium tracking-normal text-[#0d0d0d]">
               {tCommon("name")}
             </h1>
-            <p className="text-xs font-medium tracking-[0.2em] text-[#4b5563] uppercase mt-2 ml-1">
+            <p className="ml-1 mt-2 text-sm text-[#777]">
               {tCommon("description")}
             </p>
           </div>
@@ -48,12 +45,12 @@ export default function Sidebar() {
                 className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
                   ${
                     isActive(item.path)
-                      ? "text-[#1a1a1a] bg-[#faf9f6]"
-                      : "text-[#4b5563] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50"
+                      ? "bg-black/[0.03] text-[#0d0d0d]"
+                      : "text-[#777] hover:bg-black/5 hover:text-[#0d0d0d]"
                   }`}
               >
                 {isActive(item.path) && (
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#1a1a1a]" />
+                  <div className="absolute bottom-0 left-0 top-0 w-0.5 bg-[#0d0d0d]" />
                 )}
                 <span
                   className={`material-symbols-outlined text-2xl ${isActive(item.path) ? "font-medium" : "font-normal"}`}
@@ -68,18 +65,18 @@ export default function Sidebar() {
           </nav>
 
           {!isPending && isAdmin(session?.user) && (
-            <div className="mt-2 border-t border-[#e5e5e1] pt-2">
+            <div className="mt-2 border-t border-[#e5e5e5] pt-2">
               <Link
                 href="/studio/admin"
                 className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
                   ${
                     isActive("/studio/admin")
-                      ? "text-[#1a1a1a] bg-[#faf9f6]"
-                      : "text-[#4b5563] hover:text-[#1a1a1a] hover:bg-[#faf9f6]/50"
+                      ? "bg-black/[0.03] text-[#0d0d0d]"
+                      : "text-[#777] hover:bg-black/5 hover:text-[#0d0d0d]"
                   }`}
               >
                 {isActive("/studio/admin") && (
-                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#1a1a1a]" />
+                  <div className="absolute bottom-0 left-0 top-0 w-0.5 bg-[#0d0d0d]" />
                 )}
                 <span
                   className={`material-symbols-outlined text-2xl ${isActive("/studio/admin") ? "font-medium" : "font-normal"}`}
@@ -94,7 +91,7 @@ export default function Sidebar() {
           )}
         </div>
 
-        <div className="p-8 border-t border-[#e5e5e1]">
+        <div className="border-t border-[#e5e5e5] p-8">
           <UserProfile
             user={session?.user ?? null}
             isPending={isPending}

@@ -134,7 +134,7 @@ export default function OrderManager() {
   };
 
   if (loading) {
-    return <div className="text-sm text-[#4b5563] animate-pulse">加载中...</div>;
+    return <div className="animate-pulse text-sm text-[#777]">加载中...</div>;
   }
 
   return (
@@ -219,14 +219,14 @@ export default function OrderManager() {
           <Button variant="outline" size="sm" onClick={fetchOrders}>
             刷新
           </Button>
-          <span className="text-xs text-[#4b5563]">
+          <span className="text-xs text-[#777]">
             共 {total} 条
           </span>
         </div>
       </div>
 
       {orders.length === 0 ? (
-        <div className="bg-white rounded-lg border border-[#e5e5e1] p-8 text-center text-[#4b5563]">
+        <div className="rounded-[18px] border border-[#e5e5e5] bg-white p-8 text-center text-[#777]">
           暂无订单
         </div>
       ) : (
@@ -234,31 +234,31 @@ export default function OrderManager() {
           {orders.map((order) => (
             <div
               key={order.id}
-              className="bg-white rounded-lg border border-[#e5e5e1] p-4 space-y-3"
+              className="space-y-3 rounded-[18px] border border-[#e5e5e5] bg-white p-4"
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-[#1a1a1a]">
+                  <p className="text-sm font-semibold text-[#0d0d0d]">
                     {order.packageName || "未知套餐"}{" "}
-                    <span className="text-xs text-[#4b5563]">
+                    <span className="text-xs text-[#777]">
                       ({order.packageType === "subscription" ? "会员订阅" : "积分包"})
                     </span>
                   </p>
-                  <p className="text-xs text-[#4b5563] mt-1">
+                  <p className="mt-1 text-xs text-[#777]">
                     订单号：{order.id}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-[#1a1a1a]">
+                  <p className="text-sm font-bold text-[#0d0d0d]">
                     {formatAmount(order.amount)}
                   </p>
-                  <p className="text-xs text-[#4b5563] mt-1">
+                  <p className="mt-1 text-xs text-[#777]">
                     {new Date(order.createdAt).toLocaleString("zh-CN")}
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-[#4b5563]">
+              <div className="grid grid-cols-1 gap-2 text-xs text-[#777] md:grid-cols-2">
                 <div>用户：{order.userName || "未知用户"}（{order.userEmail || order.userId}）</div>
                 <div>状态：{order.status}</div>
               </div>
@@ -266,7 +266,7 @@ export default function OrderManager() {
               {order.status === "pending" ? (
                 <>
                   <div className="space-y-2">
-                    <label className="text-xs text-[#4b5563]">备注（可选）</label>
+                    <label className="text-xs text-[#777]">备注（可选）</label>
                     <Input
                       value={remarkDrafts[order.id] || ""}
                       onChange={(e) =>
@@ -296,7 +296,7 @@ export default function OrderManager() {
                   </div>
                 </>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-[#4b5563]">
+                <div className="grid grid-cols-1 gap-2 text-xs text-[#777] md:grid-cols-2">
                   <div>
                     处理时间：
                     {order.paidAt
@@ -321,7 +321,7 @@ export default function OrderManager() {
           >
             上一页
           </Button>
-          <span className="text-sm text-[#4b5563]">
+          <span className="text-sm text-[#777]">
             {page} / {totalPages}
           </span>
           <Button

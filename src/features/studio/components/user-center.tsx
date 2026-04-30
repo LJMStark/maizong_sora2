@@ -86,81 +86,81 @@ const UserCenter: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-[#faf9f6] h-full font-sans">
-      <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#e5e5e1] px-4 md:px-10 py-4 md:py-6 bg-white sticky top-0 z-10">
-        <h2 className="text-base font-bold tracking-[0.2em] uppercase text-[#1a1a1a]">
+    <div className="flex h-full flex-1 flex-col overflow-y-auto bg-white font-sans text-[#0d0d0d]">
+      <header className="sticky top-0 z-10 flex flex-col gap-4 border-b border-[#e5e5e5] bg-white px-5 py-4 md:flex-row md:items-center md:justify-between md:px-8">
+        <h2 className="text-[22px] font-medium leading-none text-[#0d0d0d]">
           {t("header")}
         </h2>
       </header>
 
-      <div className="p-4 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-8 md:gap-12">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 md:px-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-serif text-[#1a1a1a] italic">
+          <h1 className="text-[35px] font-normal leading-tight text-[#0d0d0d]">
             {t("title")}
           </h1>
-          <p className="text-[#4b5563] text-base font-normal tracking-wide max-w-xl">
+          <p className="max-w-xl text-[16px] leading-6 text-[#777]">
             {t("subtitle")}
           </p>
         </div>
 
-        <div className="bg-white border border-[#e5e5e1]">
+        <div className="overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white">
           <div className="flex flex-col lg:flex-row">
-            <div className="p-10 lg:w-1/3 border-b lg:border-b-0 lg:border-r border-[#e5e5e1] flex flex-col items-center justify-center bg-[#faf9f6]/30">
-              <div className="relative size-32 flex items-center justify-center rounded-full border-4 border-[#e5e5e1]">
+            <div className="flex flex-col items-center justify-center border-b border-[#e5e5e5] bg-[#f7f7f7] p-10 lg:w-1/3 lg:border-b-0 lg:border-r">
+              <div className="relative flex size-32 items-center justify-center rounded-full border border-black/10 bg-white shadow-sm">
                 <div className="flex flex-col items-center justify-center">
-                  <span className="text-2xl font-serif text-[#1a1a1a]">
+                  <span className="text-[34px] font-medium leading-none text-[#0d0d0d]">
                     {state.credits}
                   </span>
-                  <span className="text-xs uppercase tracking-widest text-[#4b5563]">
+                  <span className="mt-2 text-sm text-[#777]">
                     {tCredits("balance")}
                   </span>
                 </div>
               </div>
             </div>
-            <div className="p-10 lg:w-2/3 flex flex-col justify-between gap-8">
-              <div className="flex justify-between items-start">
+            <div className="flex flex-col justify-between gap-8 p-6 md:p-10 lg:w-2/3">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-[#4b5563] mb-1">
+                  <p className="mb-1 text-sm text-[#777]">
                     {t("creditWallet.label")}
                   </p>
-                  <h3 className="text-xl font-medium tracking-tight text-[#1a1a1a]">
+                  <h3 className="text-[22px] font-medium tracking-tight text-[#0d0d0d]">
                     {t("creditWallet.title")}
                   </h3>
                 </div>
-                <button className="bg-[#8C7355] hover:bg-[#2d3436] text-white px-8 py-3 text-sm uppercase tracking-[0.2em] transition-all font-medium shadow-md">
+                <button className="h-11 rounded-full bg-[#0d0d0d] px-6 text-[16px] font-medium text-white transition hover:bg-[#2a2a2a]">
                   {t("creditWallet.recharge")}
                 </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="flex flex-col">
-                  <p className="text-sm font-medium text-[#1a1a1a]">
+                  <p className="text-[16px] font-medium text-[#0d0d0d]">
                     {t("creditWallet.currentPlan")}
                   </p>
-                  <p className="text-xs text-[#4b5563] uppercase tracking-wider mt-1">
+                  <p className="mt-1 text-sm text-[#777]">
                     {t("creditWallet.currentTier")}
                   </p>
                 </div>
                 <div className="flex flex-col">
-                  <p className="text-sm font-medium text-[#1a1a1a]">
+                  <p className="text-[16px] font-medium text-[#0d0d0d]">
                     {t("creditWallet.rolloverDate")}
                   </p>
-                  <p className="text-xs text-[#4b5563] uppercase tracking-wider mt-1">
+                  <p className="mt-1 text-sm text-[#777]">
                     {t("creditWallet.nextRollover")}
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-[#e5e5e1] pt-6 mt-2">
-                <label className="text-xs uppercase tracking-[0.2em] text-[#4b5563]">
+              <div className="mt-2 flex flex-col gap-3 border-t border-[#e5e5e5] pt-6">
+                <label className="text-sm font-medium text-[#0d0d0d]">
                   {t("redeem.label")}
                 </label>
-                <div className="flex gap-2 max-w-md items-start">
-                  <div className="flex-1 flex flex-col gap-1">
+                <div className="flex max-w-md flex-col gap-2 sm:flex-row sm:items-start">
+                  <div className="flex flex-1 flex-col gap-1">
                     <input
                       value={redeemCode}
                       onChange={(e) => setRedeemCode(e.target.value)}
                       placeholder={t("redeem.placeholder")}
-                      className="bg-[#faf9f6] border border-[#e5e5e1] p-3 text-sm tracking-wider w-full focus:outline-none focus:border-[#1a1a1a] transition-colors uppercase"
+                      className="h-12 w-full rounded-full border border-[#d9d9d9] bg-white px-5 text-[16px] uppercase shadow-none outline-none transition-colors focus:border-[#4d6fb6] focus:ring-4 focus:ring-[#4d6fb6]/20"
                     />
                     {redeemStatus.msg && (
                       <p
@@ -172,7 +172,7 @@ const UserCenter: React.FC = () => {
                   </div>
                   <button
                     onClick={handleRedeem}
-                    className="bg-[#1a1a1a] text-white px-6 py-3 text-xs font-bold uppercase tracking-widest hover:bg-[#2d3436] transition-colors whitespace-nowrap shadow-sm"
+                    className="h-12 whitespace-nowrap rounded-full bg-[#0d0d0d] px-6 text-[16px] font-medium text-white transition-colors hover:bg-[#2a2a2a]"
                   >
                     {t("redeem.button")}
                   </button>
@@ -187,20 +187,20 @@ const UserCenter: React.FC = () => {
         <RedemptionCodeManager isAdmin={isAdmin} />
 
         <section className="flex flex-col gap-8">
-          <h3 className="text-lg font-medium text-[#1a1a1a] border-b border-[#e5e5e1] pb-4">
+          <h3 className="border-b border-[#e5e5e5] pb-4 text-[22px] font-medium text-[#0d0d0d]">
             {t("tabs.credits")}
           </h3>
-          <div className="bg-white border border-[#e5e5e1] overflow-hidden">
+          <div className="overflow-hidden rounded-[18px] border border-[#e5e5e5] bg-white">
             <table className="w-full text-left">
-              <thead className="bg-[#faf9f6] border-b border-[#e5e5e1]">
+              <thead className="border-b border-[#e5e5e5] bg-[#f7f7f7]">
                 <tr>
-                  <th className="py-4 px-6 text-xs uppercase tracking-[0.15em] font-bold text-[#4b5563]">
+                  <th className="px-6 py-4 text-sm font-medium text-[#777]">
                     {t("table.dateTime")}
                   </th>
-                  <th className="py-4 px-6 text-xs uppercase tracking-[0.15em] font-bold text-[#4b5563]">
+                  <th className="px-6 py-4 text-sm font-medium text-[#777]">
                     {t("table.details")}
                   </th>
-                  <th className="py-4 px-6 text-xs uppercase tracking-[0.15em] font-bold text-[#4b5563] text-right">
+                  <th className="px-6 py-4 text-right text-sm font-medium text-[#777]">
                     {t("table.amount")}
                   </th>
                 </tr>
@@ -210,7 +210,7 @@ const UserCenter: React.FC = () => {
                   <tr>
                     <td
                       colSpan={3}
-                      className="py-12 text-center text-[#4b5563] text-base font-normal"
+                      className="py-12 text-center text-base font-normal text-[#777]"
                     >
                       {t("table.noTransactions")}
                     </td>
@@ -219,9 +219,9 @@ const UserCenter: React.FC = () => {
                   state.creditHistory.map((txn) => (
                     <tr
                       key={txn.id}
-                      className="border-b border-[#e5e5e1] hover:bg-[#faf9f6]/50 transition-colors group"
+                      className="group border-b border-[#eeeeee] transition-colors hover:bg-[#f7f7f7]"
                     >
-                      <td className="py-4 px-6 text-sm text-[#4b5563] font-mono">
+                      <td className="px-6 py-4 font-mono text-sm text-[#777]">
                         {txn.date.toLocaleDateString()}{" "}
                         <span className="opacity-50 ml-1">
                           {txn.date.toLocaleTimeString([], {
@@ -230,13 +230,13 @@ const UserCenter: React.FC = () => {
                           })}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="text-base font-medium text-[#1a1a1a]">
+                      <td className="px-6 py-4">
+                        <span className="text-base font-medium text-[#0d0d0d]">
                           {txn.reason}
                         </span>
                       </td>
                       <td
-                        className={`py-4 px-6 text-right text-base font-bold font-mono ${txn.type === "deduction" ? "text-[#1a1a1a]" : "text-green-600"}`}
+                        className={`px-6 py-4 text-right font-mono text-base font-bold ${txn.type === "deduction" ? "text-[#0d0d0d]" : "text-green-600"}`}
                       >
                         {txn.type === "deduction" ? "-" : "+"}
                         {txn.amount}

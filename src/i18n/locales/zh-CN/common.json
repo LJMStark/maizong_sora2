@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Little Elephant",
-    "description": "AI 驱动的创意工作室"
+    "name": "ChatGPT",
+    "description": "AI 工作台"
   },
   "common": {
     "loading": "加载中...",

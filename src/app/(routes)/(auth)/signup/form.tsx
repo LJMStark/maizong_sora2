@@ -12,7 +12,6 @@ import { useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUp } from "@/lib/auth/client";
-import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -20,7 +19,7 @@ import { SignUpSchema, SignUpValues } from "./validate";
 import InputStartIcon from "../components/input-start-icon";
 import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
-import { AtSign, MailIcon } from "lucide-react";
+import { AtSign, LoaderCircle, MailCheck, MailIcon } from "lucide-react";
 import { GenderRadioGroup } from "../components/gender-radio-group";
 import { useTranslations } from 'next-intl';
 import Link from "next/link";
@@ -96,13 +95,15 @@ export default function SignUpForm() {
 
   if (emailSent) {
     return (
-      <div className="text-center space-y-4 py-4">
-        <span className="material-symbols-outlined text-4xl text-[#8C7355]">mark_email_read</span>
-        <h3 className="text-lg font-semibold text-[#1a1a1a]">{tVerify('checkEmail')}</h3>
-        <p className="text-[#4b5563] text-sm">{tVerify('checkEmailDesc')}</p>
+      <div className="space-y-4 py-4 text-center">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0f0f0] text-[#0d0d0d]">
+          <MailCheck className="size-7" strokeWidth={1.9} />
+        </div>
+        <h3 className="text-[22px] font-normal text-[#0d0d0d]">{tVerify('checkEmail')}</h3>
+        <p className="text-sm leading-6 text-[#5f5f5f]">{tVerify('checkEmailDesc')}</p>
         <Link
           href="/signin"
-          className="inline-block text-sm font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
+          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
         >
           {t('signinLink')}
         </Link>
@@ -125,7 +126,10 @@ export default function SignUpForm() {
                 <InputStartIcon icon={MailIcon}>
                   <Input
                     placeholder={t('emailPlaceholder')}
-                    className={cn("peer ps-9", getInputClassName("email"))}
+                    className={cn(
+                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("email")
+                    )}
                     disabled={isPending}
                     {...field}
                   />
@@ -145,7 +149,10 @@ export default function SignUpForm() {
                 <InputStartIcon icon={AtSign}>
                   <Input
                     placeholder={t('usernamePlaceholder')}
-                    className={cn("peer ps-9", getInputClassName("username"))}
+                    className={cn(
+                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("username")
+                    )}
                     disabled={isPending}
                     {...field}
                   />
@@ -164,7 +171,10 @@ export default function SignUpForm() {
               <FormControl>
                 <InputPasswordContainer>
                   <Input
-                    className={cn("pe-9", getInputClassName("password"))}
+                    className={cn(
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("password")
+                    )}
                     placeholder={t('passwordPlaceholder')}
                     disabled={isPending}
                     {...field}
@@ -184,7 +194,10 @@ export default function SignUpForm() {
               <FormControl>
                 <InputPasswordContainer>
                   <Input
-                    className={cn("pe-9", getInputClassName("confirmPassword"))}
+                    className={cn(
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
+                      getInputClassName("confirmPassword")
+                    )}
                     placeholder={t('confirmPasswordPlaceholder')}
                     disabled={isPending}
                     {...field}
@@ -215,10 +228,10 @@ export default function SignUpForm() {
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-5"
+          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
         >
           {isPending ? (
-            <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
+            <LoaderCircle className="size-5 animate-spin" />
           ) : (
             t('submit')
           )}
