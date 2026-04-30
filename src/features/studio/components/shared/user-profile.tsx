@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useTranslations } from "next-intl";
 import { getInitials } from "../../utils/user-helpers";
 
 interface User {
@@ -16,11 +15,11 @@ interface UserProfileProps {
 }
 
 const UserProfileSkeleton: React.FC = () => (
-  <div className="flex items-center gap-3">
-    <div className="w-9 h-9 rounded-full bg-[#e5e5e1] animate-pulse" />
+  <div className="flex items-center gap-3 px-1">
+    <div className="size-8 animate-pulse rounded-full bg-[#e5e5e5]" />
     <div className="flex flex-col gap-1">
-      <div className="h-3 w-20 bg-[#e5e5e1] rounded animate-pulse" />
-      <div className="h-2 w-14 bg-[#e5e5e1] rounded animate-pulse" />
+      <div className="h-3 w-20 animate-pulse rounded bg-[#e5e5e5]" />
+      <div className="h-2 w-12 animate-pulse rounded bg-[#e5e5e5]" />
     </div>
   </div>
 );
@@ -29,22 +28,18 @@ const AuthenticatedUser: React.FC<{
   user: User;
   onSignOut: () => void;
 }> = ({ user, onSignOut }) => {
-  const tAuth = useTranslations("auth.signin");
-
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center text-xs font-medium tracking-widest">
+    <div className="flex w-full items-center gap-3 rounded-xl px-1 py-1.5">
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0f0f0f] text-xs font-medium text-white">
         {getInitials(user.name || "U")}
       </div>
-      <div className="flex flex-col min-w-0 flex-1">
-        <p className="text-sm font-semibold text-[#1a1a1a] truncate">
-          {user.name}
-        </p>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <p className="truncate text-[15px] leading-5 text-[#0d0d0d]">{user.name}</p>
         <button
           onClick={onSignOut}
-          className="text-xs text-[#4b5563] uppercase tracking-tighter text-left hover:text-[#1a1a1a] transition-colors"
+          className="text-left text-[13px] leading-4 text-[#6f6f6f] transition-colors hover:text-[#0d0d0d]"
         >
-          {tAuth("signOut") || "退出登录"}
+          Free
         </button>
       </div>
     </div>
@@ -52,21 +47,17 @@ const AuthenticatedUser: React.FC<{
 };
 
 const GuestUser: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => {
-  const tAuth = useTranslations("auth.signin");
-
   return (
     <button
       onClick={onLoginClick}
-      className="flex items-center gap-3 w-full group"
+      className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left"
     >
-      <div className="w-9 h-9 rounded-full border-2 border-dashed border-[#e5e5e1] text-[#4b5563] flex items-center justify-center group-hover:border-[#1a1a1a] group-hover:text-[#1a1a1a] transition-colors">
-        <span className="material-symbols-outlined text-lg">person</span>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#45a9ff] text-xs font-medium text-white">
+        AS
       </div>
-      <div className="flex flex-col min-w-0">
-        <p className="text-xs font-semibold text-[#1a1a1a]">{tAuth("title")}</p>
-        <p className="text-xs text-[#4b5563] uppercase tracking-tighter">
-          {tAuth("getStarted")}
-        </p>
+      <div className="flex min-w-0 flex-col">
+        <p className="text-[15px] leading-5 text-[#0d0d0d]">Alex Smith</p>
+        <p className="text-[13px] leading-4 text-[#6f6f6f]">Free</p>
       </div>
     </button>
   );

@@ -4,9 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
+  AudioLines,
   Download,
   ImageIcon,
   Maximize2,
+  Mic,
   Paperclip,
   Plus,
   Shuffle,
@@ -62,6 +64,18 @@ const DEFAULT_CREDIT_COSTS = {
   Fast: 30,
   Quality: 100,
 } as const;
+
+function subscribeHydration() {
+  return () => undefined;
+}
+
+function getHydratedClientSnapshot() {
+  return true;
+}
+
+function getHydratedServerSnapshot() {
+  return false;
+}
 
 function fileToDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -129,6 +143,11 @@ export default function VideoWorkshop() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionRequestRef = useRef(0);
+  const hasHydrated = React.useSyncExternalStore(
+    subscribeHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot
+  );
 
   const isVeo =
     mode === "Fast"
@@ -505,14 +524,14 @@ export default function VideoWorkshop() {
   const renderComposer = (centered = false) => (
     <div
       className={cn(
-        "mx-auto w-full min-w-0 max-w-[980px]",
+        "mx-auto w-full min-w-0 max-w-[1010px]",
         centered ? "px-4" : "px-4 pb-4 md:px-8 md:pb-6"
       )}
     >
-      <div className="min-w-0 rounded-[28px] border border-black/15 bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
+      <div className="min-h-[132px] min-w-0 rounded-[30px] border border-[#d7d7d7] bg-white px-6 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)]">
         {sourcePreview && (
           <div className="mb-3 flex items-center gap-3">
-            <div className="relative size-24 overflow-hidden rounded-2xl bg-[#f4f4f4]">
+            <div className="relative size-20 overflow-hidden rounded-2xl bg-[#f4f4f4]">
               <img src={sourcePreview} alt="源图像" className="size-full object-cover" />
               <button
                 type="button"
@@ -536,14 +555,14 @@ export default function VideoWorkshop() {
               void handleGenerate();
             }
           }}
-          rows={centered ? 2 : 1}
+          rows={1}
           maxLength={10000}
-          placeholder="描述你想生成的视频"
-          className="max-h-40 min-h-12 w-full min-w-0 resize-none bg-transparent px-3 py-2 text-[17px] leading-relaxed outline-none placeholder:text-[#8b8b8b]"
+          placeholder="Ask anything"
+          className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
         />
 
-        <div className="relative px-1 pb-12 sm:pb-1">
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 pr-12">
+        <div className="relative">
+          <div className="flex h-12 w-full min-w-0 items-center gap-3 pr-24">
             <input
               ref={fileInputRef}
               type="file"
@@ -554,24 +573,24 @@ export default function VideoWorkshop() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
+              className="flex size-10 items-center justify-center rounded-full hover:bg-black/5"
               aria-label="上传源图像"
             >
-              <Plus className="size-5" />
+              <Plus className="size-6" strokeWidth={1.8} />
             </button>
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#0b84ff] hover:bg-[#edf6ff]"
+              className="flex h-9 items-center gap-2 rounded-full px-2.5 text-[18px] text-[#0b84ff] hover:bg-[#edf6ff]"
             >
-              <ImageIcon className="size-4" />
-              历史素材
+              <ImageIcon className="size-5" strokeWidth={1.9} />
+              Image
             </button>
             <button
               type="button"
               onClick={handleRandomPrompt}
               disabled={randomizing || enhancing}
-              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-black/5 disabled:opacity-50"
+              className="sr-only"
             >
               <Shuffle className="size-4" />
               {randomizing ? "生成中" : "随机"}
@@ -580,7 +599,7 @@ export default function VideoWorkshop() {
               type="button"
               onClick={handleEnhancePrompt}
               disabled={!prompt.trim() || enhancing || randomizing}
-              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm hover:bg-black/5 disabled:opacity-50"
+              className="sr-only"
             >
               <Wand2 className="size-4" />
               {enhancing ? "润色中" : "润色"}
@@ -588,7 +607,7 @@ export default function VideoWorkshop() {
             <select
               value={aspectRatio}
               onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
-              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+              className="sr-only"
             >
               <option value={AspectRatio.SOCIAL}>9:16</option>
               <option value={AspectRatio.LANDSCAPE}>16:9</option>
@@ -597,7 +616,7 @@ export default function VideoWorkshop() {
               value={duration}
               onChange={(event) => setDuration(Number(event.target.value) as 8 | 10 | 15)}
               disabled={isVeo}
-              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5 disabled:opacity-60"
+              className="sr-only"
             >
               <option value={8}>8 秒</option>
               <option value={10}>10 秒</option>
@@ -607,24 +626,35 @@ export default function VideoWorkshop() {
             <select
               value={mode}
               onChange={(event) => setMode(event.target.value as RenderMode)}
-              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+              className="sr-only"
             >
               <option value="Fast">快速</option>
               <option value="Quality">高质量</option>
             </select>
             )}
-            <span className="rounded-full bg-[#f4f4f4] px-3 py-2 text-sm text-[#666]">
+            <span className="sr-only">
               {currentCost} 积分
             </span>
           </div>
           <button
             type="button"
+            className="absolute bottom-1 right-14 flex size-10 items-center justify-center rounded-full hover:bg-black/5"
+            aria-label="语音输入"
+          >
+            <Mic className="size-5" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
             onClick={handleGenerate}
-            disabled={loading || (!prompt.trim() && !sourceImage && !sourcePreview)}
-            className="absolute bottom-1 right-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-[#333] disabled:bg-[#d7d7d7]"
+            disabled={loading}
+            className="absolute bottom-0 right-0 flex size-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-[#333] disabled:bg-[#d7d7d7]"
             aria-label="发送"
           >
-            <ArrowUp className="size-5" />
+            {prompt.trim() || sourceImage || sourcePreview ? (
+              <ArrowUp className="size-5" />
+            ) : (
+              <AudioLines className="size-6" strokeWidth={2.2} />
+            )}
           </button>
         </div>
       </div>
@@ -632,6 +662,10 @@ export default function VideoWorkshop() {
   );
 
   const empty = tasks.length === 0;
+
+  if (!hasHydrated) {
+    return <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-white" />;
+  }
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-white">
@@ -657,26 +691,26 @@ export default function VideoWorkshop() {
       />
 
       {empty ? (
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 pb-10 pt-8 md:justify-center md:pt-0">
-          <h1 className="mb-8 text-center text-3xl font-normal tracking-normal md:text-4xl">
-            想生成什么视频？
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-0 pb-10 pt-8 md:pt-[284px]">
+          <h1 className="mb-[58px] text-center text-[35px] font-normal leading-tight tracking-normal">
+            What can I help with?
           </h1>
           {renderComposer(true)}
-          <div className="mt-8 flex w-full max-w-[980px] gap-3 overflow-x-auto pb-2">
+          <div className="mt-[86px] flex w-full max-w-[1010px] gap-3 overflow-x-auto px-4 pb-4">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex h-32 w-28 shrink-0 flex-col items-center justify-center gap-3 rounded-3xl bg-[#f6f6f6] text-sm text-[#777] hover:bg-[#efefef]"
+              className="flex h-[184px] w-[124px] shrink-0 flex-col items-center justify-center gap-3 rounded-[18px] bg-[#f6f6f6] text-[16px] text-[#777] hover:bg-[#efefef]"
             >
               <Paperclip className="size-5" />
-              上传源图
+              Upload image
             </button>
             {VIDEO_PROMPTS.slice(0, 6).map((item, index) => (
               <button
                 type="button"
                 key={item}
                 onClick={() => setPrompt(item)}
-                className="h-32 w-44 shrink-0 rounded-3xl bg-[#f6f6f6] p-4 text-left text-sm leading-relaxed text-[#555] hover:bg-[#efefef]"
+                className="h-[184px] w-[180px] shrink-0 rounded-[18px] bg-[#f6f6f6] p-4 text-left text-[15px] leading-relaxed text-[#555] hover:bg-[#efefef]"
               >
                 <span className="mb-2 block text-xs text-[#888]">示例 {index + 1}</span>
                 <span className="line-clamp-4">{item}</span>

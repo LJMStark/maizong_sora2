@@ -3,12 +3,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
+  AudioLines,
   Download,
   Film,
   ImageIcon,
   Maximize2,
-  Paperclip,
+  Mic,
   Plus,
   Sparkles,
   X,
@@ -16,7 +19,6 @@ import {
 import { toast } from "sonner";
 import { AspectRatio, ImageQuality } from "../types";
 import { IMAGE_PROMPTS, EDIT_PROMPTS } from "../utils/prompt-library";
-import { SHOWCASE_EXAMPLES } from "../data/showcase-examples";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import { useStudio } from "../context/studio-context";
@@ -74,6 +76,57 @@ function taskDate(value: string) {
 const aspectOptions = Object.values(AspectRatio);
 const qualityOptions = Object.values(ImageQuality);
 
+function subscribeHydration() {
+  return () => undefined;
+}
+
+function getHydratedClientSnapshot() {
+  return true;
+}
+
+function getHydratedServerSnapshot() {
+  return false;
+}
+
+const CHATGPT_IMAGE_EXAMPLES = [
+  {
+    id: "caricature-trend",
+    title: "Caricature Trend",
+    image: "/chatgpt-clone/caricature-trend.png",
+    prompt: "Create a rich caricature illustration with playful details, bright colors, and a dense pop-culture collage background.",
+  },
+  {
+    id: "lunar-new-year",
+    title: "Lunar New Year",
+    image: "/chatgpt-clone/lunar-new-year.png",
+    prompt: "Create a warm Lunar New Year portrait with lanterns, red envelopes, cozy lighting, and festive decorative details.",
+  },
+  {
+    id: "flower-petals",
+    title: "Flower petals",
+    image: "/chatgpt-clone/flower-petals.png",
+    prompt: "Create an elegant side profile portrait made of soft flower petals with pale tones and painterly texture.",
+  },
+  {
+    id: "gold",
+    title: "Gold",
+    image: "/chatgpt-clone/gold.png",
+    prompt: "Transform the subject into a polished golden statue with ornate detail, dramatic highlights, and luxury studio lighting.",
+  },
+  {
+    id: "crayon",
+    title: "Crayon",
+    image: "/chatgpt-clone/crayon.png",
+    prompt: "Create a cheerful crayon-style portrait with handmade texture, soft outlines, and a friendly illustrated mood.",
+  },
+  {
+    id: "paparazzi",
+    title: "Paparazzi",
+    image: "/chatgpt-clone/paparazzi.png",
+    prompt: "Create a cinematic paparazzi press photo with flash lighting, microphones, shallow depth of field, and nighttime contrast.",
+  },
+];
+
 export default function ImageWorkshop() {
   const router = useRouter();
   const pathname = usePathname();
@@ -99,6 +152,11 @@ export default function ImageWorkshop() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sessionRequestRef = useRef(0);
+  const hasHydrated = React.useSyncExternalStore(
+    subscribeHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot
+  );
 
   const loadSession = useCallback(async () => {
     const requestId = sessionRequestRef.current + 1;
@@ -360,14 +418,14 @@ export default function ImageWorkshop() {
   const renderComposer = (centered = false) => (
     <div
       className={cn(
-        "mx-auto w-full min-w-0 max-w-[980px]",
+        "mx-auto w-full min-w-0 max-w-[1010px]",
         centered ? "px-4" : "px-4 pb-4 md:px-8 md:pb-6"
       )}
     >
-      <div className="min-w-0 rounded-[28px] border border-black/15 bg-white p-3 shadow-[0_2px_14px_rgba(0,0,0,0.08)]">
+      <div className="min-h-[132px] min-w-0 rounded-[30px] border border-[#d7d7d7] bg-white px-6 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.07)]">
         {refImagePreview && (
           <div className="mb-3 flex items-center gap-3">
-            <div className="relative size-24 overflow-hidden rounded-2xl bg-[#f4f4f4]">
+            <div className="relative size-20 overflow-hidden rounded-2xl bg-[#f4f4f4]">
               <img src={refImagePreview} alt="参考图" className="size-full object-cover" />
               <button
                 type="button"
@@ -391,14 +449,14 @@ export default function ImageWorkshop() {
               void handleSubmit();
             }
           }}
-          rows={centered ? 2 : 1}
+          rows={1}
           maxLength={10000}
-          placeholder={mode === "edit" ? "描述或编辑图像" : "描述你想生成的图像"}
-          className="max-h-40 min-h-12 w-full min-w-0 resize-none bg-transparent px-3 py-2 text-[17px] leading-relaxed outline-none placeholder:text-[#8b8b8b]"
+          placeholder={mode === "edit" ? "Describe or edit an image" : "Describe or edit an image"}
+          className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
         />
 
-        <div className="relative px-1 pb-12 sm:pb-1">
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 pr-12">
+        <div className="relative">
+          <div className="flex h-12 w-full min-w-0 items-center gap-3 pr-24">
             <input
               ref={fileInputRef}
               type="file"
@@ -409,37 +467,37 @@ export default function ImageWorkshop() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex size-9 items-center justify-center rounded-full hover:bg-black/5"
+              className="flex size-10 items-center justify-center rounded-full hover:bg-black/5"
               aria-label="上传图像"
             >
-              <Plus className="size-5" />
+              <Plus className="size-6" strokeWidth={1.8} />
             </button>
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#0b84ff] hover:bg-[#edf6ff]"
+              className="flex h-9 items-center gap-2 rounded-full px-2.5 text-[18px] text-[#0b84ff] hover:bg-[#edf6ff]"
             >
-              <ImageIcon className="size-4" />
-              历史图像
+              <ImageIcon className="size-5" strokeWidth={1.9} />
+              Image
             </button>
             <button
               type="button"
               onClick={() => setMode(mode === "generate" ? "edit" : "generate")}
-              className="rounded-full px-3 py-2 text-sm hover:bg-black/5"
+              className="sr-only"
             >
               {mode === "generate" ? "生成" : "编辑"}
             </button>
             <button
               type="button"
               onClick={handleRandomPrompt}
-              className="rounded-full px-3 py-2 text-sm hover:bg-black/5"
+              className="sr-only"
             >
               随机
             </button>
             <select
               value={aspectRatio}
               onChange={(event) => setAspectRatio(event.target.value as AspectRatio)}
-              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+              className="sr-only"
             >
               {aspectOptions.map((ratio) => (
                 <option key={ratio} value={ratio}>
@@ -450,7 +508,7 @@ export default function ImageWorkshop() {
             <select
               value={quality}
               onChange={(event) => setQuality(event.target.value as ImageQuality)}
-              className="rounded-full border border-black/10 bg-white px-3 py-2 text-sm outline-none hover:bg-black/5"
+              className="sr-only"
             >
               {qualityOptions.map((item) => (
                 <option key={item} value={item}>
@@ -458,18 +516,29 @@ export default function ImageWorkshop() {
                 </option>
               ))}
             </select>
-            <span className="rounded-full bg-[#f4f4f4] px-3 py-2 text-sm text-[#666]">
+            <span className="sr-only">
               {imageCreditCost} 积分
             </span>
           </div>
           <button
             type="button"
+            className="absolute bottom-1 right-14 flex size-10 items-center justify-center rounded-full hover:bg-black/5"
+            aria-label="语音输入"
+          >
+            <Mic className="size-5" strokeWidth={2} />
+          </button>
+          <button
+            type="button"
             onClick={handleSubmit}
-            disabled={loading || !prompt.trim() || (mode === "edit" && !refImage && !refImagePreview)}
-            className="absolute bottom-1 right-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-[#333] disabled:bg-[#d7d7d7]"
+            disabled={loading || (mode === "edit" && !refImage && !refImagePreview)}
+            className="absolute bottom-0 right-0 flex size-12 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-[#333] disabled:bg-[#d7d7d7]"
             aria-label="发送"
           >
-            <ArrowUp className="size-5" />
+            {prompt.trim() ? (
+              <ArrowUp className="size-5" />
+            ) : (
+              <AudioLines className="size-6" strokeWidth={2.2} />
+            )}
           </button>
         </div>
       </div>
@@ -477,6 +546,10 @@ export default function ImageWorkshop() {
   );
 
   const empty = tasks.length === 0;
+
+  if (!hasHydrated) {
+    return <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-white" />;
+  }
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-white">
@@ -492,34 +565,57 @@ export default function ImageWorkshop() {
       )}
 
       {empty ? (
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-4 pb-10 pt-8 md:justify-center md:pt-0">
-          <h1 className="mb-8 text-center text-3xl font-normal tracking-normal md:text-4xl">
-            想创作什么图像？
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-start overflow-x-hidden overflow-y-auto px-0 pb-10 pt-8 md:pt-[284px]">
+          <h1 className="mb-[58px] text-center text-[35px] font-normal leading-tight tracking-normal">
+            What&apos;s on your mind today?
           </h1>
           {renderComposer(true)}
-          <div className="mt-8 w-full max-w-[980px] overflow-x-auto pb-2">
-            <div className="flex gap-4">
+          <div className="mt-[18px] hidden w-full max-w-[1010px] justify-end gap-3 px-4 md:flex">
+              <button
+                type="button"
+                className="flex size-11 items-center justify-center rounded-full border border-black/10 bg-white text-[#b5b5b5] shadow-sm"
+                aria-label="上一个示例"
+              >
+                <ArrowLeft className="size-5" />
+              </button>
+              <button
+                type="button"
+                className="flex size-11 items-center justify-center rounded-full border border-black/15 bg-white text-[#0d0d0d] shadow-sm"
+                aria-label="下一个示例"
+              >
+                <ArrowRight className="size-5" />
+              </button>
+          </div>
+          <div className="relative mt-4 w-full max-w-[1010px] overflow-x-auto px-4 pb-4">
+            <div className="flex items-start gap-[14px]">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="flex h-36 w-28 shrink-0 flex-col items-center justify-center gap-3 rounded-3xl bg-[#f6f6f6] text-sm text-[#777] hover:bg-[#efefef]"
+                className="flex w-[124px] shrink-0 flex-col items-center gap-4 text-[#777]"
               >
-                <Paperclip className="size-5" />
-                编辑图像
+                <img
+                  src="/chatgpt-clone/edit-image-tile.png"
+                  alt=""
+                  className="h-[184px] w-[124px] rounded-[18px] object-cover hover:brightness-[0.98]"
+                />
+                <span className="block text-center text-[16px] leading-5">
+                  Edit an image
+                </span>
               </button>
-              {SHOWCASE_EXAMPLES.slice(0, 8).map((item) => (
+              <div className="h-[236px] w-px shrink-0 bg-[#dcdcdc]" />
+              {CHATGPT_IMAGE_EXAMPLES.map((item) => (
                 <button
                   type="button"
                   key={item.id}
-                  onClick={() => setPrompt(item.promptZh)}
-                  className="w-28 shrink-0 text-left"
+                  onClick={() => setPrompt(item.prompt)}
+                  className="w-[124px] shrink-0 text-left"
                 >
                   <img
                     src={item.image}
                     alt={item.title}
-                    className="h-36 w-28 rounded-3xl object-cover"
+                    className="h-[184px] w-[124px] rounded-[18px] object-cover"
                   />
-                  <span className="mt-2 block text-center text-sm text-[#777]">
+                  <span className="mt-3 block text-center text-[16px] leading-5 text-[#777]">
                     {item.title}
                   </span>
                 </button>

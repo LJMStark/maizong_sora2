@@ -1,86 +1,93 @@
 import { type Metadata } from "next";
-import SignInForm from "./form";
 import Link from "next/link";
-import { useTranslations } from 'next-intl';
-import { getTranslations } from 'next-intl/server';
+import { Apple, Phone } from "lucide-react";
+import SignInForm from "./form";
+import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('auth.signin');
+  const t = await getTranslations("auth.signin");
   return {
-    title: `${t('title')} - Little Elephant Studio`,
+    title: `${t("title")} - ChatGPT`,
   };
 }
 
-export default async function SignInPage() {
-  const t = await getTranslations('auth.signin');
-  const tCommon = await getTranslations('common.app');
+const socialButtons = [
+  {
+    label: "Continue with Google",
+    icon: <span className="text-[24px] font-semibold text-[#4285f4]">G</span>,
+  },
+  {
+    label: "Continue with Apple",
+    icon: <Apple className="size-6 fill-black" strokeWidth={1.8} />,
+  },
+  {
+    label: "Continue with Microsoft",
+    icon: (
+      <span className="grid size-5 grid-cols-2 gap-0.5">
+        <span className="bg-[#f25022]" />
+        <span className="bg-[#7fba00]" />
+        <span className="bg-[#00a4ef]" />
+        <span className="bg-[#ffb900]" />
+      </span>
+    ),
+  },
+  {
+    label: "Continue with phone",
+    icon: <Phone className="size-5" strokeWidth={2} />,
+  },
+];
 
+export default async function SignInPage() {
   return (
-    <div className="flex min-h-screen w-full">
-      <div className="hidden lg:flex lg:w-1/2 bg-[#1a1a1a] flex-col justify-between p-12">
-        <div>
-          <Link href="/" className="flex items-center gap-2 text-white">
-            <span className="material-symbols-outlined text-3xl">filter_vintage</span>
-            <span className="font-serif text-2xl tracking-tight">{tCommon('name')}</span>
+    <main className="min-h-screen bg-white text-[#0d0d0d]">
+      <Link
+        href="/"
+        className="fixed left-[30px] top-[28px] text-[30px] font-semibold leading-none"
+      >
+        ChatGPT
+      </Link>
+
+      <section className="mx-auto flex min-h-screen w-full max-w-[432px] flex-col items-center pt-[185px]">
+        <h1 className="text-center text-[42px] font-normal leading-tight">
+          Log in or sign up
+        </h1>
+        <p className="mt-5 max-w-[420px] text-center text-[22px] leading-8 text-[#555]">
+          You&apos;ll get smarter responses and can upload files, images, and more.
+        </p>
+
+        <div className="mt-11 flex w-full flex-col gap-4">
+          {socialButtons.map((button) => (
+            <button
+              key={button.label}
+              type="button"
+              className="relative flex h-16 w-full items-center justify-center rounded-full border border-[#d9d9d9] bg-white text-[20px] font-normal hover:bg-[#f7f7f7]"
+            >
+              <span className="absolute left-8 flex size-7 items-center justify-center">
+                {button.icon}
+              </span>
+              {button.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="my-9 flex w-full items-center gap-4 text-[17px] font-medium text-[#6d6d6d]">
+          <span className="h-px flex-1 bg-[#e6e6e6]" />
+          OR
+          <span className="h-px flex-1 bg-[#e6e6e6]" />
+        </div>
+
+        <SignInForm />
+
+        <div className="mt-16 flex items-center gap-4 text-[16px] text-[#5f5f5f]">
+          <Link href="/" className="underline underline-offset-2">
+            Terms of Use
+          </Link>
+          <span>|</span>
+          <Link href="/" className="underline underline-offset-2">
+            Privacy Policy
           </Link>
         </div>
-        <div className="space-y-6">
-          <h2 className="font-serif text-4xl text-white leading-tight">
-            {t('subtitle')}
-          </h2>
-          <p className="text-[#9ca3af] text-lg max-w-md">
-            {tCommon('description')}
-          </p>
-        </div>
-        <div className="flex items-center gap-8 text-[#6b7280] text-sm">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">image</span>
-            <span>{await getTranslations('studio.nav').then(t => t('imageWorkshop'))}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">video_camera_back</span>
-            <span>{await getTranslations('studio.nav').then(t => t('videoWorkshop'))}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">grid_view</span>
-            <span>{await getTranslations('studio.nav').then(t => t('collections'))}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex w-full lg:w-1/2 flex-col items-center justify-center p-8 bg-[#faf9f6]">
-        <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-12 justify-center">
-            <span className="material-symbols-outlined text-3xl text-[#1a1a1a]">filter_vintage</span>
-            <span className="font-serif text-2xl tracking-tight text-[#1a1a1a]">{tCommon('name')}</span>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-[#e5e5e1] p-8 shadow-sm">
-            <div className="text-center mb-8">
-              <h1 className="font-serif text-3xl text-[#1a1a1a] mb-2">{t('title')}</h1>
-              <p className="text-[#6b7280] text-sm">{t('subtitle')}</p>
-            </div>
-
-            <SignInForm />
-
-            <div className="mt-6 pt-6 border-t border-[#e5e5e1]">
-              <p className="text-center text-sm text-[#6b7280]">
-                {t('noAccount')}{" "}
-                <Link
-                  href="/signup"
-                  className="font-semibold text-[#1a1a1a] hover:text-[#8C7355] transition-colors"
-                >
-                  {t('signupLink')}
-                </Link>
-              </p>
-            </div>
-          </div>
-
-          <p className="text-center text-xs text-[#9ca3af] mt-8">
-            登录即表示您同意我们的服务条款和隐私政策
-          </p>
-        </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

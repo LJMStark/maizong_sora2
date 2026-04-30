@@ -1,12 +1,24 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
-import { useTranslations } from "next-intl";
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Bot,
+  Brain,
+  Code2,
+  FlaskConical,
+  ImageIcon,
+  MessageCircle,
+  Sparkles,
+  Video,
+  Workflow,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { CreditPurchaseDialog } from "./credit-purchase-dialog";
 import { useSession } from "@/lib/auth/client";
 import { LoginDialog } from "./shared/login-dialog";
+import { cn } from "@/lib/utils";
 
 interface Package {
   id: string;
@@ -18,133 +30,190 @@ interface Package {
   price: number;
 }
 
-function formatPrice(priceInCents: number): string {
-  return `¥${(priceInCents / 100).toFixed(2)}`;
+type FeatureIcon =
+  | typeof Sparkles
+  | typeof MessageCircle
+  | typeof ImageIcon
+  | typeof Brain
+  | typeof Bot
+  | typeof Workflow
+  | typeof Video
+  | typeof Code2
+  | typeof FlaskConical;
+
+interface Plan {
+  name: string;
+  price: string;
+  description: string;
+  button: string;
+  current?: boolean;
+  highlighted?: boolean;
+  badge?: string;
+  packageIndex?: number;
+  features: Array<{ icon: FeatureIcon; text: string }>;
 }
 
-function PackageCard({
-  pkg,
-  onPurchase,
-  isHighlighted = false,
-}: {
-  pkg: Package;
-  onPurchase: (pkg: Package) => void;
-  isHighlighted?: boolean;
-}) {
-  const t = useTranslations("studio.subscription");
-
-  return (
-    <div
-      className={`relative flex flex-col border transition-all ${
-        isHighlighted
-          ? "border-[#8C7355] bg-[#faf9f6]"
-          : "border-[#e5e5e1] bg-white hover:border-[#8C7355]/50"
-      }`}
-    >
-      {isHighlighted && (
-        <div className="absolute -top-3 right-4">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] px-3 py-1 border border-[#8C7355] text-[#8C7355] bg-white">
-            推荐
-          </span>
-        </div>
-      )}
-
-      <div className="p-6 md:p-8 flex-1 flex flex-col">
-        <div className="mb-6">
-          <h3 className="font-serif text-xl italic text-[#1a1a1a] mb-2">
-            {pkg.name}
-          </h3>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#8C7355] text-lg">
-              bolt
-            </span>
-            {pkg.type === "package" ? (
-              <span className="text-sm text-[#4b5563]">{pkg.credits} 积分</span>
-            ) : (
-              <span className="text-sm text-[#4b5563]">
-                时长 {pkg.durationDays} 天
-              </span>
-            )}
-          </div>
-        </div>
-
-        {pkg.type === "subscription" && (
-          <div className="mb-6 flex flex-col gap-1 text-xs uppercase tracking-[0.15em] text-[#8C7355] font-medium">
-            <span>月初始 {pkg.credits ?? 0} 积分</span>
-            <span>每日赠送 {pkg.dailyCredits ?? 0} 积分</span>
-          </div>
-        )}
-
-        <div className="mt-auto">
-          <div className="text-3xl font-light text-[#1a1a1a] mb-6">
-            {formatPrice(pkg.price)}
-          </div>
-
-          <button
-            onClick={() => onPurchase(pkg)}
-            className={`w-full py-4 px-6 text-[12px] font-bold uppercase tracking-widest transition-colors ${
-              isHighlighted
-                ? "bg-[#8C7355] text-white hover:bg-[#7a6349]"
-                : "border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white"
-            }`}
-          >
-            {t("purchase.button")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MemberIntro() {
-  const t = useTranslations("studio.subscription.memberIntro");
-
-  const benefits = [
-    t("benefits.autoGrant"),
-    t("benefits.noExpire"),
-    t("benefits.autoCollect"),
-    t("benefits.costEffective"),
-  ];
-
-  return (
-    <div className="mt-12 border border-[#e5e5e1] bg-white p-8 md:p-10">
-      <h3 className="text-xs uppercase tracking-[0.2em] text-[#4b5563] mb-6">
-        {t("title")}
-      </h3>
-      <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {benefits.map((benefit, index) => (
-          <li
-            key={index}
-            className="flex items-center gap-3 text-sm text-[#1a1a1a]"
-          >
-            <span className="material-symbols-outlined text-[#8C7355] text-lg">
-              check_circle
-            </span>
-            {benefit}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+const PLANS: Plan[] = [
+  {
+    name: "Free",
+    price: "0",
+    description: "See what AI can do",
+    button: "Your current plan",
+    current: true,
+    features: [
+      { icon: Sparkles, text: "Get simple explanations" },
+      { icon: MessageCircle, text: "Have short chats for common questions" },
+      { icon: ImageIcon, text: "Try out image generation" },
+      { icon: Brain, text: "Save limited memory and context" },
+    ],
+  },
+  {
+    name: "Go",
+    price: "8",
+    description: "Keep chatting with expanded access",
+    button: "Upgrade to Go",
+    packageIndex: 0,
+    features: [
+      { icon: Sparkles, text: "Explore topics in depth" },
+      { icon: MessageCircle, text: "Chat longer and upload more content" },
+      { icon: ImageIcon, text: "Make more images for your projects" },
+      { icon: Brain, text: "Get more memory for smarter replies" },
+      { icon: Workflow, text: "Get help with planning and tasks" },
+      { icon: Bot, text: "Explore projects, tasks, and custom GPTs" },
+    ],
+  },
+  {
+    name: "Plus",
+    price: "20",
+    description: "Unlock the full experience",
+    button: "Upgrade to Plus",
+    highlighted: true,
+    badge: "POPULAR",
+    packageIndex: 1,
+    features: [
+      { icon: Sparkles, text: "Solve complex problems" },
+      { icon: MessageCircle, text: "Have long chats over multiple sessions" },
+      { icon: ImageIcon, text: "Create more images, faster" },
+      { icon: Brain, text: "Remember goals and past conversations" },
+      { icon: Workflow, text: "Plan travel and tasks with agent mode" },
+      { icon: Bot, text: "Organize projects and customize GPTs" },
+      { icon: Video, text: "Produce and share videos on Sora" },
+      { icon: Code2, text: "Write code and build apps with Codex" },
+    ],
+  },
+  {
+    name: "Pro",
+    price: "200",
+    description: "Maximize your productivity",
+    button: "Upgrade to Pro",
+    packageIndex: 2,
+    features: [
+      { icon: Sparkles, text: "Master advanced tasks and topics" },
+      { icon: MessageCircle, text: "Tackle big projects with unlimited GPT-5.2" },
+      { icon: ImageIcon, text: "Create high-quality images at any scale" },
+      { icon: Brain, text: "Keep full context with maximum memory" },
+      { icon: Workflow, text: "Run research and plan tasks with agents" },
+      { icon: Bot, text: "Scale your projects and automate workflows" },
+      { icon: Video, text: "Expand your limits with Sora video creation" },
+      { icon: Code2, text: "Deploy code faster with Codex" },
+      { icon: FlaskConical, text: "Get early access to experimental features" },
+    ],
+  },
+];
 
 function PackageSkeleton() {
   return (
-    <div className="p-6 md:p-8 flex-1 flex flex-col animate-pulse">
-      <div className="mb-6">
-        <div className="h-6 bg-gray-200 rounded w-3/4 mb-2" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
-      </div>
-      <div className="mt-auto">
-        <div className="h-8 bg-gray-200 rounded w-1/3 mb-6" />
-        <div className="h-12 bg-gray-200 rounded w-full" />
+    <div className="h-[720px] animate-pulse rounded-[18px] border border-[#e5e5e5] bg-white p-8">
+      <div className="mb-8 h-10 w-28 rounded bg-[#eeeeee]" />
+      <div className="mb-8 h-14 w-40 rounded bg-[#eeeeee]" />
+      <div className="mb-12 h-12 w-full rounded-full bg-[#eeeeee]" />
+      <div className="space-y-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="h-5 rounded bg-[#eeeeee]" />
+        ))}
       </div>
     </div>
+  );
+}
+
+function PlanCard({
+  plan,
+  loading,
+  onPurchase,
+}: {
+  plan: Plan;
+  loading: boolean;
+  onPurchase: () => void;
+}) {
+  if (loading) return <PackageSkeleton />;
+
+  return (
+    <article
+      className={cn(
+        "relative flex min-h-[720px] flex-col rounded-[18px] border bg-white px-8 py-9",
+        plan.highlighted
+          ? "border-[#6458f5] bg-[#f4f3ff]"
+          : "border-[#e0e0e0]"
+      )}
+    >
+      <div className="mb-9 flex items-start justify-between">
+        <h2 className="text-[54px] font-medium leading-none tracking-normal text-[#0d0d0d]">
+          {plan.name}
+        </h2>
+        {plan.badge && (
+          <span className="rounded-full bg-[#e5e0ff] px-4 py-2 text-[13px] font-semibold tracking-[0.12em] text-[#6254d9]">
+            {plan.badge}
+          </span>
+        )}
+      </div>
+
+      <div className="mb-7 flex items-start gap-1">
+        <span className="mt-2 text-[28px] leading-none text-[#999]">$</span>
+        <span className="text-[58px] font-normal leading-none text-[#0d0d0d]">
+          {plan.price}
+        </span>
+        <span className="mt-5 text-[16px] leading-5 text-[#606060]">
+          USD /<br />
+          month
+        </span>
+      </div>
+
+      <p className="mb-12 text-[22px] font-medium leading-7 text-[#111]">
+        {plan.description}
+      </p>
+
+      <button
+        type="button"
+        onClick={onPurchase}
+        disabled={plan.current}
+        className={cn(
+          "mb-9 flex h-[54px] w-full items-center justify-center rounded-full text-[18px] font-medium transition",
+          plan.current
+            ? "border border-[#e5e5e5] bg-white text-[#777]"
+            : plan.highlighted
+              ? "bg-[#615ced] text-white hover:bg-[#514be5]"
+              : "bg-[#0d0d0d] text-white hover:bg-[#2a2a2a]"
+        )}
+      >
+        {plan.button}
+      </button>
+
+      <ul className="flex flex-col gap-6">
+        {plan.features.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <li key={feature.text} className="flex gap-5 text-[18px] leading-7 text-[#111]">
+              <Icon className="mt-1 size-5 shrink-0" strokeWidth={1.9} />
+              <span>{feature.text}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </article>
   );
 }
 
 const Subscription: React.FC = () => {
-  const t = useTranslations("studio.subscription");
   const [packages, setPackages] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
@@ -172,21 +241,30 @@ const Subscription: React.FC = () => {
     fetchPackages();
   }, []);
 
-  const creditPackages = packages.filter((p) => p.type === "package");
-  const subscriptionPackages = packages.filter((p) => p.type === "subscription");
-  const recommendedSubscriptionId =
-    subscriptionPackages.find((pkg) =>
-      pkg.id.toLowerCase().includes("pro")
-    )?.id ??
-    subscriptionPackages[1]?.id ??
-    subscriptionPackages[0]?.id;
-  const recommendedCreditPackageId =
-    creditPackages.find((pkg) => pkg.id === "package_max_998")?.id ??
-    creditPackages.find((pkg) => pkg.name.includes("高级版"))?.id ??
-    creditPackages.find((pkg) => pkg.price === 99800)?.id ??
-    creditPackages[0]?.id;
+  const subscriptionPackages = useMemo(
+    () => packages.filter((p) => p.type === "subscription"),
+    [packages]
+  );
+  const creditPackages = useMemo(
+    () => packages.filter((p) => p.type === "package"),
+    [packages]
+  );
 
-  const handlePurchase = (pkg: Package) => {
+  const purchasePackages = useMemo(() => {
+    const source = subscriptionPackages.length > 0 ? subscriptionPackages : creditPackages;
+    return [
+      source[0] ?? null,
+      source[1] ?? source[0] ?? null,
+      source[2] ?? source[source.length - 1] ?? null,
+    ];
+  }, [creditPackages, subscriptionPackages]);
+
+  const handlePurchase = (pkg: Package | null) => {
+    if (!pkg) {
+      toast.error("套餐暂未配置，请稍后再试");
+      return;
+    }
+
     if (isPending) {
       toast.error("正在验证登录状态，请稍后重试");
       return;
@@ -202,104 +280,54 @@ const Subscription: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#faf9f6] font-sans">
-      <div className="p-4 md:p-10 max-w-7xl mx-auto w-full flex flex-col gap-8 md:gap-12">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-4xl font-serif text-[#1a1a1a] italic">
-            {t("title")}
-          </h1>
-          <p className="text-[#4b5563] text-base font-normal tracking-wide max-w-xl">
-            {t("subtitle")}
-          </p>
+    <div className="min-h-screen overflow-y-auto bg-white font-sans text-[#0d0d0d]">
+      <Link
+        href="/studio"
+        className="fixed right-9 top-9 z-10 flex size-10 items-center justify-center rounded-full text-[#777] hover:bg-black/5"
+        aria-label="Close"
+      >
+        <X className="size-7" strokeWidth={1.8} />
+      </Link>
+
+      <div className="mx-auto flex w-full max-w-[1880px] flex-col px-5 pb-24 pt-[95px]">
+        <h1 className="text-center text-[36px] font-normal leading-tight">
+          Upgrade your plan
+        </h1>
+
+        <div className="mx-auto mt-8 flex rounded-full bg-[#f0f0f0] p-1">
+          {["Personal", "Business"].map((label, index) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => setSelectedIndex(index)}
+              className={cn(
+                "h-11 rounded-full px-5 text-[18px] transition",
+                selectedIndex === index
+                  ? "bg-white text-[#0d0d0d] shadow-sm"
+                  : "text-[#8a8a8a]"
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        <TabGroup selectedIndex={selectedIndex} onChange={setSelectedIndex}>
-          <div className="border-b border-[#e5e5e1]">
-            <TabList className="flex gap-8 md:gap-12">
-              <Tab className="pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors focus:outline-none data-[selected]:border-[#8C7355] data-[selected]:text-[#8C7355] data-[selected]:font-bold border-transparent text-[#4b5563] hover:text-[#1a1a1a]">
-                {t("tabs.subscription")}
-              </Tab>
-              <Tab className="pb-4 border-b-2 text-sm uppercase tracking-[0.2em] transition-colors focus:outline-none data-[selected]:border-[#1a1a1a] data-[selected]:text-[#1a1a1a] data-[selected]:font-bold border-transparent text-[#4b5563] hover:text-[#1a1a1a]">
-                {t("tabs.package")}
-              </Tab>
-            </TabList>
-          </div>
-
-          <TabPanels className="mt-8">
-            <TabPanel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={
-                        i < 3
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
-                          : ""
-                      }
-                    >
-                      <PackageSkeleton />
-                    </div>
-                  ))
-                ) : (
-                  subscriptionPackages.map((pkg, index) => (
-                    <div
-                      key={pkg.id}
-                      className={
-                        index < subscriptionPackages.length - 1
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
-                          : ""
-                      }
-                    >
-                      <PackageCard
-                        pkg={pkg}
-                        onPurchase={handlePurchase}
-                        isHighlighted={pkg.id === recommendedSubscriptionId}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-              <MemberIntro />
-            </TabPanel>
-
-            <TabPanel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 border border-[#e5e5e1]">
-                {loading ? (
-                  Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={
-                        i < 3
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1]"
-                          : ""
-                      }
-                    >
-                      <PackageSkeleton />
-                    </div>
-                  ))
-                ) : (
-                  creditPackages.map((pkg, index) => (
-                    <div
-                      key={pkg.id}
-                      className={
-                        index < creditPackages.length - 1
-                          ? "border-b sm:border-b-0 sm:border-r border-[#e5e5e1] lg:last:border-r-0"
-                          : ""
-                      }
-                    >
-                      <PackageCard
-                        pkg={pkg}
-                        onPurchase={handlePurchase}
-                        isHighlighted={pkg.id === recommendedCreditPackageId}
-                      />
-                    </div>
-                  ))
-                )}
-              </div>
-            </TabPanel>
-          </TabPanels>
-        </TabGroup>
+        <div className="mt-8 grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
+          {PLANS.map((plan) => {
+            const pkg =
+              typeof plan.packageIndex === "number"
+                ? purchasePackages[plan.packageIndex]
+                : null;
+            return (
+              <PlanCard
+                key={plan.name}
+                plan={plan}
+                loading={loading}
+                onPurchase={() => handlePurchase(pkg)}
+              />
+            );
+          })}
+        </div>
       </div>
 
       <CreditPurchaseDialog

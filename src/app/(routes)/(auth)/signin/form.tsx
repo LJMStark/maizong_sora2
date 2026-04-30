@@ -16,17 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { SignInSchema, SignInValues } from "./validate";
-import InputStartIcon from "../components/input-start-icon";
 import InputPasswordContainer from "../components/input-password";
 import { cn } from "@/lib/utils";
-import { AtSign } from "lucide-react";
 import { useTranslations } from 'next-intl';
 import Link from "next/link";
 
 export default function SignInForm() {
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const t = useTranslations('auth.signin');
   const tErrors = useTranslations('auth.errors');
 
   const form = useForm<SignInValues>({
@@ -82,14 +79,15 @@ export default function SignInForm() {
           render={({ field }) => (
             <FormItem>
               <FormControl>
-                <InputStartIcon icon={AtSign}>
-                  <Input
-                    placeholder={t('usernamePlaceholder')}
-                    className={cn("peer ps-9", getInputClassName("username"))}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
+                <Input
+                  placeholder="Email address or username"
+                  className={cn(
+                    "h-16 rounded-full border-[#7a8db7] px-7 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20",
+                    getInputClassName("username")
+                  )}
+                  disabled={isPending}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -105,8 +103,11 @@ export default function SignInForm() {
                 <InputPasswordContainer>
                   <Input
                     id="input-23"
-                    className={cn("pe-9", getInputClassName("password"))}
-                    placeholder={t('passwordPlaceholder')}
+                    className={cn(
+                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20",
+                      getInputClassName("password")
+                    )}
+                    placeholder="Password"
                     disabled={isPending}
                     {...field}
                   />
@@ -119,22 +120,28 @@ export default function SignInForm() {
         <div className="flex justify-end">
           <Link
             href="/forgot-password"
-            className="text-sm text-[#6b7280] hover:text-[#8C7355] transition-colors"
+            className="text-sm text-[#6b7280] transition-colors hover:text-[#0d0d0d]"
           >
-            {t('forgotPassword')}
+            Forgot password?
           </Link>
         </div>
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-4 w-full bg-[#1a1a1a] hover:bg-[#2d3436] text-white py-5"
+          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
         >
           {isPending ? (
             <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
           ) : (
-            t('submit')
+            "Continue"
           )}
         </Button>
+        <p className="text-center text-sm text-[#5f5f5f]">
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className="font-medium text-[#0d0d0d] underline-offset-4 hover:underline">
+            Sign up
+          </Link>
+        </p>
       </form>
     </Form>
   );

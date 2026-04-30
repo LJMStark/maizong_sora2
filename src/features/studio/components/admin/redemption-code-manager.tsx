@@ -118,8 +118,14 @@ export default function RedemptionCodeManager() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("已复制");
+    } catch (error) {
+      console.error("复制到剪贴板失败:", error);
+      toast.error(`复制失败：${getErrorMessage(error)}`);
+    }
   };
 
   const statusLabel = (status: string) => {
