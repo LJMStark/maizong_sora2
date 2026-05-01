@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -119,10 +119,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("studio:sessions-changed", handler);
   }, [loadSessions]);
 
-  const newHref = useMemo(() => {
-    if (mode === "video") return "/studio/video";
-    return "/studio";
-  }, [mode]);
+  const newHref = mode === "video" ? "/studio/video" : "/studio";
 
   const handleNew = () => {
     router.push(newHref);

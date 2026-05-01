@@ -374,11 +374,12 @@ export default function ImageWorkshop() {
       let imageMimeType: string | undefined;
 
       if (mode === "edit") {
-        const imageData = refImage
-          ? await fileToBase64(refImage)
-          : refImagePreview
-            ? await imageUrlToBase64(refImagePreview)
-            : null;
+        let imageData: { base64: string; mimeType: string } | null = null;
+        if (refImage) {
+          imageData = await fileToBase64(refImage);
+        } else if (refImagePreview) {
+          imageData = await imageUrlToBase64(refImagePreview);
+        }
 
         if (!imageData) {
           throw new Error("缺少输入图像");
@@ -477,7 +478,7 @@ export default function ImageWorkshop() {
           }}
           rows={1}
           maxLength={10000}
-          placeholder={mode === "edit" ? "Describe or edit an image" : "Describe or edit an image"}
+          placeholder="Describe or edit an image"
           className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
         />
 

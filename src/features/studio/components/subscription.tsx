@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Bot,
@@ -141,18 +141,17 @@ function PlanCard({
 
   const displayName = plan.name;
   const price = packageInfo ? formatYuan(packageInfo.price) : "--";
-  const period =
-    packageInfo?.type === "subscription"
-      ? packageInfo.durationDays && packageInfo.durationDays >= 365
-        ? "/年"
-        : "/期"
-      : "一次购买";
-  const creditText =
-    packageInfo?.type === "subscription"
-      ? `月初始 ${packageInfo.credits ?? 0} 积分，每日 ${packageInfo.dailyCredits ?? 0} 积分`
-      : packageInfo?.credits
-        ? `${packageInfo.credits} 积分`
-        : null;
+  let period = "一次购买";
+  if (packageInfo?.type === "subscription") {
+    period = (packageInfo.durationDays ?? 0) >= 365 ? "/年" : "/期";
+  }
+
+  let creditText: string | null = null;
+  if (packageInfo?.type === "subscription") {
+    creditText = `月初始 ${packageInfo.credits ?? 0} 积分，每日 ${packageInfo.dailyCredits ?? 0} 积分`;
+  } else if (packageInfo?.credits) {
+    creditText = `${packageInfo.credits} 积分`;
+  }
 
   return (
     <article
@@ -248,24 +247,16 @@ const Subscription: React.FC = () => {
     fetchPackages();
   }, []);
 
-  const subscriptionPackages = useMemo(
-    () => packages.filter((p) => p.type === "subscription"),
-    [packages]
-  );
-  const creditPackages = useMemo(
-    () => packages.filter((p) => p.type === "package"),
-    [packages]
-  );
+  const subscriptionPackages = packages.filter((p) => p.type === "subscription");
+  const creditPackages = packages.filter((p) => p.type === "package");
 
-  const purchasePackages = useMemo(() => {
-    const source = subscriptionPackages.length > 0 ? subscriptionPackages : creditPackages;
-    return [
-      source[0] ?? null,
-      source[1] ?? source[0] ?? null,
-      source[2] ?? source[source.length - 1] ?? null,
-      source[3] ?? source[source.length - 1] ?? null,
-    ];
-  }, [creditPackages, subscriptionPackages]);
+  const purchaseSource = subscriptionPackages.length > 0 ? subscriptionPackages : creditPackages;
+  const purchasePackages = [
+    purchaseSource[0] ?? null,
+    purchaseSource[1] ?? purchaseSource[0] ?? null,
+    purchaseSource[2] ?? purchaseSource[purchaseSource.length - 1] ?? null,
+    purchaseSource[3] ?? purchaseSource[purchaseSource.length - 1] ?? null,
+  ];
 
   const handlePurchase = (pkg: Package | null) => {
     if (!pkg) {
