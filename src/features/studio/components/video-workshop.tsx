@@ -541,7 +541,7 @@ export default function VideoWorkshop() {
         {sourcePreview && (
           <div className="mb-3 flex items-center gap-3">
             <div className="relative size-20 overflow-hidden rounded-2xl bg-[#f4f4f4]">
-              <img src={sourcePreview} alt="源图像" className="size-full object-cover" />
+              <img src={sourcePreview} alt="源图像" width={80} height={80} className="size-full object-cover" />
               <button
                 type="button"
                 onClick={clearAttachment}
@@ -556,6 +556,7 @@ export default function VideoWorkshop() {
         )}
 
         <textarea
+          aria-label="输入提示词"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
           onKeyDown={(event) => {
@@ -567,7 +568,7 @@ export default function VideoWorkshop() {
           rows={1}
           maxLength={10000}
           placeholder="Ask anything"
-          className="max-h-40 min-h-[50px] w-full min-w-0 resize-none bg-transparent px-0 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f]"
+          className="max-h-40 min-h-[50px] w-full min-w-0 resize-none rounded-xl bg-transparent px-2 py-1 text-[20px] leading-relaxed outline-none placeholder:text-[#8f8f8f] focus-visible:ring-4 focus-visible:ring-black/10"
         />
 
         <div className="mb-1 flex flex-wrap items-center gap-2 border-t border-[#eeeeee] pt-3">
@@ -642,6 +643,7 @@ export default function VideoWorkshop() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              aria-label="选择图像文件"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -668,7 +670,7 @@ export default function VideoWorkshop() {
               className="sr-only"
             >
               <Shuffle className="size-4" />
-              {randomizing ? "生成中" : "随机"}
+              {randomizing ? "生成中…" : "随机"}
             </button>
             <button
               type="button"
@@ -677,7 +679,7 @@ export default function VideoWorkshop() {
               className="sr-only"
             >
               <Wand2 className="size-4" />
-              {enhancing ? "润色中" : "润色"}
+              {enhancing ? "润色中…" : "润色"}
             </button>
           </div>
           <button
@@ -791,13 +793,15 @@ export default function VideoWorkshop() {
                         <img
                           src={task.sourceImageUrl}
                           alt="源图像"
+                          width={112}
+                          height={112}
                           className="mb-4 size-28 rounded-2xl object-cover"
                         />
                       )}
                       {isWorking ? (
                         <div className="w-full rounded-3xl border border-black/10 bg-white p-6 shadow-sm">
                           <p className="text-base">
-                            {task.status === "retrying" ? "正在自动重试" : "正在生成视频"}
+                            {task.status === "retrying" ? "正在自动重试…" : "正在生成视频…"}
                           </p>
                           <div className="mt-4 h-2 overflow-hidden rounded-full bg-[#ececec]">
                             <div

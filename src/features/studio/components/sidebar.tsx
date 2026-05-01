@@ -42,7 +42,7 @@ export default function Sidebar() {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
+                className={`flex items-center gap-4 px-8 py-4 transition-colors duration-200 group relative
                   ${
                     isActive(item.path)
                       ? "bg-black/[0.03] text-[#0d0d0d]"
@@ -68,7 +68,7 @@ export default function Sidebar() {
             <div className="mt-2 border-t border-[#e5e5e5] pt-2">
               <Link
                 href="/studio/admin"
-                className={`flex items-center gap-4 px-8 py-4 transition-all duration-200 group relative
+                className={`flex items-center gap-4 px-8 py-4 transition-colors duration-200 group relative
                   ${
                     isActive("/studio/admin")
                       ? "bg-black/[0.03] text-[#0d0d0d]"
