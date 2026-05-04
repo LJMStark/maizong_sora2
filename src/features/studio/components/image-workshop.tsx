@@ -24,7 +24,7 @@ import { IMAGE_PROMPTS, EDIT_PROMPTS } from "../utils/prompt-library";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import { useStudio } from "../context/studio-context";
-import { useImageTaskPolling } from "../hooks/use-image-task-polling";
+import { useImageTaskPolling } from "../hooks/use-task-polling";
 import { useSimulatedProgress } from "../hooks/use-simulated-progress";
 import { cn } from "@/lib/utils";
 

@@ -3,7 +3,9 @@ import { videoTaskService } from "@/features/studio/services/video-task-service"
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
 import { kieService } from "@/features/studio/services/kie-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 import { VideoTaskType } from "@/db/schema";
+import crypto from "crypto";
 
 const MAX_RESOURCE_RETRIES = 3;
 const MAX_GENERATION_FAILED_RETRIES = 1;
@@ -111,11 +113,25 @@ async function retryKieTask(
   }
 }
 
+// 时间恒定的字符串比较，防止 timing 攻击
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
 function verifyKieCallback(request: NextRequest): boolean {
   const authHeader = request.headers.get("authorization");
   const expectedToken = process.env.KIE_AI_API_KEY;
 
-  if (expectedToken && authHeader === `Bearer ${expectedToken}`) {
+  if (expectedToken && authHeader && safeEqual(authHeader, `Bearer ${expectedToken}`)) {
     return true;
   }
 
@@ -195,7 +211,6 @@ export async function POST(request: NextRequest) {
     const bodyText = await request.text();
 
     console.log("[KIE Callback] Received callback request");
-    console.log("[KIE Callback] Body:", bodyText);
 
     if (!verifyKieCallback(request)) {
       console.log("[KIE Callback] Verification failed");
@@ -240,6 +255,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 仅记录非敏感字段
+    console.log("[KIE Callback] Payload:", {
+      taskId,
+      status: statusRaw,
+      progress,
+    });
 
     const normalizedStatus = normalizeKieStatus(statusRaw as string);
 
@@ -371,7 +393,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

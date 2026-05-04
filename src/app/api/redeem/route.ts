@@ -58,6 +58,12 @@ export async function POST(request: NextRequest) {
     const now = new Date();
 
     const result = await db.transaction(async (tx) => {
+      // 0. 获取与 creditService 一致的 advisory lock，
+      // 防止与并发的 deductCredits/refundCredits 互相覆盖 user.credits
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`credit_wallet:${userId}`}))`
+      );
+
       // 1. 查找兑换码
       const codeRecords = await tx
         .select()

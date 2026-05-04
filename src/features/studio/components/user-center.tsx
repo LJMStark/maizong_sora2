@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useStudio } from "../context/studio-context";
 import AdminSettings from "./admin-settings";
 import RedemptionCodeManager from "./redemption-code-manager";
 import { useSession } from "@/lib/auth/client";
+import { isAdmin as checkIsAdmin } from "../utils/user-helpers";
 
 const UserCenter: React.FC = () => {
   const t = useTranslations("studio.userCenter");
@@ -17,23 +18,7 @@ const UserCenter: React.FC = () => {
     type: "success" | "error" | null;
     msg: string;
   }>({ type: null, msg: "" });
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  useEffect(() => {
-    // 检查用户是否是管理员
-    const checkAdmin = async () => {
-      try {
-        const res = await fetch("/api/admin/settings");
-        setIsAdmin(res.ok);
-      } catch (error) {
-        console.error("检查管理员权限失败:", error);
-        setIsAdmin(false);
-      }
-    };
-    if (session?.user) {
-      checkAdmin();
-    }
-  }, [session?.user]);
+  const isAdmin = checkIsAdmin(session?.user);
 
   const [isRedeeming, setIsRedeeming] = useState(false);
 

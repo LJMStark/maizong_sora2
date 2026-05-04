@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { announcement } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 export async function GET() {
   try {
@@ -13,7 +14,6 @@ export async function GET() {
 
     return NextResponse.json({ success: true, data: announcements });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

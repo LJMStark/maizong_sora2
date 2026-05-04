@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServerSession } from "@/lib/auth/get-session";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
+import { rateLimiter } from "@/lib/rate-limit";
 
 const SORA_SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Director），专门将用户的创意愿景转译为可制作、可连贯的视频提示词。
 
@@ -95,6 +96,14 @@ export async function POST(request: NextRequest) {
 
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { success } = await rateLimiter.limit(session.user.id, "enhancePrompt");
+  if (!success) {
+    return NextResponse.json(
+      { error: "请求过于频繁，请稍后再试" },
+      { status: 429 }
+    );
   }
 
   try {

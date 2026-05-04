@@ -1,6 +1,9 @@
+import { randomInt } from "crypto";
+
 /**
  * 生成兑换码：XXXX-XXXX-XXXX 格式
  * 使用大写字母和数字（排除易混淆字符：0,O,1,I,L）
+ * 使用密码学安全随机数防止预测
  */
 export function generateRedemptionCode(): string {
   const chars = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"; // 30个字符
@@ -9,7 +12,7 @@ export function generateRedemptionCode(): string {
 
   const code = Array.from({ length: segments }, () => {
     return Array.from({ length: segmentLength }, () =>
-      chars[Math.floor(Math.random() * chars.length)]
+      chars[randomInt(chars.length)]
     ).join("");
   }).join("-");
 

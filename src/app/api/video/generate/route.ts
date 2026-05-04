@@ -103,9 +103,6 @@ export async function POST(request: NextRequest) {
       mode === "Quality" ? "quality" : "fast";
     const configuredProvider = generationConfig.providers[requestedVideoType];
 
-    console.log("[Generate] generationConfig:", JSON.stringify(generationConfig));
-    console.log("[Generate] configuredProvider:", configuredProvider);
-
     // 当前模式对应供应商为 VEO 时，固定模型和时长，统一归类为 fast
     const isVeo = configuredProvider === "veo";
     const model = isVeo
@@ -139,14 +136,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const currentCredits = await creditService.getUserCredits(userId);
-    if (currentCredits < creditCost) {
-      return NextResponse.json(
-        { error: "积分不足", required: creditCost, current: currentCredits },
-        { status: 400 }
-      );
-    }
-
     const studioSession = await studioSessionService.getOrCreateSession({
       userId,
       type: "video",
@@ -166,12 +155,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { transactionId } = await creditService.deductCredits({
-      userId,
-      amount: creditCost,
-      reason: `视频生成（${requestedVideoType === "fast" ? "快速" : "质量"}模式）`,
-      referenceType: "video_task",
-    });
+    // deductCredits 内部使用 advisory lock + 事务原子校验余额，
+    // 避免预检查与扣费之间的 TOCTOU 窗口
+    let transactionId: string;
+    try {
+      const result = await creditService.deductCredits({
+        userId,
+        amount: creditCost,
+        reason: `视频生成（${requestedVideoType === "fast" ? "快速" : "质量"}模式）`,
+        referenceType: "video_task",
+      });
+      transactionId = result.transactionId;
+    } catch (err) {
+      if (err instanceof Error && err.message === "积分不足") {
+        const currentCredits = await creditService.getUserCredits(userId);
+        return NextResponse.json(
+          { error: "积分不足", required: creditCost, current: currentCredits },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
     const resolvedAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";

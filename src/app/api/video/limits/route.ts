@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 export async function GET() {
   const session = await getServerSession();
@@ -17,7 +18,6 @@ export async function GET() {
       data: status,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

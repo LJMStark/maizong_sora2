@@ -4,6 +4,7 @@ import {
   studioSessionService,
   StudioSessionKind,
 } from "@/features/studio/services/studio-session-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 function parseType(value: string | null): StudioSessionKind | null {
   return value === "image" || value === "video" ? value : null;
@@ -40,7 +41,6 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

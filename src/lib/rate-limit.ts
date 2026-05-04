@@ -6,9 +6,10 @@ const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
 // Rate limit configurations for different endpoints
 export const RATE_LIMITS = {
-  redeem: { requests: 5, windowSeconds: 60 },        // 5 requests per minute
+  redeem: { requests: 5, windowSeconds: 60 },         // 5 requests per minute
   imageGenerate: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
   videoGenerate: { requests: 3, windowSeconds: 60 },  // 3 requests per minute
+  enhancePrompt: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
   default: { requests: 20, windowSeconds: 60 },       // 20 requests per minute
 } as const;
 

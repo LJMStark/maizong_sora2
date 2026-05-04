@@ -6,6 +6,7 @@ import {
 } from "@/features/studio/services/studio-session-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 function parseType(value: string | null): StudioSessionKind | undefined {
   if (value === "image" || value === "video") return value;
@@ -107,7 +108,6 @@ export async function GET(
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

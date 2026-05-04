@@ -1,9 +1,15 @@
 import { db } from "@/db";
 import { user, videoTask, systemConfig } from "@/db/schema";
-import { eq, and, gte, ne, sql } from "drizzle-orm";
+import { eq, and, gte, ne, inArray, sql } from "drizzle-orm";
 
 export type VideoType = "fast" | "quality";
 export type VideoProvider = "kie" | "duomi" | "veo";
+
+// 同一 VideoType 可能对应多个具体模型（不同 provider 切换不影响计数）
+const VIDEO_TYPE_MODELS: Record<VideoType, ("sora-2" | "sora-2-temporary" | "sora-2-pro" | "veo3.1-fast")[]> = {
+  fast: ["sora-2", "sora-2-temporary", "veo3.1-fast"],
+  quality: ["sora-2-pro"],
+};
 
 export interface LimitCheckResult {
   allowed: boolean;
@@ -180,12 +186,13 @@ export const videoLimitService = {
 
   /**
    * 获取用户今日生成数量
+   * 按 videoType 对应的所有模型计数，避免 provider 切换导致计数失效
    */
   async getTodayGenerationCount(userId: string, videoType: VideoType): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const model = videoType === "fast" ? "sora-2-temporary" : "sora-2-pro";
+    const models = VIDEO_TYPE_MODELS[videoType];
 
     const result = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -193,7 +200,7 @@ export const videoLimitService = {
       .where(
         and(
           eq(videoTask.userId, userId),
-          eq(videoTask.model, model),
+          inArray(videoTask.model, models),
           gte(videoTask.createdAt, today),
           ne(videoTask.status, "error")
         )

@@ -54,18 +54,6 @@ export async function POST(request: NextRequest) {
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
     const imageCreditCost = generationConfig.creditCosts.image;
 
-    const currentCredits = await creditService.getUserCredits(userId);
-    if (currentCredits < imageCreditCost) {
-      return NextResponse.json(
-        {
-          error: "积分不足",
-          required: imageCreditCost,
-          current: currentCredits,
-        },
-        { status: 400 }
-      );
-    }
-
     const studioSession = await studioSessionService.getOrCreateSession({
       userId,
       type: "image",
@@ -73,12 +61,30 @@ export async function POST(request: NextRequest) {
       sessionId,
     });
 
-    const { transactionId } = await creditService.deductCredits({
-      userId,
-      amount: imageCreditCost,
-      reason: `图片生成（${selectedModel}）`,
-      referenceType: "image_task",
-    });
+    // deductCredits 内部使用 advisory lock + 事务原子校验余额
+    let transactionId: string;
+    try {
+      const result = await creditService.deductCredits({
+        userId,
+        amount: imageCreditCost,
+        reason: `图片生成（${selectedModel}）`,
+        referenceType: "image_task",
+      });
+      transactionId = result.transactionId;
+    } catch (err) {
+      if (err instanceof Error && err.message === "积分不足") {
+        const currentCredits = await creditService.getUserCredits(userId);
+        return NextResponse.json(
+          {
+            error: "积分不足",
+            required: imageCreditCost,
+            current: currentCredits,
+          },
+          { status: 400 }
+        );
+      }
+      throw err;
+    }
 
     let task: Awaited<ReturnType<typeof imageTaskService.createTask>>;
     try {

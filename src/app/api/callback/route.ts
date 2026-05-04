@@ -3,6 +3,7 @@ import { videoTaskService } from "@/features/studio/services/video-task-service"
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 import { VideoTaskType } from "@/db/schema";
 import crypto from "crypto";
 
@@ -120,6 +121,20 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
   }
 }
 
+// 时间恒定的字符串比较，防止 timing 攻击
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  try {
+    return crypto.timingSafeEqual(bufA, bufB);
+  } catch {
+    return false;
+  }
+}
+
 // 验证回调请求的签名或 token
 function verifyCallback(request: NextRequest, body: string): boolean {
   const callbackSecret = process.env.DUOMI_CALLBACK_SECRET;
@@ -128,7 +143,7 @@ function verifyCallback(request: NextRequest, body: string): boolean {
   if (!callbackSecret) {
     const authHeader = request.headers.get("authorization");
     const expectedToken = process.env.DUOMI_API;
-    if (expectedToken && authHeader === `Bearer ${expectedToken}`) {
+    if (expectedToken && authHeader && safeEqual(authHeader, `Bearer ${expectedToken}`)) {
       return true;
     }
     // 开发环境允许无验证（生产环境必须配置）
@@ -152,34 +167,18 @@ function verifyCallback(request: NextRequest, body: string): boolean {
     .update(body)
     .digest("hex");
 
-  // 长度检查防止 timingSafeEqual 抛出异常
-  if (signature.length !== expectedSignature.length) {
-    console.warn("[Callback] Signature length mismatch");
-    return false;
-  }
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-  } catch {
-    console.warn("[Callback] Signature comparison failed");
-    return false;
-  }
+  return safeEqual(signature, expectedSignature);
 }
 
 export async function POST(request: NextRequest) {
   try {
     const bodyText = await request.text();
 
-    // 记录回调请求详情用于调试
     console.log("[Callback] Received callback request");
     console.log(
       "[Callback] Headers:",
       JSON.stringify(redactSensitiveHeaders(request.headers))
     );
-    console.log("[Callback] Body:", bodyText);
 
     // 验证回调请求
     if (!verifyCallback(request, bodyText)) {
@@ -210,6 +209,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // 仅记录非敏感字段，避免泄漏 prompt 等用户内容
+    console.log("[Callback] Payload:", {
+      taskId,
+      status: statusRaw,
+      progress,
+    });
 
     const normalizedStatus = statusRaw === "failed" ? "error" : statusRaw;
 
@@ -326,7 +332,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

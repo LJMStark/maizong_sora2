@@ -6,6 +6,7 @@ import { kieService } from "@/features/studio/services/kie-service";
 import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 import type { VideoTaskType } from "@/db/schema";
 
 function buildTaskResponse(
@@ -217,7 +218,6 @@ export async function GET(
       }));
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

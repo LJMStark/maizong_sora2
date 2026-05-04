@@ -4,6 +4,7 @@ import { imageTaskService } from "@/features/studio/services/image-task-service"
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { creditService } from "@/features/studio/services/credit-service";
+import { sanitizeError } from "@/lib/security/error-handler";
 
 export async function GET(
   request: NextRequest,
@@ -148,7 +149,6 @@ export async function GET(
       });
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }
