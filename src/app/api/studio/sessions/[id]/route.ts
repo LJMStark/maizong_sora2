@@ -3,6 +3,7 @@ import { getServerSession } from "@/lib/auth/get-session";
 import {
   studioSessionService,
   StudioSessionKind,
+  StudioSessionAccessError,
 } from "@/features/studio/services/studio-session-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
@@ -108,6 +109,88 @@ export async function GET(
       })),
     });
   } catch (error) {
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authSession = await getServerSession();
+
+  if (!authSession?.user) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const body = await request.json();
+    const title = body?.title;
+
+    if (typeof title !== "string" || title.trim().length === 0) {
+      return NextResponse.json({ error: "标题不能为空" }, { status: 400 });
+    }
+
+    if (title.trim().length > 80) {
+      return NextResponse.json({ error: "标题不能超过 80 个字符" }, { status: 400 });
+    }
+
+    const session = await studioSessionService.renameSession({
+      userId: authSession.user.id,
+      sessionId: id,
+      title,
+    });
+
+    return NextResponse.json({
+      success: true,
+      session: {
+        id: session.id,
+        type: session.type,
+        title: session.title,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+      },
+    });
+  } catch (error) {
+    if (error instanceof StudioSessionAccessError) {
+      return NextResponse.json({ error: "会话不存在" }, { status: 404 });
+    }
+    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const authSession = await getServerSession();
+
+  if (!authSession?.user) {
+    return NextResponse.json({ error: "未授权" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  try {
+    const session = await studioSessionService.deleteSession({
+      userId: authSession.user.id,
+      sessionId: id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      session: {
+        id: session.id,
+        type: session.type,
+        title: session.title,
+      },
+    });
+  } catch (error) {
+    if (error instanceof StudioSessionAccessError) {
+      return NextResponse.json({ error: "会话不存在" }, { status: 404 });
+    }
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }
 }

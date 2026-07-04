@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+// Max decoded image payload accepted from the client (10 MB). Base64 inflates
+// bytes by ~4/3, so cap the encoded string accordingly. Routes should also
+// reject oversized requests via Content-Length before parsing the body.
+export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_UPLOAD_BYTES / 3) * 4;
+
+const imageBase64Schema = z
+  .string()
+  .min(1, "图像为必填项")
+  .max(MAX_IMAGE_BASE64_LENGTH, "图像过大（最多 10MB）");
+
 export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/jpeg",
   "image/png",
@@ -25,7 +36,7 @@ export const EditImageSchema = z.object({
   aspectRatio: z.string().optional(),
   imageSize: z.string().optional(),
   sessionId: z.string().optional(),
-  imageBase64: z.string().min(1, "图像为必填项"),
+  imageBase64: imageBase64Schema,
   imageMimeType: imageMimeTypeSchema,
 });
 
@@ -42,6 +53,6 @@ export const GenerateVideoSchema = z.object({
       message: "视频时长仅支持 8、10 或 15 秒",
     })
     .optional(),
-  imageBase64: z.string().optional(),
+  imageBase64: imageBase64Schema.optional(),
   imageMimeType: imageMimeTypeSchema.optional(),
 });

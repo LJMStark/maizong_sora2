@@ -6,7 +6,9 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
+  useSyncExternalStore,
   ReactNode,
 } from "react";
 import {
@@ -17,8 +19,22 @@ import {
   VideoTask,
   ImageTask,
 } from "../types";
+import { useSession } from "@/lib/auth/client";
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
+
+const EMPTY_APP_STATE: AppState = {
+  credits: 0,
+  history: [],
+  creditHistory: [],
+  videoTasks: [],
+  imageTasks: [],
+};
+
+type OwnedAppState = {
+  ownerUserId: string | null;
+  state: AppState;
+};
 
 function isActiveVideoTask(task: VideoTask): boolean {
   return (
@@ -28,35 +44,97 @@ function isActiveVideoTask(task: VideoTask): boolean {
   );
 }
 
+function subscribeHydration() {
+  return () => undefined;
+}
+
+function getHydratedClientSnapshot() {
+  return true;
+}
+
+function getHydratedServerSnapshot() {
+  return false;
+}
+
 export function StudioProvider({ children }: { children: ReactNode }) {
-  const [appState, setAppState] = useState<AppState>({
-    credits: 0,
-    history: [],
-    creditHistory: [],
-    videoTasks: [],
-    imageTasks: [],
+  const { data: session, isPending: sessionPending } = useSession();
+  const hasSession = Boolean(session?.user);
+  const userId = session?.user?.id ?? null;
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot
+  );
+  const [ownedAppState, setOwnedAppStateValue] = useState<OwnedAppState>({
+    ownerUserId: null,
+    state: EMPTY_APP_STATE,
   });
   const [pendingConfigReload, setPendingConfigReload] = useState(false);
   const videoTasksRef = useRef<VideoTask[]>([]);
   const reloadingRef = useRef(false);
+  const currentUserIdRef = useRef<string | null>(userId);
+  const pendingConfigReloadUserRef = useRef<string | null>(null);
+  const appState = ownedAppState.state;
+
+  useEffect(() => {
+    currentUserIdRef.current = userId;
+  }, [userId]);
 
   useEffect(() => {
     videoTasksRef.current = appState.videoTasks;
   }, [appState.videoTasks]);
 
+  const setOwnedAppState = useCallback(
+    (
+      ownerUserId: string | null,
+      updater: (previous: AppState) => AppState
+    ) => {
+      if (!ownerUserId || currentUserIdRef.current !== ownerUserId) {
+        return;
+      }
+
+      setOwnedAppStateValue((previous) => {
+        const baseState =
+          previous.ownerUserId === ownerUserId
+            ? previous.state
+            : EMPTY_APP_STATE;
+        const nextState = updater(baseState);
+        videoTasksRef.current = nextState.videoTasks;
+        return {
+          ownerUserId,
+          state: nextState,
+        };
+      });
+    },
+    []
+  );
+
   const refreshCredits = useCallback(async () => {
+    if (!hasSession) {
+      return;
+    }
+
+    const requestUserId = userId;
     try {
       const response = await fetch("/api/credits");
       if (response.ok) {
         const data = await response.json();
-        setAppState((prev) => ({ ...prev, credits: data.credits }));
+        setOwnedAppState(requestUserId, (prev) => ({
+          ...prev,
+          credits: data.credits,
+        }));
       }
     } catch (error) {
       console.error("刷新积分失败:", error);
     }
-  }, []);
+  }, [hasSession, setOwnedAppState, userId]);
 
   const refreshCreditHistory = useCallback(async () => {
+    if (!hasSession) {
+      return;
+    }
+
+    const requestUserId = userId;
     try {
       const response = await fetch("/api/credits/history");
       if (response.ok) {
@@ -80,14 +158,22 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             balanceAfter: txn.balanceAfter,
           })
         );
-        setAppState((prev) => ({ ...prev, creditHistory: formattedHistory }));
+        setOwnedAppState(requestUserId, (prev) => ({
+          ...prev,
+          creditHistory: formattedHistory,
+        }));
       }
     } catch (error) {
       console.error("刷新积分历史失败:", error);
     }
-  }, []);
+  }, [hasSession, setOwnedAppState, userId]);
 
   const fetchVideoTasks = useCallback(async (): Promise<VideoTask[] | null> => {
+    if (!hasSession) {
+      return null;
+    }
+
+    const requestUserId = userId;
     try {
       const response = await fetch("/api/video/tasks");
       if (response.ok) {
@@ -116,7 +202,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
               : undefined,
           })
         );
-        setAppState((prev) => ({ ...prev, videoTasks: formattedTasks }));
+        if (currentUserIdRef.current !== requestUserId) {
+          return null;
+        }
+
+        setOwnedAppState(requestUserId, (prev) => ({
+          ...prev,
+          videoTasks: formattedTasks,
+        }));
 
         const completedVideos = formattedTasks.filter(
           (task: VideoTask) => task.status === "succeeded" && task.videoUrl
@@ -133,7 +226,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           })
         );
 
-        setAppState((prev) => {
+        setOwnedAppState(requestUserId, (prev) => {
           const existingNonVideoHistory = prev.history.filter(
             (item) => item.type !== "video"
           );
@@ -150,13 +243,18 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
 
     return null;
-  }, []);
+  }, [hasSession, setOwnedAppState, userId]);
 
   const refreshVideoTasks = useCallback(async () => {
     await fetchVideoTasks();
   }, [fetchVideoTasks]);
 
   const refreshImageTasks = useCallback(async () => {
+    if (!hasSession) {
+      return;
+    }
+
+    const requestUserId = userId;
     try {
       const response = await fetch("/api/image/tasks");
       if (response.ok) {
@@ -184,7 +282,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
               : undefined,
           })
         );
-        setAppState((prev) => ({ ...prev, imageTasks: formattedTasks }));
+        if (currentUserIdRef.current !== requestUserId) {
+          return;
+        }
+
+        setOwnedAppState(requestUserId, (prev) => ({
+          ...prev,
+          imageTasks: formattedTasks,
+        }));
 
         const completedImages = formattedTasks.filter(
           (task: ImageTask) => task.status === "succeeded" && task.imageUrl
@@ -201,7 +306,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           })
         );
 
-        setAppState((prev) => {
+        setOwnedAppState(requestUserId, (prev) => {
           const existingNonImageHistory = prev.history.filter(
             (item) => item.type !== "image"
           );
@@ -214,15 +319,30 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("刷新图片任务失败:", error);
     }
-  }, []);
+  }, [hasSession, setOwnedAppState, userId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshCredits();
-    refreshCreditHistory();
-    refreshVideoTasks();
-    refreshImageTasks();
-  }, [refreshCredits, refreshCreditHistory, refreshVideoTasks, refreshImageTasks]);
+    if (!hydrated || sessionPending) {
+      return;
+    }
+
+    if (!hasSession) return;
+
+    queueMicrotask(() => {
+      void refreshCredits();
+      void refreshCreditHistory();
+      void refreshVideoTasks();
+      void refreshImageTasks();
+    });
+  }, [
+    hasSession,
+    hydrated,
+    sessionPending,
+    refreshCredits,
+    refreshCreditHistory,
+    refreshVideoTasks,
+    refreshImageTasks,
+  ]);
 
   const triggerReload = useCallback(() => {
     if (reloadingRef.current) {
@@ -238,19 +358,34 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const updateUserId = currentUserIdRef.current;
+    if (!updateUserId) {
+      return;
+    }
+
     const latestTasks = await fetchVideoTasks();
+    if (currentUserIdRef.current !== updateUserId) {
+      return;
+    }
+
     const tasksToCheck = latestTasks ?? videoTasksRef.current;
     const hasActiveVideoTasks = tasksToCheck.some(isActiveVideoTask);
 
     if (hasActiveVideoTasks) {
+      pendingConfigReloadUserRef.current = updateUserId;
       setPendingConfigReload(true);
       return;
     }
 
+    pendingConfigReloadUserRef.current = null;
     triggerReload();
   }, [fetchVideoTasks, triggerReload]);
 
   useEffect(() => {
+    if (!hydrated || !hasSession || sessionPending) {
+      return;
+    }
+
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let eventSource: EventSource | null = null;
     let stopped = false;
@@ -285,21 +420,34 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         clearTimeout(reconnectTimer);
       }
     };
-  }, [handleConfigUpdate]);
+  }, [hydrated, hasSession, sessionPending, handleConfigUpdate]);
 
   useEffect(() => {
     if (!pendingConfigReload || reloadingRef.current) {
       return;
     }
 
+    if (pendingConfigReloadUserRef.current !== userId) {
+      pendingConfigReloadUserRef.current = null;
+      queueMicrotask(() => {
+        setPendingConfigReload(false);
+      });
+      return;
+    }
+
     const hasActiveVideoTasks = appState.videoTasks.some(isActiveVideoTask);
     if (!hasActiveVideoTasks) {
+      pendingConfigReloadUserRef.current = null;
       triggerReload();
     }
-  }, [appState.videoTasks, pendingConfigReload, triggerReload]);
+  }, [appState.videoTasks, pendingConfigReload, triggerReload, userId]);
 
   useEffect(() => {
     if (!pendingConfigReload || reloadingRef.current) {
+      return;
+    }
+
+    if (pendingConfigReloadUserRef.current !== userId) {
       return;
     }
 
@@ -310,62 +458,101 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     return () => {
       clearInterval(timer);
     };
-  }, [pendingConfigReload, refreshVideoTasks]);
+  }, [pendingConfigReload, refreshVideoTasks, userId]);
 
-  const deductCredits = (amount: number, reason: string = "Service Usage") => {
-    setAppState((prev) => ({
-      ...prev,
-      credits: Math.max(0, prev.credits - amount),
-      creditHistory: [
-        {
-          id: Date.now().toString(),
-          type: "deduction",
-          amount,
-          reason,
-          date: new Date(),
-        },
-        ...prev.creditHistory,
-      ],
-    }));
-  };
+  const deductCredits = useCallback(
+    (amount: number, reason: string = "Service Usage") => {
+      setOwnedAppState(userId, (prev) => ({
+        ...prev,
+        credits: Math.max(0, prev.credits - amount),
+        creditHistory: [
+          {
+            id: Date.now().toString(),
+            type: "deduction",
+            amount,
+            reason,
+            date: new Date(),
+          },
+          ...prev.creditHistory,
+        ],
+      }));
+    },
+    [setOwnedAppState, userId]
+  );
 
-  const addCredits = (amount: number, reason: string = "Recharge") => {
-    setAppState((prev) => ({
-      ...prev,
-      credits: prev.credits + amount,
-      creditHistory: [
-        {
-          id: Date.now().toString(),
-          type: "addition",
-          amount,
-          reason,
-          date: new Date(),
-        },
-        ...prev.creditHistory,
-      ],
-    }));
-  };
+  const addCredits = useCallback(
+    (amount: number, reason: string = "Recharge") => {
+      setOwnedAppState(userId, (prev) => ({
+        ...prev,
+        credits: prev.credits + amount,
+        creditHistory: [
+          {
+            id: Date.now().toString(),
+            type: "addition",
+            amount,
+            reason,
+            date: new Date(),
+          },
+          ...prev.creditHistory,
+        ],
+      }));
+    },
+    [setOwnedAppState, userId]
+  );
 
-  const addToHistory = (item: GenerationResult) => {
-    setAppState((prev) => ({
+  const addToHistory = useCallback(
+    (item: GenerationResult) => {
+      setOwnedAppState(userId, (prev) => ({
+        ...prev,
+        history: [item, ...prev.history],
+      }));
+    },
+    [setOwnedAppState, userId]
+  );
+
+  const clearLocalView = useCallback(() => {
+    setOwnedAppState(userId, (prev) => ({
       ...prev,
-      history: [item, ...prev.history],
+      history: [],
+      imageTasks: [],
+      videoTasks: [],
     }));
-  };
+  }, [setOwnedAppState, userId]);
+
+  const visibleState =
+    hydrated && hasSession && ownedAppState.ownerUserId === userId
+      ? ownedAppState.state
+      : EMPTY_APP_STATE;
+
+  // Memoized so consumers of useStudio() only re-render when a value actually
+  // changes, not on every provider render.
+  const contextValue = useMemo(
+    () => ({
+      state: visibleState,
+      deductCredits,
+      addCredits,
+      addToHistory,
+      refreshCredits,
+      refreshVideoTasks,
+      refreshImageTasks,
+      refreshCreditHistory,
+      clearLocalView,
+    }),
+    [
+      visibleState,
+      deductCredits,
+      addCredits,
+      addToHistory,
+      refreshCredits,
+      refreshVideoTasks,
+      refreshImageTasks,
+      refreshCreditHistory,
+      clearLocalView,
+    ]
+  );
 
   return (
-    <StudioContext.Provider
-      value={{
-        state: appState,
-        deductCredits,
-        addCredits,
-        addToHistory,
-        refreshCredits,
-        refreshVideoTasks,
-        refreshImageTasks,
-        refreshCreditHistory,
-      }}
-    >
+    <StudioContext.Provider value={contextValue}>
       {children}
     </StudioContext.Provider>
   );

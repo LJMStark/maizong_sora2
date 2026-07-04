@@ -44,3 +44,9 @@ next-env.d.ts
 
 # worktrees
 .worktrees
+
+# local verification / CDP scripts (contain test credentials) and scratch assets
+/scripts
+/docs/design-references
+/docs/research
+/public/studio-showcase/codex-ui-sample-video.mp4

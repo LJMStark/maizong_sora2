@@ -8,7 +8,7 @@ import {
   publicApiRoutes,
 } from "./routes";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const session = getSessionCookie(request);
   const pathname = request.nextUrl.pathname;
 

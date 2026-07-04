@@ -2,6 +2,11 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET_NAME = "studio-assets";
 
+// Hard ceiling for objects in the shared bucket. Holds both user images and
+// provider-fetched videos, so sized for the larger video case. Per-request
+// image limits are enforced upstream at the API boundary.
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
 let supabaseClient: SupabaseClient | null = null;
 
 function getSupabase(): SupabaseClient {
@@ -26,7 +31,7 @@ export const storageService = {
     if (!bucketExists) {
       await getSupabase().storage.createBucket(BUCKET_NAME, {
         public: true,
-        fileSizeLimit: 104857600,
+        fileSizeLimit: MAX_UPLOAD_BYTES,
       });
     }
   },

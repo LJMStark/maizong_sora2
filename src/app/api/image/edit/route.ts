@@ -10,9 +10,16 @@ import {
   StudioSessionAccessError,
 } from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
-import { EditImageSchema } from "@/lib/validations/schemas";
+import {
+  EditImageSchema,
+  MAX_IMAGE_BASE64_LENGTH,
+} from "@/lib/validations/schemas";
+import { enforceMaxBodySize } from "@/lib/api/request-limits";
 import { sanitizeError } from "@/lib/security/error-handler";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
+
+// Base64 image plus JSON envelope; a small margin above the encoded image cap.
+const MAX_UPLOAD_REQUEST_BYTES = MAX_IMAGE_BASE64_LENGTH + 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -32,6 +39,9 @@ export async function POST(request: NextRequest) {
   if (!success) {
     return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
+
+  const oversized = enforceMaxBodySize(request, MAX_UPLOAD_REQUEST_BYTES);
+  if (oversized) return oversized;
 
   try {
     const body = await request.json();

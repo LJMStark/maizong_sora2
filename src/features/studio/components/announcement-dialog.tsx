@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -21,19 +22,31 @@ function getTodayString(): string {
 
 function isDismissedToday(): boolean {
   if (typeof window === "undefined") return true;
-  return localStorage.getItem(DISMISSED_KEY) === getTodayString();
+  try {
+    return localStorage.getItem(DISMISSED_KEY) === getTodayString();
+  } catch {
+    return false;
+  }
 }
 
 function dismissToday(): void {
-  localStorage.setItem(DISMISSED_KEY, getTodayString());
+  try {
+    localStorage.setItem(DISMISSED_KEY, getTodayString());
+  } catch {
+    // Storage can be blocked in hardened/private browser contexts.
+  }
 }
 
 export default function AnnouncementDialog() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<AnnouncementType[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const suppressedByAppDialogRef = useRef(false);
 
   useEffect(() => {
+    if (pathname.startsWith("/studio/admin")) return;
+    if (pathname.startsWith("/studio/profile")) return;
     if (isDismissedToday()) return;
 
     fetch("/api/announcements")
@@ -41,17 +54,32 @@ export default function AnnouncementDialog() {
       .then((json) => {
         if (json.success && json.data.length > 0) {
           setAnnouncements(json.data);
-          setOpen(true);
+          if (!suppressedByAppDialogRef.current && !isDismissedToday()) {
+            setOpen(true);
+          }
         }
       })
       .catch((error) => {
         console.error("获取公告失败:", error);
       });
+  }, [pathname]);
+
+  useEffect(() => {
+    const handleAppDialogOpen = () => {
+      suppressedByAppDialogRef.current = true;
+      setOpen(false);
+      dismissToday();
+    };
+
+    window.addEventListener("studio:modal-opened", handleAppDialogOpen);
+    return () => {
+      window.removeEventListener("studio:modal-opened", handleAppDialogOpen);
+    };
   }, []);
 
   const handleClose = useCallback(() => {
-    dismissToday();
     setOpen(false);
+    dismissToday();
   }, []);
 
   const toggleExpand = useCallback((id: string) => {
@@ -72,10 +100,13 @@ export default function AnnouncementDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
+      <DialogContent
+        data-studio-dialog-surface="announcement"
+        className="max-h-[80vh] overflow-y-auto rounded-2xl border-[#e5e5e5] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.16)]"
+      >
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Megaphone className="size-5" />
+          <DialogTitle className="flex items-center gap-2 text-xl font-medium text-[#0d0d0d]">
+            <Megaphone className="size-5" strokeWidth={1.9} />
             {latest.title}
           </DialogTitle>
           <DialogDescription className="sr-only">
@@ -83,17 +114,17 @@ export default function AnnouncementDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="text-sm text-[#333] leading-relaxed whitespace-pre-wrap">
+        <div className="whitespace-pre-wrap text-sm leading-6 text-[#333]">
           {latest.content}
         </div>
 
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="mt-1 text-xs text-[#777]">
           {new Date(latest.createdAt).toLocaleDateString("zh-CN")}
         </p>
 
         {older.length > 0 && (
-          <div className="mt-4 border-t pt-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">
+          <div className="mt-4 border-t border-[#eeeeee] pt-3">
+            <p className="mb-2 text-xs font-medium text-[#777]">
               历史公告
             </p>
             <div className="space-y-2">
@@ -102,7 +133,7 @@ export default function AnnouncementDialog() {
                 return (
                   <div
                     key={item.id}
-                    className="rounded-md border p-3 text-sm"
+                    className="rounded-2xl border border-[#e5e5e5] p-3 text-sm"
                   >
                     <button
                       type="button"
@@ -110,7 +141,7 @@ export default function AnnouncementDialog() {
                       onClick={() => toggleExpand(item.id)}
                     >
                       <span className="font-medium">{item.title}</span>
-                      <span className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 ml-2">
+                      <span className="ml-2 flex shrink-0 items-center gap-2 text-xs text-[#777]">
                         {new Date(item.createdAt).toLocaleDateString("zh-CN")}
                         {expanded ? (
                           <ChevronUp className="size-4" />
@@ -120,7 +151,7 @@ export default function AnnouncementDialog() {
                       </span>
                     </button>
                     {expanded && (
-                      <p className="mt-2 text-[#555] leading-relaxed whitespace-pre-wrap">
+                      <p className="mt-2 whitespace-pre-wrap text-[#555] leading-6">
                         {item.content}
                       </p>
                     )}
@@ -132,7 +163,7 @@ export default function AnnouncementDialog() {
         )}
 
         <DialogFooter className="mt-4">
-          <Button onClick={handleClose} className="w-full sm:w-auto">
+          <Button onClick={handleClose} className="w-full rounded-full bg-[#0d0d0d] hover:bg-[#2a2a2a] sm:w-auto">
             我知道了
           </Button>
         </DialogFooter>

@@ -87,16 +87,24 @@ DialogOverlay.displayName = "DialogOverlay"
 
 const DialogContent = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, children, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & {
+    overlayClassName?: string
+    wrapperClassName?: string
+  }
+>(({ className, children, overlayClassName, wrapperClassName, ...props }, ref) => (
   <>
-    <DialogOverlay />
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <DialogOverlay className={overlayClassName} />
+    <div
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center p-4",
+        wrapperClassName
+      )}
+    >
       <DialogPanel
         ref={ref}
         transition
         className={cn(
-          "w-full max-w-lg grid gap-4 border bg-background p-6 shadow-lg sm:rounded-lg transition-all duration-200 data-[closed]:opacity-0 data-[closed]:scale-95",
+          "relative grid w-full max-w-lg gap-4 rounded-lg border bg-background p-6 shadow-lg transition-all duration-200 data-[closed]:scale-95 data-[closed]:opacity-0",
           className
         )}
         {...props}

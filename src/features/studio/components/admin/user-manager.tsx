@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Ban, Pencil, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
 
 interface User {
   id: string;
@@ -41,9 +42,11 @@ function getErrorMessage(error: unknown): string {
 export default function UserManager() {
   const [data, setData] = useState<UserListResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [page, setPage] = useState(1);
   const [editUser, setEditUser] = useState<User | null>(null);
+  const [disableUser, setDisableUser] = useState<User | null>(null);
   const [editForm, setEditForm] = useState({ role: "", credits: 0 });
   const [saving, setSaving] = useState(false);
 
@@ -54,8 +57,8 @@ export default function UserManager() {
         page: String(page),
         limit: "20",
       });
-      if (search.trim()) {
-        params.set("search", search.trim());
+      if (searchKeyword.trim()) {
+        params.set("search", searchKeyword.trim());
       }
       const res = await fetch(`/api/admin/users?${params}`);
       const json = await res.json().catch(() => null);
@@ -71,7 +74,7 @@ export default function UserManager() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, searchKeyword]);
 
   useEffect(() => {
     fetchUsers();
@@ -79,7 +82,7 @@ export default function UserManager() {
 
   const handleSearch = () => {
     setPage(1);
-    fetchUsers();
+    setSearchKeyword(searchInput.trim());
   };
 
   const openEdit = (user: User) => {
@@ -113,7 +116,6 @@ export default function UserManager() {
   };
 
   const handleDisable = async (user: User) => {
-    if (!confirm(`确定禁用用户「${user.name}」？`)) return;
     try {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
       const json = await res.json().catch(() => null);
@@ -122,6 +124,7 @@ export default function UserManager() {
           json?.error || `请求失败（状态码 ${res.status}）`
         );
       }
+      setDisableUser(null);
       fetchUsers();
     } catch (error) {
       console.error("禁用用户失败:", error);
@@ -147,88 +150,192 @@ export default function UserManager() {
     }
   };
 
+  const formatLimit = (value: number | null) => {
+    if (value === null) return "跟随系统";
+    if (value === -1) return "不限";
+    if (value === 0) return "停用";
+    return `${value} 次/天`;
+  };
+
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-          placeholder="搜索用户名、邮箱..."
-          className="max-w-xs"
-        />
-        <Button variant="outline" size="sm" onClick={handleSearch}>
-          搜索
-        </Button>
-        {data && (
-          <span className="ml-auto text-sm text-[#777]">
-            共 {data.total} 个用户
-          </span>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 border-b border-[#ececec] pb-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex h-10 w-full items-center gap-3 rounded-full bg-[#f4f4f4] px-4 lg:max-w-md">
+            <Search className="size-4 shrink-0 text-[#777]" strokeWidth={1.9} />
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="搜索用户名、邮箱"
+              aria-label="搜索用户名、邮箱"
+              autoComplete="off"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#777]"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
+            <Button
+              size="sm"
+              onClick={handleSearch}
+              className="rounded-full bg-[#0d0d0d] text-white hover:bg-[#2a2a2a]"
+            >
+              搜索
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchInput("");
+                setSearchKeyword("");
+                setPage(1);
+              }}
+              className="rounded-full"
+            >
+              清空
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchUsers}
+              className="rounded-full"
+            >
+              <RefreshCw className="size-4" strokeWidth={1.9} />
+              <span className="hidden sm:inline">刷新</span>
+            </Button>
+          </div>
+          {data && (
+            <span className="text-sm text-[#777] lg:ml-auto">
+              共 {data.total} 个用户
+            </span>
+          )}
+        </div>
+        {searchKeyword && (
+          <p className="text-xs text-[#777]">当前搜索：{searchKeyword}</p>
         )}
       </div>
 
       {loading ? (
-        <div className="animate-pulse text-sm text-[#777]">加载中...</div>
+        <div className="space-y-3">
+          {[0, 1, 2].map((item) => (
+            <div
+              key={item}
+              className="h-20 animate-pulse rounded-lg bg-[#f4f4f4]"
+            />
+          ))}
+        </div>
       ) : !data || data.users.length === 0 ? (
-        <div className="py-12 text-center text-[#777]">
-          <span className="material-symbols-outlined text-4xl text-[#d1d5db]">group</span>
-          <p className="mt-2">暂无用户</p>
+        <div className="rounded-lg border border-dashed border-[#d8d8d8] px-6 py-12 text-center text-[#777]">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[#f4f4f4]">
+            <Users className="size-5" strokeWidth={1.9} />
+          </div>
+          <p className="mt-2">{searchKeyword ? "没有匹配的用户" : "暂无用户"}</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-[18px] border border-[#e5e5e5]">
-            <table className="w-full text-sm">
-              <thead className="bg-[#f7f7f7]">
-                <tr className="border-b border-[#e5e5e5] text-left text-[#777]">
-                  <th className="py-2 px-3 font-medium">用户</th>
-                  <th className="py-2 px-3 font-medium">角色</th>
-                  <th className="py-2 px-3 font-medium">积分</th>
-                  <th className="py-2 px-3 font-medium">注册时间</th>
-                  <th className="py-2 px-3 font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.users.map((u) => (
-                  <tr key={u.id} className="border-b border-[#eeeeee] transition-colors hover:bg-[#f7f7f7]">
-                    <td className="py-3 px-3">
-                      <div>
-                        <p className="font-medium text-[#0d0d0d]">{u.name}</p>
-                        <p className="text-xs text-[#777]">{u.email}</p>
-                      </div>
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${roleColor(u.role)}`}>
-                        {roleLabel(u.role)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 font-mono">{u.credits}</td>
-                    <td className="py-3 px-3 text-[#777]">
-                      {new Date(u.createdAt).toLocaleDateString("zh-CN")}
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="rounded-full p-1.5 text-[#777] hover:bg-black/5 hover:text-[#0d0d0d]"
-                          title="编辑"
-                        >
-                          <span className="material-symbols-outlined text-lg">edit</span>
-                        </button>
-                        {u.role !== "disabled" && (
-                          <button
-                            onClick={() => handleDisable(u)}
-                            className="rounded-full p-1.5 text-[#777] hover:bg-red-50 hover:text-red-600"
-                            title="禁用"
-                          >
-                            <span className="material-symbols-outlined text-lg">block</span>
-                          </button>
+          <div className="overflow-hidden rounded-lg border border-[#e5e5e5] bg-white">
+            <div className="hidden grid-cols-[minmax(230px,1.35fr)_110px_100px_minmax(210px,1fr)_88px] items-center border-b border-[#ececec] bg-[#fbfbfb] px-4 py-2.5 text-xs text-[#777] md:grid">
+              <span>用户</span>
+              <span>角色</span>
+              <span>积分</span>
+              <span>限额</span>
+              <span className="text-right">操作</span>
+            </div>
+            {data.users.map((u) => {
+              const initials = (u.name || u.email || "用").trim().slice(0, 1).toUpperCase();
+              const disabled = u.role === "disabled";
+
+              return (
+                <article
+                  key={u.id}
+                  className="border-b border-[#ececec] px-4 py-3 last:border-b-0 transition-colors hover:bg-[#fbfbfb]"
+                >
+                  <div className="grid gap-3 md:grid-cols-[minmax(230px,1.35fr)_110px_100px_minmax(210px,1fr)_88px] md:items-center">
+                    <div className="flex min-w-0 gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#0d0d0d] text-sm font-medium text-white">
+                        {u.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={u.image}
+                            alt=""
+                            className="size-full rounded-full object-cover"
+                          />
+                        ) : (
+                          initials
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-medium text-[#0d0d0d]">
+                          {u.name || "未命名用户"}
+                        </h3>
+                        <p className="mt-1 truncate text-xs text-[#777]">
+                          {u.email}
+                        </p>
+                        <p className="mt-1 text-xs text-[#8a8a8a]">
+                          {u.username ? `@${u.username}` : "未设置用户名"} · {formatDate(u.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 md:block">
+                      <span className="text-xs text-[#777] md:hidden">角色</span>
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${roleColor(u.role)}`}>
+                        {roleLabel(u.role)}
+                      </span>
+                      {u.role === "admin" && (
+                        <span className="mt-1 hidden items-center gap-1.5 text-xs text-[#777] md:flex">
+                          <ShieldCheck className="size-3.5" strokeWidth={1.9} />
+                          后台
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-[#0d0d0d] md:block">
+                      <span className="text-xs text-[#777] md:hidden">积分</span>
+                      <span>{u.credits}</span>
+                    </div>
+
+                    <div className="grid gap-1 text-xs text-[#777] sm:grid-cols-2 md:block md:space-y-1">
+                      <span className="rounded-md bg-[#f7f7f7] px-2.5 py-1 md:block">
+                        快速：{formatLimit(u.dailyFastVideoLimit)}
+                      </span>
+                      <span className="rounded-md bg-[#f7f7f7] px-2.5 py-1 md:block">
+                        质量：{formatLimit(u.dailyQualityVideoLimit)}
+                      </span>
+                    </div>
+
+                    <div className="flex shrink-0 items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openEdit(u)}
+                        className="rounded-full p-2 text-[#777] transition-colors hover:bg-black/5 hover:text-[#0d0d0d]"
+                        aria-label={`编辑用户 ${u.name || u.email}`}
+                        title="编辑"
+                      >
+                        <Pencil className="size-4" strokeWidth={1.9} />
+                      </button>
+                      {!disabled && (
+                        <button
+                          type="button"
+                          onClick={() => setDisableUser(u)}
+                          className="rounded-full p-2 text-[#777] transition-colors hover:bg-red-50 hover:text-red-600"
+                          aria-label={`禁用用户 ${u.name || u.email}`}
+                          title="禁用"
+                        >
+                          <Ban className="size-4" strokeWidth={1.9} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
 
           {data.totalPages > 1 && (
@@ -238,6 +345,7 @@ export default function UserManager() {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
+                className="rounded-full"
               >
                 上一页
               </Button>
@@ -249,6 +357,7 @@ export default function UserManager() {
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page >= data.totalPages}
+                className="rounded-full"
               >
                 下一页
               </Button>
@@ -258,9 +367,12 @@ export default function UserManager() {
       )}
 
       <Dialog open={!!editUser} onOpenChange={(v) => { if (!v) setEditUser(null); }}>
-        <DialogContent>
+        <DialogContent
+          data-studio-dialog-surface="admin-user-edit"
+          className="rounded-2xl border-[#e5e5e5] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.16)]"
+        >
           <DialogHeader>
-            <DialogTitle>编辑用户</DialogTitle>
+            <DialogTitle className="text-xl font-medium text-[#0d0d0d]">编辑用户</DialogTitle>
             <DialogDescription className="sr-only">编辑用户信息</DialogDescription>
           </DialogHeader>
           {editUser && (
@@ -274,7 +386,8 @@ export default function UserManager() {
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                  aria-label="用户角色"
+                  className="h-10 w-full rounded-full border border-[#d9d9d9] bg-white px-4 text-sm outline-none focus:ring-4 focus:ring-black/10"
                 >
                   <option value="member">会员</option>
                   <option value="admin">管理员</option>
@@ -288,14 +401,45 @@ export default function UserManager() {
                   value={editForm.credits}
                   onChange={(e) => setEditForm({ ...editForm, credits: parseInt(e.target.value) || 0 })}
                   min={0}
+                  aria-label="用户积分"
+                  inputMode="numeric"
                 />
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditUser(null)}>取消</Button>
-            <Button onClick={handleSave} disabled={saving}>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setEditUser(null)} className="rounded-full">取消</Button>
+            <Button onClick={handleSave} disabled={saving} className="rounded-full bg-[#0d0d0d] text-white hover:bg-[#2a2a2a]">
               {saving ? "保存中..." : "保存"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!disableUser} onOpenChange={(open) => { if (!open) setDisableUser(null); }}>
+        <DialogContent
+          data-studio-dialog-surface="admin-user-disable"
+          className="rounded-2xl border-[#e5e5e5] bg-white shadow-[0_18px_60px_rgba(0,0,0,0.16)]"
+        >
+          <DialogHeader>
+            <DialogTitle className="text-xl font-medium text-[#0d0d0d]">
+              禁用用户
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-[#777]">
+              {disableUser
+                ? `确认禁用「${disableUser.name}」？该用户将无法继续使用账号功能。`
+                : "确认禁用该用户？"}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setDisableUser(null)} className="rounded-full">
+              取消
+            </Button>
+            <Button
+              onClick={() => disableUser && handleDisable(disableUser)}
+              className="rounded-full bg-[#0d0d0d] text-white hover:bg-[#2a2a2a]"
+            >
+              确认禁用
             </Button>
           </DialogFooter>
         </DialogContent>

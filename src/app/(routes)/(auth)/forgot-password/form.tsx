@@ -12,14 +12,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { requestPasswordReset } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ForgotPasswordSchema, ForgotPasswordValues } from "./validate";
-import InputStartIcon from "../components/input-start-icon";
-import { cn } from "@/lib/utils";
-import { LoaderCircle, MailCheck, MailIcon } from "lucide-react";
+import { LoaderCircle, MailCheck } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { AuthFloatingInput } from "../components/auth-floating-input";
 
 export default function ForgotPasswordForm() {
   const [isPending, startTransition] = useTransition();
@@ -40,7 +38,6 @@ export default function ForgotPasswordForm() {
       });
 
       if (response.error) {
-        console.log("FORGOT_PASSWORD:", response.error.message, response.error.code);
         const msg = response.error.message ?? "";
         const code = response.error.code ?? "";
         let errorKey = "unknown";
@@ -60,14 +57,14 @@ export default function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <div className="space-y-4 text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0f0f0] text-[#0d0d0d]">
+      <div className="space-y-4 text-center text-white">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-white">
           <MailCheck className="size-7" strokeWidth={1.9} />
         </div>
-        <p className="text-sm leading-6 text-[#5f5f5f]">{t("success")}</p>
+        <p className="text-sm leading-6 text-[#cdd5e0]">{t("success")}</p>
         <Link
           href="/signin"
-          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
+          className="inline-block text-sm font-medium text-[#a6baff] underline-offset-4 hover:underline"
         >
           {t("backToSignin")}
         </Link>
@@ -87,18 +84,12 @@ export default function ForgotPasswordForm() {
           render={({ field }) => (
             <FormItem>
               <FormControl>
-                <InputStartIcon icon={MailIcon}>
-                  <Input
-                    placeholder={t("emailPlaceholder")}
-                    className={cn(
-                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      form.formState.errors.email &&
-                        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20"
-                    )}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
+                <AuthFloatingInput
+                  label={t("emailPlaceholder")}
+                  autoComplete="email"
+                  disabled={isPending}
+                  {...field}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,7 +98,7 @@ export default function ForgotPasswordForm() {
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
+          className="mt-2 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
         >
           {isPending ? (
             <LoaderCircle className="size-5 animate-spin" />
@@ -118,7 +109,7 @@ export default function ForgotPasswordForm() {
         <div className="text-center">
           <Link
             href="/signin"
-            className="text-sm text-[#6b7280] hover:text-[#1a1a1a] transition-colors"
+            className="text-sm text-[#cdd5e0] transition-colors hover:text-white"
           >
             {t("backToSignin")}
           </Link>

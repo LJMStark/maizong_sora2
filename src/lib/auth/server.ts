@@ -4,6 +4,7 @@ import { username } from "better-auth/plugins";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { restrictedUsernames } from "./usernames";
 import { sendVerificationEmail, sendResetPasswordEmail } from "@/lib/email";
+import { getBetterAuthSocialProviders } from "./social-providers";
 
 const baseURL =
   process.env.BETTER_AUTH_BASE_URL ||
@@ -15,6 +16,7 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
+  socialProviders: getBetterAuthSocialProviders(),
   plugins: [username({
     minUsernameLength: 4,
       maxUsernameLength: 20,

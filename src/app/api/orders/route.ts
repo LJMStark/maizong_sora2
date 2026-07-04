@@ -5,6 +5,7 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 import { rateLimiter } from "@/lib/rate-limit";
+import { findDefaultCreditPackage } from "@/features/studio/data/default-credit-packages";
 
 function generateOrderId(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -50,30 +51,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "账户已被禁用" }, { status: 403 });
     }
 
-    const pkg = await db
-      .select()
-      .from(creditPackage)
-      .where(
-        and(
-          eq(creditPackage.id, normalizedPackageId),
-          eq(creditPackage.isActive, true)
-        )
-      )
-      .limit(1);
-
-    if (pkg.length === 0) {
-      return NextResponse.json(
-        { error: "Package not found or inactive" },
-        { status: 404 }
-      );
-    }
-
+    const fallbackPackage = findDefaultCreditPackage(normalizedPackageId);
     const recentThreshold = new Date(Date.now() - 30 * 60 * 1000);
     const lockKey = `credit_order:${session.user.id}:${normalizedPackageId}`;
 
     const order = await db.transaction(async (tx) => {
       // 同一用户同一套餐串行化，避免并发生成多个 pending 订单
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+      let packageRows = await tx
+        .select()
+        .from(creditPackage)
+        .where(
+          and(
+            eq(creditPackage.id, normalizedPackageId),
+            eq(creditPackage.isActive, true)
+          )
+        )
+        .limit(1);
+
+      if (packageRows.length === 0 && fallbackPackage) {
+        // onConflictDoNothing: two users buying the same missing default
+        // package can race on this insert; ignore the duplicate and re-read.
+        await tx
+          .insert(creditPackage)
+          .values(fallbackPackage)
+          .onConflictDoNothing();
+        packageRows = await tx
+          .select()
+          .from(creditPackage)
+          .where(
+            and(
+              eq(creditPackage.id, normalizedPackageId),
+              eq(creditPackage.isActive, true)
+            )
+          )
+          .limit(1);
+      }
+
+      if (packageRows.length === 0) {
+        return { notFound: true as const };
+      }
+
+      const selectedPackage = packageRows[0];
 
       const existingPendingOrder = await tx
         .select({
@@ -94,6 +114,7 @@ export async function POST(request: NextRequest) {
       if (existingPendingOrder.length > 0) {
         return {
           orderId: existingPendingOrder[0].id,
+          package: selectedPackage,
           reused: true,
         };
       }
@@ -103,20 +124,28 @@ export async function POST(request: NextRequest) {
         id: orderId,
         userId: session.user.id,
         packageId: normalizedPackageId,
-        amount: pkg[0].price,
+        amount: selectedPackage.price,
         status: "pending",
       });
 
       return {
         orderId,
+        package: selectedPackage,
         reused: false,
       };
     });
 
+    if ("notFound" in order) {
+      return NextResponse.json(
+        { error: "套餐不存在或未上架" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       orderId: order.orderId,
-      package: pkg[0],
+      package: order.package,
       reused: order.reused,
     });
   } catch (error) {

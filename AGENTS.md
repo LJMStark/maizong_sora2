@@ -77,7 +77,7 @@ src/
     auth/              # Auth config, helpers (server, client, admin check)
     security/          # Error handler, SSRF protection
     validations/       # Zod schemas, auth messages
-  middleware.ts        # Route protection middleware
+  proxy.ts             # Route protection proxy
   routes.ts            # Route definitions (public, auth, API)
   providers/           # Root providers (theme, etc.)
 ```

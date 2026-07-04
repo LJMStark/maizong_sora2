@@ -7,23 +7,27 @@ import {
   FormItem,
   FormMessage,
 } from "@/components/ui/form";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signIn } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { SignInSchema, SignInValues } from "./validate";
 import InputPasswordContainer from "../components/input-password";
-import { cn } from "@/lib/utils";
 import { useTranslations } from 'next-intl';
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
+import { AuthFloatingInput } from "../components/auth-floating-input";
 
-export default function SignInForm() {
+export default function SignInForm({
+  initialUsername = "",
+}: {
+  initialUsername?: string;
+}) {
   const [isPending, startTransition] = useTransition();
+  const [credentialConfirmed, setCredentialConfirmed] = useState(Boolean(initialUsername));
   const router = useRouter();
   const t = useTranslations('auth.signin');
   const tErrors = useTranslations('auth.errors');
@@ -31,7 +35,7 @@ export default function SignInForm() {
   const form = useForm<SignInValues>({
     resolver: zodResolver(SignInSchema),
     defaultValues: {
-      username: "",
+      username: initialUsername,
       password: "",
     },
   });
@@ -41,7 +45,6 @@ export default function SignInForm() {
       const response = await signIn.username(data);
 
       if (response.error) {
-        console.log("SIGN_IN:", response.error.message, response.error.code);
         const msg = response.error.message ?? "";
         const code = response.error.code ?? "";
         let errorKey = "unknown";
@@ -63,84 +66,104 @@ export default function SignInForm() {
     });
   }
 
-  const getInputClassName = (fieldName: keyof SignInValues) =>
-    cn(
-      form.formState.errors[fieldName] &&
-        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20",
-    );
+  const handleContinue = async () => {
+    const isUsernameValid = await form.trigger("username");
+    if (isUsernameValid) {
+      setCredentialConfirmed(true);
+    }
+  };
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex w-full flex-col gap-4"
+        className="flex w-full flex-col gap-3"
       >
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <Input
-                  placeholder={t("usernamePlaceholder")}
-                  className={cn(
-                    "h-16 rounded-full border-[#7a8db7] px-7 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                    getInputClassName("username")
-                  )}
-                  disabled={isPending}
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputPasswordContainer>
-                  <Input
-                    id="input-23"
-                    className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("password")
-                    )}
-                    placeholder={t("passwordPlaceholder")}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputPasswordContainer>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div className="flex justify-end">
-          <Link
-            href="/forgot-password"
-            className="text-sm text-[#6b7280] transition-colors hover:text-[#0d0d0d]"
-          >
-            {t("forgotPassword")}
-          </Link>
-        </div>
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
-        >
-          {isPending ? (
-            <LoaderCircle className="size-5 animate-spin" />
-          ) : (
-            t("submit")
-          )}
-        </Button>
-        <p className="text-center text-sm text-[#5f5f5f]">
+        {!credentialConfirmed ? (
+          <>
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <AuthFloatingInput
+                      label={t("usernamePlaceholder")}
+                      autoComplete="username"
+                      disabled={isPending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => void handleContinue()}
+              className="mt-1 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
+            >
+              继续
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm text-[#eef2ff]">
+              <span className="truncate">{form.getValues("username")}</span>
+              <button
+                type="button"
+                onClick={() => setCredentialConfirmed(false)}
+                className="shrink-0 font-medium text-[#a6baff] hover:underline"
+              >
+                编辑
+              </button>
+            </div>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <InputPasswordContainer>
+                      <AuthFloatingInput
+                        label={t("passwordPlaceholder")}
+                        autoComplete="current-password"
+                        className="pe-12"
+                        labelEnd="action"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </InputPasswordContainer>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-sm text-[#cdd5e0] transition-colors hover:text-white"
+              >
+                {t("forgotPassword")}
+              </Link>
+            </div>
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="mt-1 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
+            >
+              {isPending ? (
+                <LoaderCircle className="size-5 animate-spin" />
+              ) : (
+                t("submit")
+              )}
+            </Button>
+          </>
+        )}
+        <p className="text-center text-sm text-[#eef2ff]">
           {t("noAccount")}{" "}
-          <Link href="/signup" className="font-medium text-[#0d0d0d] underline-offset-4 hover:underline">
+          <Link href="/signup" className="font-medium text-[#a6baff] underline-offset-4 hover:underline">
             {t("signupLink")}
           </Link>
         </p>

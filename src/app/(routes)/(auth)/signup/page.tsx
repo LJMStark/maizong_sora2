@@ -1,49 +1,45 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import SignUpForm from "./form";
-import { getTranslations } from 'next-intl/server';
+import { getTranslations } from "next-intl/server";
+import { SocialLoginOptions } from "../components/social-login-options";
+import { AuthShell } from "../components/auth-shell";
+import { getSocialProviderAvailability } from "@/lib/auth/social-providers";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('auth.signup');
+  const t = await getTranslations("auth.signup");
   return {
-    title: t('title'),
+    title: t("title"),
   };
 }
 
 export default async function SignUpPage() {
-  const t = await getTranslations('auth.signup');
+  const t = await getTranslations("auth.signup");
+  const socialProviders = getSocialProviderAvailability();
 
   return (
-    <main className="min-h-screen bg-white text-[#0d0d0d]">
-      <Link
-        href="/"
-        className="fixed left-[30px] top-[28px] text-[30px] font-semibold leading-none"
-      >
-        小象万象
-      </Link>
+    <AuthShell title={t("title")}>
+      <SocialLoginOptions providers={socialProviders} />
 
-      <section className="mx-auto flex min-h-screen w-full max-w-[432px] flex-col items-center px-5 pt-[130px] pb-12">
-        <h1 className="text-center text-[42px] font-normal leading-tight">
-          {t("title")}
-        </h1>
-        <p className="mt-5 max-w-[420px] text-center text-[22px] leading-8 text-[#555]">
-          {t("subtitle")}
-        </p>
+      <div className="my-6 flex w-full min-w-0 items-center gap-4 text-sm font-medium uppercase text-[#cdd5e0]">
+        <span className="h-px flex-1 bg-white/15" />
+        或
+        <span className="h-px flex-1 bg-white/15" />
+      </div>
 
-        <div className="mt-11 w-full">
-          <SignUpForm />
-        </div>
+      <div className="w-full min-w-0">
+        <SignUpForm />
+      </div>
 
-        <p className="mt-8 text-center text-sm text-[#5f5f5f]">
-          {t("hasAccount")}{" "}
-          <Link
-            href="/signin"
-            className="font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
-          >
-            {t("signinLink")}
-          </Link>
-        </p>
-      </section>
-    </main>
+      <p className="mt-5 text-center text-sm text-[#eef2ff]">
+        {t("hasAccount")}{" "}
+        <Link
+          href="/signin"
+          className="font-medium text-[#a6baff] underline-offset-4 hover:underline"
+        >
+          {t("signinLink")}
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

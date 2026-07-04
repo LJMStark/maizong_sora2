@@ -1,16 +1,20 @@
 "use client";
 
-import React from "react";
+import React, { useSyncExternalStore } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { getInitials } from "../../utils/user-helpers";
 
 interface User {
+  email?: string | null;
+  image?: string | null;
   name?: string | null;
 }
 
 interface UserProfileProps {
   user: User | null;
   isPending: boolean;
-  onSignOut: () => void;
+  menuOpen?: boolean;
+  onAccountClick: () => void;
   onLoginClick: () => void;
 }
 
@@ -26,23 +30,40 @@ const UserProfileSkeleton: React.FC = () => (
 
 const AuthenticatedUser: React.FC<{
   user: User;
-  onSignOut: () => void;
-}> = ({ user, onSignOut }) => {
+  menuOpen?: boolean;
+  onAccountClick: () => void;
+}> = ({ user, menuOpen, onAccountClick }) => {
+  const label = user.name || user.email || "小象用户";
+
   return (
-    <div className="flex w-full items-center gap-3 rounded-xl px-1 py-1.5">
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0f0f0f] text-xs font-medium text-white">
-        {getInitials(user.name || "U")}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <p className="truncate text-[15px] leading-5 text-[#0d0d0d]">{user.name}</p>
-        <button
-          onClick={onSignOut}
-          className="text-left text-[13px] leading-4 text-[#6f6f6f] transition-colors hover:text-[#0d0d0d]"
-        >
-          退出登录
-        </button>
-      </div>
-    </div>
+    <button
+      type="button"
+      onClick={onAccountClick}
+      aria-label={`账号菜单，${label}`}
+      aria-expanded={menuOpen}
+      aria-haspopup="menu"
+      className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left hover:bg-black/5"
+    >
+      {user.image ? (
+        <span
+          className="size-8 shrink-0 rounded-full bg-cover bg-center"
+          style={{ backgroundImage: `url("${user.image.replace(/"/g, "%22")}")` }}
+        />
+      ) : (
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0f0f0f] text-xs font-medium text-white">
+          {getInitials(label)}
+        </span>
+      )}
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-[15px] leading-5 text-[#0d0d0d]">
+          {label}
+        </span>
+        <span className="truncate text-[13px] leading-4 text-[#6f6f6f]">
+          {user.email || "管理账号"}
+        </span>
+      </span>
+      <MoreHorizontal className="size-4 shrink-0 text-[#8a8a8a] opacity-0 transition group-hover:opacity-100" />
+    </button>
   );
 };
 
@@ -50,6 +71,7 @@ const GuestUser: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => 
   return (
     <button
       onClick={onLoginClick}
+      aria-label="登录小象万象保存作品和提示词"
       className="group flex w-full items-center gap-3 rounded-xl px-1 py-1.5 text-left"
     >
       <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#0d0d0d] text-xs font-medium text-white">
@@ -63,18 +85,43 @@ const GuestUser: React.FC<{ onLoginClick: () => void }> = ({ onLoginClick }) => 
   );
 };
 
+function subscribeHydration() {
+  return () => undefined;
+}
+
+function getHydratedClientSnapshot() {
+  return true;
+}
+
+function getHydratedServerSnapshot() {
+  return false;
+}
+
 export const UserProfile: React.FC<UserProfileProps> = ({
   user,
   isPending,
-  onSignOut,
+  menuOpen,
+  onAccountClick,
   onLoginClick,
 }) => {
-  if (isPending) {
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    getHydratedClientSnapshot,
+    getHydratedServerSnapshot
+  );
+
+  if (!hydrated || isPending) {
     return <UserProfileSkeleton />;
   }
 
   if (user) {
-    return <AuthenticatedUser user={user} onSignOut={onSignOut} />;
+    return (
+      <AuthenticatedUser
+        user={user}
+        menuOpen={menuOpen}
+        onAccountClick={onAccountClick}
+      />
+    );
   }
 
   return <GuestUser onLoginClick={onLoginClick} />;

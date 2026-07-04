@@ -234,7 +234,7 @@
       "currentPlan": "标准计划",
       "currentTier": "当前等级",
       "nextRollover": "下次结算周期",
-      "rolloverDate": "2025年10月1日"
+      "rolloverDate": "结算日期"
     },
     "redeem": {
       "label": "兑换礼品卡/代码",

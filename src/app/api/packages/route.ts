@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { creditPackage } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
+import { DEFAULT_CREDIT_PACKAGES } from "@/features/studio/data/default-credit-packages";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const packages = await db
       .select()
@@ -12,7 +13,9 @@ export async function GET(request: NextRequest) {
       .where(eq(creditPackage.isActive, true))
       .orderBy(creditPackage.sortOrder);
 
-    return NextResponse.json({ packages });
+    return NextResponse.json({
+      packages: packages.length > 0 ? packages : DEFAULT_CREDIT_PACKAGES,
+    });
   } catch (error) {
     console.error("[Packages] Error fetching packages:", error);
     const message = sanitizeApiErrorMessage(error);

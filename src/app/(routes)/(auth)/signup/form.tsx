@@ -5,44 +5,45 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUp } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { SignUpSchema, SignUpValues } from "./validate";
-import InputStartIcon from "../components/input-start-icon";
 import InputPasswordContainer from "../components/input-password";
-import { cn } from "@/lib/utils";
-import { AtSign, LoaderCircle, MailCheck, MailIcon } from "lucide-react";
-import { GenderRadioGroup } from "../components/gender-radio-group";
-import { useTranslations } from 'next-intl';
+import { LoaderCircle, MailCheck } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { AuthFloatingInput } from "../components/auth-floating-input";
 
 export default function SignUpForm() {
   const [isPending, startTransition] = useTransition();
   const [emailSent, setEmailSent] = useState(false);
-  const t = useTranslations('auth.signup');
-  const tErrors = useTranslations('auth.errors');
-  const tVerify = useTranslations('auth.emailVerification');
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
+  const t = useTranslations("auth.signup");
+  const tErrors = useTranslations("auth.errors");
+  const tVerify = useTranslations("auth.emailVerification");
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
       email: "",
+      name: "",
       username: "",
       password: "",
       confirmPassword: "",
-      gender: false
+      gender: false,
     },
   });
 
-  const username = form.watch("username");
+  const username = useWatch({
+    control: form.control,
+    name: "username",
+  });
 
   useEffect(() => {
     const currentName = form.getValues("name");
@@ -53,8 +54,6 @@ export default function SignUpForm() {
 
   function onSubmit(data: SignUpValues) {
     startTransition(async () => {
-      console.log("submit data:", data);
-
       // Clean up unverified accounts with same email/username
       await fetch("/api/auth/cleanup-unverified", {
         method: "POST",
@@ -65,7 +64,6 @@ export default function SignUpForm() {
       const response = await signUp.email(data);
 
       if (response.error) {
-        console.log("SIGN_UP:", response.error.message, response.error.code);
         const msg = response.error.message ?? "";
         const code = response.error.code ?? "";
         let errorKey = "unknown";
@@ -87,23 +85,24 @@ export default function SignUpForm() {
     });
   }
 
-  const getInputClassName = (fieldName: keyof SignUpValues) =>
-    cn(
-      form.formState.errors[fieldName] &&
-        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20",
-    );
+  const handleContinue = async () => {
+    const isEmailValid = await form.trigger("email");
+    if (isEmailValid) {
+      setEmailConfirmed(true);
+    }
+  };
 
   if (emailSent) {
     return (
-      <div className="space-y-4 py-4 text-center">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[#f0f0f0] text-[#0d0d0d]">
+      <div className="space-y-4 py-4 text-center text-white">
+        <div className="mx-auto flex size-14 items-center justify-center rounded-full border border-white/15 bg-white/[0.06] text-white">
           <MailCheck className="size-7" strokeWidth={1.9} />
         </div>
-        <h3 className="text-[22px] font-normal text-[#0d0d0d]">{tVerify('checkEmail')}</h3>
-        <p className="text-sm leading-6 text-[#5f5f5f]">{tVerify('checkEmailDesc')}</p>
+        <h3 className="text-[22px] font-normal text-white">{tVerify('checkEmail')}</h3>
+        <p className="text-sm leading-6 text-[#cdd5e0]">{tVerify('checkEmailDesc')}</p>
         <Link
           href="/signin"
-          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
+          className="inline-block text-sm font-medium text-[#a6baff] underline-offset-4 hover:underline"
         >
           {t('signinLink')}
         </Link>
@@ -115,127 +114,123 @@ export default function SignUpForm() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="flex w-full flex-col gap-4"
+        className="flex w-full flex-col gap-3"
       >
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputStartIcon icon={MailIcon}>
-                  <Input
-                    placeholder={t('emailPlaceholder')}
-                    className={cn(
-                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("email")
-                    )}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {!emailConfirmed ? (
+          <>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <AuthFloatingInput
+                      label={t('emailPlaceholder')}
+                      autoComplete="email"
+                      disabled={isPending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button
+              type="button"
+              disabled={isPending}
+              onClick={() => void handleContinue()}
+              className="mt-1 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
+            >
+              继续
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm text-[#eef2ff]">
+              <span className="truncate">{form.getValues("email")}</span>
+              <button
+                type="button"
+                onClick={() => setEmailConfirmed(false)}
+                className="shrink-0 font-medium text-[#a6baff] hover:underline"
+              >
+                编辑
+              </button>
+            </div>
+            <FormField
+              control={form.control}
+              name="username"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <AuthFloatingInput
+                      label={t('usernamePlaceholder')}
+                      autoComplete="username"
+                      disabled={isPending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="username"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputStartIcon icon={AtSign}>
-                  <Input
-                    placeholder={t('usernamePlaceholder')}
-                    className={cn(
-                      "peer h-16 rounded-full border-[#d9d9d9] px-7 ps-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("username")
-                    )}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputStartIcon>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <InputPasswordContainer>
+                      <AuthFloatingInput
+                        label={t('passwordPlaceholder')}
+                        autoComplete="new-password"
+                        className="pe-12"
+                        labelEnd="action"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </InputPasswordContainer>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputPasswordContainer>
-                  <Input
-                    className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("password")
-                    )}
-                    placeholder={t('passwordPlaceholder')}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputPasswordContainer>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <InputPasswordContainer>
+                      <AuthFloatingInput
+                        label={t('confirmPasswordPlaceholder')}
+                        autoComplete="new-password"
+                        className="pe-12"
+                        labelEnd="action"
+                        disabled={isPending}
+                        {...field}
+                      />
+                    </InputPasswordContainer>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-        <FormField
-          control={form.control}
-          name="confirmPassword"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <InputPasswordContainer>
-                  <Input
-                    className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("confirmPassword")
-                    )}
-                    placeholder={t('confirmPasswordPlaceholder')}
-                    disabled={isPending}
-                    {...field}
-                  />
-                </InputPasswordContainer>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        {/* Gender */}
-        <FormField
-          control={form.control}
-          name="gender"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t('gender')}</FormLabel>
-              <GenderRadioGroup
-                value={field.value}
-                onChange={field.onChange}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="submit"
-          disabled={isPending}
-          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
-        >
-          {isPending ? (
-            <LoaderCircle className="size-5 animate-spin" />
-          ) : (
-            t('submit')
-          )}
-        </Button>
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="mt-1 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
+            >
+              {isPending ? (
+                <LoaderCircle className="size-5 animate-spin" />
+              ) : (
+                t('submit')
+              )}
+            </Button>
+          </>
+        )}
       </form>
     </Form>
   );

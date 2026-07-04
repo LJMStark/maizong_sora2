@@ -13,14 +13,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPassword } from "@/lib/auth/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ResetPasswordSchema, ResetPasswordValues } from "./validate";
 import InputPasswordContainer from "../components/input-password";
-import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
+import { AuthFloatingInput } from "../components/auth-floating-input";
 
 export default function ResetPasswordForm() {
   const [isPending, startTransition] = useTransition();
@@ -43,7 +42,6 @@ export default function ResetPasswordForm() {
       });
 
       if (response.error) {
-        console.log("RESET_PASSWORD:", response.error.message, response.error.code);
         const msg = response.error.message ?? "";
         const code = response.error.code ?? "";
         let errorKey = "unknown";
@@ -62,21 +60,15 @@ export default function ResetPasswordForm() {
     });
   }
 
-  const getInputClassName = (fieldName: keyof ResetPasswordValues) =>
-    cn(
-      form.formState.errors[fieldName] &&
-        "border-destructive/80 text-destructive focus-visible:border-destructive/80 focus-visible:ring-destructive/20"
-    );
-
   if (!token) {
     return (
-      <div className="text-center space-y-4">
-        <p className="text-[#ef4444]">{t("invalidToken")}</p>
+      <div className="space-y-4 text-center">
+        <p className="text-red-200">{t("invalidToken")}</p>
         <Link
           href="/forgot-password"
-          className="inline-block text-sm font-medium text-[#0d0d0d] underline-offset-4 hover:underline"
+          className="inline-block text-sm font-medium text-[#a6baff] underline-offset-4 hover:underline"
         >
-          {t("backToSignin")}
+          {t("requestNewLink")}
         </Link>
       </div>
     );
@@ -95,12 +87,11 @@ export default function ResetPasswordForm() {
             <FormItem>
               <FormControl>
                 <InputPasswordContainer>
-                  <Input
-                    className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("password")
-                    )}
-                    placeholder={t("passwordPlaceholder")}
+                  <AuthFloatingInput
+                    label={t("passwordPlaceholder")}
+                    autoComplete="new-password"
+                    className="pe-12"
+                    labelEnd="action"
                     disabled={isPending}
                     {...field}
                   />
@@ -117,12 +108,11 @@ export default function ResetPasswordForm() {
             <FormItem>
               <FormControl>
                 <InputPasswordContainer>
-                  <Input
-                    className={cn(
-                      "h-16 rounded-full border-[#d9d9d9] px-7 pe-12 text-[18px] shadow-none focus-visible:border-[#4d6fb6] focus-visible:ring-[#4d6fb6]/20 md:text-[18px]",
-                      getInputClassName("confirmPassword")
-                    )}
-                    placeholder={t("confirmPasswordPlaceholder")}
+                  <AuthFloatingInput
+                    label={t("confirmPasswordPlaceholder")}
+                    autoComplete="new-password"
+                    className="pe-12"
+                    labelEnd="action"
                     disabled={isPending}
                     {...field}
                   />
@@ -135,7 +125,7 @@ export default function ResetPasswordForm() {
         <Button
           type="submit"
           disabled={isPending}
-          className="mt-2 h-16 w-full rounded-full bg-[#0d0d0d] text-[18px] font-normal text-white hover:bg-[#2a2a2a]"
+          className="mt-2 h-[52px] w-full rounded-full bg-[#f9f9f9] text-[16px] font-normal text-[#0c1020] hover:bg-white disabled:bg-white/50 disabled:text-[#0c1020]/70"
         >
           {isPending ? (
             <LoaderCircle className="size-5 animate-spin" />

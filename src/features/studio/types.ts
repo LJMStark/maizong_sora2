@@ -90,4 +90,5 @@ export interface StudioContextType {
   refreshVideoTasks: () => Promise<void>;
   refreshImageTasks: () => Promise<void>;
   refreshCreditHistory: () => Promise<void>;
+  clearLocalView: () => void;
 }

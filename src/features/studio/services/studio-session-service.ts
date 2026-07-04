@@ -117,4 +117,50 @@ export const studioSessionService = {
 
     return session || null;
   },
+
+  async renameSession(params: {
+    userId: string;
+    sessionId: string;
+    title: string;
+  }): Promise<StudioSessionType> {
+    const nextTitle = buildTitle(params.title, "未命名创作");
+
+    const [session] = await db
+      .update(studioSession)
+      .set({ title: nextTitle, updatedAt: new Date() })
+      .where(
+        and(
+          eq(studioSession.id, params.sessionId),
+          eq(studioSession.userId, params.userId)
+        )
+      )
+      .returning();
+
+    if (!session) {
+      throw new StudioSessionAccessError();
+    }
+
+    return session;
+  },
+
+  async deleteSession(params: {
+    userId: string;
+    sessionId: string;
+  }): Promise<StudioSessionType> {
+    const [session] = await db
+      .delete(studioSession)
+      .where(
+        and(
+          eq(studioSession.id, params.sessionId),
+          eq(studioSession.userId, params.userId)
+        )
+      )
+      .returning();
+
+    if (!session) {
+      throw new StudioSessionAccessError();
+    }
+
+    return session;
+  },
 };

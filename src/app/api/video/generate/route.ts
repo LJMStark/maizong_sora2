@@ -12,12 +12,19 @@ import {
   StudioSessionAccessError,
 } from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
-import { GenerateVideoSchema } from "@/lib/validations/schemas";
+import {
+  GenerateVideoSchema,
+  MAX_IMAGE_BASE64_LENGTH,
+} from "@/lib/validations/schemas";
+import { enforceMaxBodySize } from "@/lib/api/request-limits";
 import { sanitizeError } from "@/lib/security/error-handler";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
 import type { VideoProvider } from "@/features/studio/services/video-task-service";
 
 const MAX_GENERATE_RETRIES = 3;
+
+// Optional base64 source image plus JSON envelope; margin above the encoded cap.
+const MAX_UPLOAD_REQUEST_BYTES = MAX_IMAGE_BASE64_LENGTH + 1024 * 1024;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,6 +94,9 @@ export async function POST(request: NextRequest) {
   if (!success) {
     return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
+
+  const oversized = enforceMaxBodySize(request, MAX_UPLOAD_REQUEST_BYTES);
+  if (oversized) return oversized;
 
   try {
     const body = await request.json();
