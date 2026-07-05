@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { formatYuan } from "@/lib/format";
 
 interface Package {
   id: string;
@@ -28,10 +29,6 @@ interface CreditPurchaseDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedPackage: Package | null;
   onUnauthorized?: () => void;
-}
-
-function formatPrice(priceInCents: number): string {
-  return `¥${(priceInCents / 100).toFixed(2)}`;
 }
 
 export function CreditPurchaseDialog({
@@ -99,7 +96,7 @@ export function CreditPurchaseDialog({
     ? [
         `订单号：${orderId}`,
         `套餐：${selectedPackage.name}`,
-        `金额：${formatPrice(selectedPackage.price)}`,
+        `金额：${formatYuan(selectedPackage.price)}`,
         "请联系客服完成支付和开通。",
       ].join("\n")
     : "";
@@ -188,7 +185,7 @@ export function CreditPurchaseDialog({
                   {t("priceLabel")}
                 </span>
                 <span className="text-xl font-medium text-[#0d0d0d]">
-                  {formatPrice(selectedPackage.price)}
+                  {formatYuan(selectedPackage.price)}
                 </span>
               </div>
             </div>

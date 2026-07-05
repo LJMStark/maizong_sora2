@@ -1,4 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { MAX_IMAGE_BASE64_LENGTH } from "@/lib/validations/schemas";
+
+// Ceiling for an upload request body: the encoded-image cap plus a margin for
+// the surrounding JSON envelope (prompt and other fields). Shared by the image
+// and video generation routes.
+export const MAX_IMAGE_UPLOAD_REQUEST_BYTES = MAX_IMAGE_BASE64_LENGTH + 1024 * 1024;
 
 /**
  * Rejects a request whose declared body size exceeds `maxBytes` before the body

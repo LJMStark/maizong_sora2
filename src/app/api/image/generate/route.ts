@@ -4,13 +4,10 @@ import { creditService } from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
-import {
-  studioSessionService,
-  StudioSessionAccessError,
-} from "@/features/studio/services/studio-session-service";
+import { studioSessionService } from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateImageSchema } from "@/lib/validations/schemas";
-import { sanitizeError } from "@/lib/security/error-handler";
+import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
 
 export async function POST(request: NextRequest) {
@@ -163,11 +160,6 @@ export async function POST(request: NextRequest) {
       creditCost: imageCreditCost,
     });
   } catch (error) {
-    if (error instanceof StudioSessionAccessError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
-    const message = sanitizeError(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return studioRouteErrorResponse(error);
   }
 }

@@ -18,6 +18,7 @@ import { BusinessContactDialog } from "./business-contact-dialog";
 import { useSession } from "@/lib/auth/client";
 import { LoginDialog } from "./shared/login-dialog";
 import { cn } from "@/lib/utils";
+import { centsToYuan } from "@/lib/format";
 import { APP_BRAND } from "@/lib/brand";
 import { DEFAULT_CREDIT_PACKAGES } from "../data/default-credit-packages";
 
@@ -185,10 +186,6 @@ const BUSINESS_COMPARE_ROWS = [
   },
 ];
 
-function formatYuan(priceInCents: number): string {
-  return (priceInCents / 100).toFixed(2).replace(/\.00$/, "");
-}
-
 function getPlanPackage(plan: Plan, packages: Package[]): Package {
   return (
     packages.find((pkg) => pkg.name === plan.name) ??
@@ -242,7 +239,9 @@ function PlanCard({
 }) {
   if (loading) return <PackageSkeleton />;
 
-  const price = packageInfo ? formatYuan(packageInfo.price) : "--";
+  const price = packageInfo
+    ? centsToYuan(packageInfo.price, { trimZeroFen: true })
+    : "--";
   const period = getPlanPeriod(packageInfo);
 
   return (

@@ -3,11 +3,10 @@ import { getServerSession } from "@/lib/auth/get-session";
 import {
   studioSessionService,
   StudioSessionKind,
-  StudioSessionAccessError,
 } from "@/features/studio/services/studio-session-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
-import { sanitizeError } from "@/lib/security/error-handler";
+import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
 
 function parseType(value: string | null): StudioSessionKind | undefined {
   if (value === "image" || value === "video") return value;
@@ -109,7 +108,7 @@ export async function GET(
       })),
     });
   } catch (error) {
-    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
+    return studioRouteErrorResponse(error);
   }
 }
 
@@ -154,10 +153,7 @@ export async function PATCH(
       },
     });
   } catch (error) {
-    if (error instanceof StudioSessionAccessError) {
-      return NextResponse.json({ error: "会话不存在" }, { status: 404 });
-    }
-    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
+    return studioRouteErrorResponse(error);
   }
 }
 
@@ -188,9 +184,6 @@ export async function DELETE(
       },
     });
   } catch (error) {
-    if (error instanceof StudioSessionAccessError) {
-      return NextResponse.json({ error: "会话不存在" }, { status: 404 });
-    }
-    return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
+    return studioRouteErrorResponse(error);
   }
 }

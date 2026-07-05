@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, RefreshCw, Search, ShoppingBag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatYuan } from "@/lib/format";
 
 type OrderStatus = "pending" | "paid" | "cancelled";
 type OrderStatusFilter = OrderStatus | "all";
@@ -37,10 +38,6 @@ interface OrderListResponse {
     status: OrderStatus | null;
     q: string | null;
   };
-}
-
-function formatAmount(cents: number): string {
-  return `¥${(cents / 100).toFixed(2)}`;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -320,7 +317,7 @@ export default function OrderManager() {
                 <div className="flex items-center gap-2 lg:block">
                   <span className="text-xs text-[#777] lg:hidden">金额</span>
                   <p className="text-sm font-semibold text-[#0d0d0d]">
-                    {formatAmount(order.amount)}
+                    {formatYuan(order.amount)}
                   </p>
                   <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClass(order.status)}`}>
                     {getStatusLabel(order.status)}

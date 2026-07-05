@@ -59,25 +59,8 @@ export async function POST(request: NextRequest) {
       // 同一用户同一套餐串行化，避免并发生成多个 pending 订单
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
 
-      let packageRows = await tx
-        .select()
-        .from(creditPackage)
-        .where(
-          and(
-            eq(creditPackage.id, normalizedPackageId),
-            eq(creditPackage.isActive, true)
-          )
-        )
-        .limit(1);
-
-      if (packageRows.length === 0 && fallbackPackage) {
-        // onConflictDoNothing: two users buying the same missing default
-        // package can race on this insert; ignore the duplicate and re-read.
-        await tx
-          .insert(creditPackage)
-          .values(fallbackPackage)
-          .onConflictDoNothing();
-        packageRows = await tx
+      const selectActivePackage = () =>
+        tx
           .select()
           .from(creditPackage)
           .where(
@@ -87,6 +70,17 @@ export async function POST(request: NextRequest) {
             )
           )
           .limit(1);
+
+      let packageRows = await selectActivePackage();
+
+      if (packageRows.length === 0 && fallbackPackage) {
+        // onConflictDoNothing: two users buying the same missing default
+        // package can race on this insert; ignore the duplicate and re-read.
+        await tx
+          .insert(creditPackage)
+          .values(fallbackPackage)
+          .onConflictDoNothing();
+        packageRows = await selectActivePackage();
       }
 
       if (packageRows.length === 0) {

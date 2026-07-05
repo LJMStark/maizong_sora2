@@ -5,21 +5,15 @@ import { imageTaskService } from "@/features/studio/services/image-task-service"
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
-import {
-  studioSessionService,
-  StudioSessionAccessError,
-} from "@/features/studio/services/studio-session-service";
+import { studioSessionService } from "@/features/studio/services/studio-session-service";
 import { rateLimiter } from "@/lib/rate-limit";
+import { EditImageSchema } from "@/lib/validations/schemas";
 import {
-  EditImageSchema,
-  MAX_IMAGE_BASE64_LENGTH,
-} from "@/lib/validations/schemas";
-import { enforceMaxBodySize } from "@/lib/api/request-limits";
-import { sanitizeError } from "@/lib/security/error-handler";
+  enforceMaxBodySize,
+  MAX_IMAGE_UPLOAD_REQUEST_BYTES,
+} from "@/lib/api/request-limits";
+import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
-
-// Base64 image plus JSON envelope; a small margin above the encoded image cap.
-const MAX_UPLOAD_REQUEST_BYTES = MAX_IMAGE_BASE64_LENGTH + 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -40,7 +34,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "请求过于频繁，请稍后重试" }, { status: 429 });
   }
 
-  const oversized = enforceMaxBodySize(request, MAX_UPLOAD_REQUEST_BYTES);
+  const oversized = enforceMaxBodySize(request, MAX_IMAGE_UPLOAD_REQUEST_BYTES);
   if (oversized) return oversized;
 
   try {
@@ -184,11 +178,6 @@ export async function POST(request: NextRequest) {
       creditCost: imageCreditCost,
     });
   } catch (error) {
-    if (error instanceof StudioSessionAccessError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
-    const message = sanitizeError(error);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return studioRouteErrorResponse(error);
   }
 }

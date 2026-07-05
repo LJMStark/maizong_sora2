@@ -49,6 +49,18 @@ export function useTaskPolling<T extends BaseTaskStatus>({
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Keep the latest callbacks in refs so fetchStatus stays referentially stable
+  // even when callers pass inline (non-memoized) handlers. Without this, an
+  // unstable onComplete/onError recreates fetchStatus every render and the
+  // polling effect tears down and immediately restarts, firing a request on
+  // every render instead of on the interval.
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+    onErrorRef.current = onError;
+  }, [onComplete, onError]);
+
   const fetchStatus = useCallback(async () => {
     if (!taskId) return;
 
@@ -65,10 +77,10 @@ export function useTaskPolling<T extends BaseTaskStatus>({
 
       if (data.status === "succeeded") {
         setIsPolling(false);
-        onComplete?.(data);
+        onCompleteRef.current?.(data);
       } else if (data.status === "error") {
         setIsPolling(false);
-        onError?.(data);
+        onErrorRef.current?.(data);
       }
 
       return data;
@@ -77,7 +89,7 @@ export function useTaskPolling<T extends BaseTaskStatus>({
       setError(`获取任务状态失败：${detail}`);
       return null;
     }
-  }, [taskId, taskType, onComplete, onError]);
+  }, [taskId, taskType]);
 
   const startPolling = useCallback(() => {
     if (!taskId) return;
