@@ -47,11 +47,16 @@ All failures auto-refund credits.
 ### Admin APIs
 
 ```typescript
-GET/PATCH /api/admin/settings           // Global limits
-GET/PATCH /api/admin/users/[id]/limits  // User-level overrides
-GET/POST  /api/admin/redemption-codes   // Redemption code management
-GET/POST  /api/admin/announcements      // Announcements
-GET       /api/admin/orders             // Order management
+GET/PATCH        /api/admin/settings                  // Global limits
+GET              /api/admin/users                     // User list
+GET/PATCH/DELETE /api/admin/users/[id]                // User detail / update / delete
+GET/PATCH        /api/admin/users/[id]/limits         // User-level limit overrides
+GET/POST         /api/admin/redemption-codes          // Redemption code management
+PATCH            /api/admin/redemption-codes/[id]     // Update a code
+GET              /api/admin/redemption-codes/export   // Export codes
+GET              /api/admin/redemption-codes/stats    // Usage stats
+GET/POST         /api/admin/announcements             // Announcements (+ GET/PATCH/DELETE [id])
+GET              /api/admin/orders                    // Order list (+ PATCH [id])
 ```
 
 ### Daily Video Limits
