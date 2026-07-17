@@ -15,17 +15,13 @@ import {
   Clock,
   Coins,
   Copy,
-  Download,
   ExternalLink,
-  FileText,
   Grid2X2,
   ImageIcon,
-  Info,
   Keyboard,
   LogOut,
   Menu,
   MoreHorizontal,
-  Newspaper,
   Palette,
   PanelLeft,
   Pencil,
@@ -98,39 +94,6 @@ const APP_NAV = [
   { href: "/studio/assets", label: "作品库", icon: Grid2X2 },
   { href: "/studio/profile", label: "设置", icon: Settings },
 ];
-
-const HELP_MENU_ITEMS = [
-  {
-    href: "https://help.openai.com/en/collections/3742473-chatgpt",
-    label: "帮助中心",
-    icon: CircleHelp,
-    separated: false,
-  },
-  {
-    href: "https://help.openai.com/en/articles/6825453-chatgpt-release-notes",
-    label: "更新日志",
-    icon: Newspaper,
-    separated: false,
-  },
-  {
-    href: "https://openai.com/chatgpt/download",
-    label: "下载应用",
-    icon: Download,
-    separated: false,
-  },
-  {
-    href: "https://openai.com/policies/row-terms-of-use/",
-    label: "服务条款",
-    icon: FileText,
-    separated: true,
-  },
-  {
-    href: "https://openai.com/policies/row-privacy-policy/",
-    label: "隐私政策",
-    icon: Info,
-    separated: false,
-  },
-] as const;
 
 function getMode(pathname: string): StudioMode | null {
   if (pathname === "/studio") return "image";
@@ -219,7 +182,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountMenuPlacement, setAccountMenuPlacement] =
     useState<AccountMenuPlacement | null>(null);
-  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
   const [sessionMenuId, setSessionMenuId] = useState<string | null>(null);
   const [renamingSession, setRenamingSession] =
     useState<StudioSessionSummary | null>(null);
@@ -231,7 +193,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const sidebarAccountMenuRef = useRef<HTMLDivElement>(null);
   const railAccountMenuRef = useRef<HTMLDivElement>(null);
-  const helpMenuRef = useRef<HTMLDivElement>(null);
   const sessionMenuRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchOpenTimerRef = useRef<number | null>(null);
@@ -315,7 +276,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSessionMenuId(null);
     await resolveCurrentUser();
@@ -378,7 +338,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setSearchOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSearch("");
     window.dispatchEvent(new CustomEvent("studio:new-session"));
@@ -488,7 +447,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
         setTitleMenuOpen(false);
         setAccountMenuOpen(false);
         setAccountMenuPlacement(null);
-        setHelpMenuOpen(false);
         setSessionMenuId(null);
         setMobileOpen(false);
         setCustomizeOpen(false);
@@ -538,7 +496,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     const handler = () => {
       setAccountMenuOpen(false);
       setAccountMenuPlacement(null);
-      setHelpMenuOpen(false);
       setMobileOpen(false);
       setLoginOpen(true);
     };
@@ -582,26 +539,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   }, [accountMenuOpen, getActiveAccountMenuRef]);
 
   useEffect(() => {
-    if (!helpMenuOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!helpMenuRef.current?.contains(event.target as Node)) {
-        setHelpMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setHelpMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [helpMenuOpen]);
-
-  useEffect(() => {
     if (!sessionMenuId) return;
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -624,7 +561,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const handleSignOut = async () => {
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSettingsOpen(false);
     await signOut();
@@ -635,7 +571,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSessionMenuId(null);
     setMobileOpen(false);
@@ -649,7 +584,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSessionMenuId(null);
     setMobileOpen(false);
@@ -660,7 +594,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setSessionMenuId(null);
 
     if (helpDialogOpenTimerRef.current) {
@@ -688,7 +621,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     }
 
     setTitleMenuOpen(false);
-    setHelpMenuOpen(false);
     setSessionMenuId(null);
     setAccountMenuPlacement(placement);
     setAccountMenuOpen((open) =>
@@ -712,7 +644,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpMenuOpen(false);
     setHelpDialogOpen(false);
     setSessionMenuId(null);
     setInviteOpen(true);
@@ -897,16 +828,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
           className={menuItemClassName}
         >
           <Sparkles className="size-4" strokeWidth={1.9} />
-          升级方案
-        </button>
-        <button
-          role="menuitem"
-          type="button"
-          onClick={() => handleNavigate("/studio/subscription")}
-          className={menuItemClassName}
-        >
-          <Coins className="size-4" strokeWidth={1.9} />
-          积分中心
+          订阅与积分
         </button>
         <div className="my-1 h-px bg-[#eeeeee]" />
         <button
@@ -1240,57 +1162,20 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                 <Settings className="size-5" strokeWidth={1.9} />
                 <span>设置</span>
               </button>
-              <div ref={helpMenuRef} className="relative">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTitleMenuOpen(false);
-                    setAccountMenuOpen(false);
-                    setAccountMenuPlacement(null);
-                    setSessionMenuId(null);
-                    setHelpMenuOpen((open) => !open);
-                  }}
-                  aria-expanded={helpMenuOpen}
-                  aria-haspopup="menu"
-                  className="flex h-10 w-full items-center gap-3 rounded-lg px-2 text-left text-[15px] hover:bg-black/5"
-                >
-                  <CircleHelp className="size-5" strokeWidth={1.9} />
-                  <span>帮助</span>
-                </button>
-                {helpMenuOpen && (
-                  <div
-                    role="menu"
-                    aria-label="帮助"
-                    className="absolute bottom-11 left-0 z-50 w-[min(248px,calc(100vw-32px))] overflow-auto rounded-2xl bg-[#353535] py-1.5 text-white shadow-[0_8px_16px_rgba(0,0,0,0.32),inset_0_0_1px_rgba(255,255,255,0.2),0_0_1px_rgba(0,0,0,0.62)]"
-                  >
-                    {HELP_MENU_ITEMS.map((item) => {
-                      const Icon = item.icon;
-
-                      return (
-                        <div key={item.href}>
-                          {item.separated && (
-                            <div
-                              role="separator"
-                              className="mx-4 my-1 h-px bg-white/15"
-                            />
-                          )}
-                          <Link
-                            role="menuitem"
-                            href={item.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() => setHelpMenuOpen(false)}
-                            className="mx-1.5 flex h-9 items-center gap-2.5 rounded-[10px] px-2.5 py-1.5 text-sm leading-5 text-white hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
-                          >
-                            <Icon className="size-4 shrink-0" strokeWidth={1.9} />
-                            <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                          </Link>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setTitleMenuOpen(false);
+                  setAccountMenuOpen(false);
+                  setAccountMenuPlacement(null);
+                  setSessionMenuId(null);
+                  handleOpenHelpDialog();
+                }}
+                className="flex h-10 w-full items-center gap-3 rounded-lg px-2 text-left text-[15px] hover:bg-black/5"
+              >
+                <CircleHelp className="size-5" strokeWidth={1.9} />
+                <span>帮助</span>
+              </button>
             </>
           )}
         </div>
@@ -1656,13 +1541,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
         </div>
       </div>
 
-      <Sheet
-        open={mobileOpen}
-        onOpenChange={(open) => {
-          setMobileOpen(open);
-          if (!open) setHelpMenuOpen(false);
-        }}
-      >
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent
           side="left"
           hideCloseButton

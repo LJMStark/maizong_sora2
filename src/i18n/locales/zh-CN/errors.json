@@ -5,13 +5,13 @@
     "sessionExpired": "会话已过期"
   },
   "api": {
-    "tooManyRequests": "请求过于频繁,请稍后再试",
+    "tooManyRequests": "请求过于频繁，请稍后再试",
     "insufficientCredits": "积分不足",
     "taskNotFound": "任务未找到",
-    "generationFailed": "生成失败,积分已退还",
+    "generationFailed": "生成失败，积分已退还",
     "invalidRequest": "无效的请求",
-    "serverError": "服务器错误,请稍后重试",
-    "networkError": "网络错误,请检查您的连接"
+    "serverError": "服务器错误，请稍后重试",
+    "networkError": "网络错误，请检查您的连接"
   },
   "validation": {
     "promptRequired": "提示词为必填项",

@@ -49,7 +49,7 @@ interface Plan {
 const PLANS: Plan[] = [
   {
     name: "小象体验卡",
-    description: "适合试完整创作流程",
+    description: "适合体验完整创作流程",
     button: "购买体验卡",
     fallbackPackage: DEFAULT_CREDIT_PACKAGES[0],
     tagline: "看看 AI 创作能做什么",
@@ -150,7 +150,7 @@ const PERSONAL_COMPARE_ROWS = [
     values: ["少量", "常规", "更多", "连续"],
   },
   {
-    feature: "积分发放",
+    feature: "积分有效期",
     values: ["3 天", "30 天", "30 天", "365 天"],
   },
   {
@@ -330,7 +330,7 @@ function BusinessPlanCard({
     <article className="flex min-h-[430px] flex-col rounded-[18px] border border-[#e5e5e5] bg-white p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-medium leading-6 text-[#777]">Business</p>
+          <p className="text-sm font-medium leading-6 text-[#777]">企业方案</p>
           <h3 className="mt-2.5 text-[22px] font-medium leading-7 text-[#0d0d0d]">
             {plan.name}
           </h3>
@@ -476,8 +476,8 @@ const Subscription: React.FC = () => {
           </h1>
           <div className="mt-8 inline-flex rounded-full bg-[#ececec] p-1 shadow-inner">
             {[
-              { value: "personal" as const, label: "Personal" },
-              { value: "business" as const, label: "Business" },
+              { value: "personal" as const, label: "个人" },
+              { value: "business" as const, label: "企业" },
             ].map((tab) => (
               <button
                 key={tab.value}

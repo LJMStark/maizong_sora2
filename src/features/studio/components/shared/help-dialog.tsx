@@ -1,17 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import {
   BookOpen,
   CircleHelp,
-  Download,
-  ExternalLink,
   FileQuestion,
   Grid2X2,
   ImageIcon,
   Keyboard,
-  LifeBuoy,
-  Newspaper,
   Video,
   WalletCards,
 } from "lucide-react";
@@ -30,7 +25,7 @@ interface HelpDialogProps {
 const guideItems = [
   {
     title: "图像创作",
-    description: "选择尺寸、模型和提示词后生成图片。",
+    description: "选择尺寸、画质和提示词后生成图片。",
     icon: ImageIcon,
   },
   {
@@ -62,24 +57,6 @@ const faqItems = [
   {
     question: "怎么快速找回历史创作？",
     answer: "使用搜索入口或按 Command/Ctrl + K，可按标题搜索最近创作记录。",
-  },
-];
-
-const resourceItems = [
-  {
-    href: "https://help.openai.com/en/collections/3742473-chatgpt",
-    label: "帮助中心",
-    icon: LifeBuoy,
-  },
-  {
-    href: "https://help.openai.com/en/articles/6825453-chatgpt-release-notes",
-    label: "更新日志",
-    icon: Newspaper,
-  },
-  {
-    href: "https://openai.com/chatgpt/download",
-    label: "下载应用",
-    icon: Download,
   },
 ];
 
@@ -180,40 +157,6 @@ export function HelpDialog({
                 </div>
               </section>
 
-              <section>
-                <div className="mb-3 flex items-center gap-2">
-                  <ExternalLink
-                    className="size-4 text-[#777]"
-                    strokeWidth={1.9}
-                  />
-                  <h3 className="text-sm font-medium leading-5 text-[#0d0d0d]">
-                    外部资源
-                  </h3>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {resourceItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-[#eeeeee] px-4 py-3 text-sm font-medium text-[#0d0d0d] transition hover:bg-[#f7f7f7]"
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <Icon className="size-4 shrink-0" strokeWidth={1.9} />
-                          <span className="truncate">{item.label}</span>
-                        </span>
-                        <ExternalLink
-                          className="size-3.5 shrink-0 text-[#777]"
-                          strokeWidth={1.9}
-                        />
-                      </Link>
-                    );
-                  })}
-                </div>
-              </section>
             </div>
           </div>
 

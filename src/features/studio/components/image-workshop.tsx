@@ -27,8 +27,11 @@ import {
 import { toast } from "sonner";
 import { AspectRatio, ImageQuality } from "../types";
 import { IMAGE_PROMPTS, EDIT_PROMPTS } from "../utils/prompt-library";
+import dynamic from "next/dynamic";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
+import type { PromptGalleryItem } from "./shared/prompt-gallery";
+import { useUploadShortcut } from "../hooks/use-upload-shortcut";
 import { DeepThinkingDialog } from "./shared/deep-thinking-dialog";
 import { SearchReferenceDialog } from "./shared/search-reference-dialog";
 import { useStudio } from "../context/studio-context";
@@ -142,44 +145,9 @@ function openLoginDialog() {
   window.dispatchEvent(new CustomEvent("studio:open-login"));
 }
 
-const STUDIO_IMAGE_EXAMPLES = [
-  {
-    id: "caricature-trend",
-    title: "漫画肖像",
-    image: "/studio-showcase/caricature-trend.png",
-    prompt: "把主体做成细节丰富的漫画肖像，色彩明亮，背景加入流行文化拼贴元素。",
-  },
-  {
-    id: "lunar-new-year",
-    title: "新年海报",
-    image: "/studio-showcase/lunar-new-year.png",
-    prompt: "生成一张温暖的新年主题人像海报，加入灯笼、红包、柔和光线和节日装饰。",
-  },
-  {
-    id: "flower-petals",
-    title: "花瓣人像",
-    image: "/studio-showcase/flower-petals.png",
-    prompt: "生成优雅的侧脸人像，主体由柔软花瓣组成，色调清淡，带有绘画质感。",
-  },
-  {
-    id: "gold",
-    title: "金属质感",
-    image: "/studio-showcase/gold.png",
-    prompt: "把主体转成精致的金色雕塑，保留细节，加入强烈高光和高级影棚光。",
-  },
-  {
-    id: "crayon",
-    title: "蜡笔插画",
-    image: "/studio-showcase/crayon.png",
-    prompt: "生成轻松可爱的蜡笔风插画，带手绘纹理、柔和轮廓和亲切氛围。",
-  },
-  {
-    id: "paparazzi",
-    title: "闪光大片",
-    image: "/studio-showcase/paparazzi.png",
-    prompt: "生成电影感闪光灯抓拍照片，加入麦克风、浅景深和夜间高反差光线。",
-  },
-];
+const ImageGallerySection = dynamic(() => import("./image-gallery-section"), {
+  loading: () => null,
+});
 
 function IconHint({
   label,
@@ -713,6 +681,14 @@ export default function ImageWorkshop() {
     setPrompt(random);
   };
 
+  const handleGallerySelect = (item: PromptGalleryItem) => {
+    setPrompt(item.prompt);
+    toast.success(`已填入「${item.title}」提示词`);
+    window.setTimeout(() => promptInputRef.current?.focus(), 0);
+  };
+
+  useUploadShortcut(fileInputRef);
+
   const clearAttachment = () => {
     setRefImage(null);
     setRefImagePreview(null);
@@ -1011,7 +987,7 @@ export default function ImageWorkshop() {
                 <div className="h-px bg-[#eeeeee]" />
 
                 <div>
-                  <p className="px-2.5 py-1 text-xs font-medium text-[#777]">模型</p>
+                  <p className="px-2.5 py-1 text-xs font-medium text-[#777]">画质</p>
                   <div className="space-y-0.5">
                     {qualityOptions.map((item) => (
                       <SettingsOption
@@ -1212,7 +1188,7 @@ export default function ImageWorkshop() {
                   aria-label={isListening ? "停止语音输入" : "语音模式"}
                 >
                   <AudioLines className="size-4" strokeWidth={2.2} />
-                  <span>{isListening ? "听写中" : "Voice"}</span>
+                  <span>{isListening ? "听写中" : "语音"}</span>
                 </button>
               )}
             </div>
@@ -1260,7 +1236,7 @@ export default function ImageWorkshop() {
                   aria-label={isListening ? "停止语音输入" : "语音模式"}
                 >
                   <AudioLines className="size-4" strokeWidth={2.2} />
-                  <span>{isListening ? "听写中" : "Voice"}</span>
+                  <span>{isListening ? "听写中" : "语音"}</span>
                 </button>
               </IconHint>
             )}
@@ -1303,58 +1279,43 @@ export default function ImageWorkshop() {
 
       {empty ? (
         <div className="flex min-h-0 w-full flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pb-10 pt-7 md:pt-8">
-          <div className="mx-auto w-full max-w-[800px] px-4">
+          <div className="mx-auto w-full max-w-[768px] px-4">
             <h1 className="mb-6 text-left text-[28px] font-medium leading-tight tracking-normal text-[#0d0d0d] md:mb-7 md:text-[30px]">
               图像创作
             </h1>
           </div>
           {renderComposer(true, true)}
-          <div className="mx-auto mt-12 w-full max-w-[800px] px-4 md:mt-14">
-            <h2 className="text-[18px] font-medium leading-7 text-[#0d0d0d]">
-              创建图片
-            </h2>
-          </div>
-          <div className="scrollbar-none relative mt-5 w-full max-w-[800px] overflow-x-auto px-4 pb-4">
-            <div className="flex items-start gap-3">
-              {STUDIO_IMAGE_EXAMPLES.map((item) => (
+          <div className="mx-auto mt-12 w-full max-w-[1200px] px-4 pb-4 md:mt-14 md:px-6">
+            <div className="mb-5 flex items-baseline justify-between gap-3">
+              <h2 className="text-[18px] font-medium leading-7 text-[#0d0d0d]">
+                灵感库
+              </h2>
+              <span className="text-xs text-[#8a8a8a]">点击卡片填入提示词</span>
+            </div>
+            <ImageGallerySection
+              onSelect={handleGallerySelect}
+              leadingTile={
                 <button
                   type="button"
-                  key={item.id}
-                  onClick={() => setPrompt(item.prompt)}
-                  className="w-36 shrink-0 text-left"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group/card min-w-0 text-left"
                 >
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    width={144}
-                    height={180}
-                    priority={item.id === STUDIO_IMAGE_EXAMPLES[0]?.id}
-                    className="h-[180px] w-36 rounded-[20px] object-cover"
-                  />
-                  <span className="mt-3 block text-center text-[15px] leading-5 text-[#777]">
-                    {item.title}
+                  <span className="relative block aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-[#f6f6f6]">
+                    <Image
+                      src="/studio-showcase/edit-image-tile.png"
+                      alt=""
+                      fill
+                      sizes="(max-width: 640px) 33vw, 190px"
+                      priority
+                      className="object-cover transition duration-200 group-hover/card:scale-[1.03]"
+                    />
+                  </span>
+                  <span className="mt-2.5 block truncate text-center text-[14px] leading-5 text-[#777] transition group-hover/card:text-[#0d0d0d]">
+                    上传图片编辑
                   </span>
                 </button>
-              ))}
-              <div className="h-[228px] w-px shrink-0 bg-[#dcdcdc]" />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex w-36 shrink-0 flex-col items-center gap-3 text-[#777]"
-              >
-                <Image
-                  src="/studio-showcase/edit-image-tile.png"
-                  alt=""
-                  width={144}
-                  height={180}
-                  priority
-                  className="h-[180px] w-36 rounded-[20px] object-cover hover:brightness-[0.98]"
-                />
-                <span className="block text-center text-[15px] leading-5">
-                  编辑图片
-                </span>
-              </button>
-            </div>
+              }
+            />
           </div>
         </div>
       ) : (

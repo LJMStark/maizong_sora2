@@ -3,7 +3,7 @@
     "menu": "导航菜单",
     "imageWorkshop": "图像工作室",
     "videoWorkshop": "视频工作室",
-    "collections": "作品集",
+    "collections": "作品库",
     "profile": "用户中心",
     "subscription": "订阅"
   },
@@ -29,9 +29,9 @@
       "random": "随机提示词",
       "randomTitle": "给我一个惊喜提示词",
       "examples": {
-        "landscape": "美丽的山景,日落时分,温暖的色调",
-        "portrait": "专业人像照片,柔和光线,浅景深",
-        "abstract": "抽象艺术,鲜艳的色彩,几何形状"
+        "landscape": "美丽的山景，日落时分，温暖的色调",
+        "portrait": "专业人像照片，柔和光线，浅景深",
+        "abstract": "抽象艺术，鲜艳的色彩，几何形状"
       }
     },
     "tags": {
@@ -84,7 +84,7 @@
       "credits": "积分"
     },
     "canvas": {
-      "generating": "使用 Duomi AI 生成中...",
+      "generating": "AI 生成中...",
       "progress": "进度",
       "waitMessage": "这可能需要几分钟...",
       "analysisReport": "分析报告",
@@ -106,7 +106,7 @@
       "delete": "删除"
     },
     "errors": {
-      "analysisNotSupported": "Duomi API 暂不支持分析模式。",
+      "analysisNotSupported": "当前暂不支持分析模式。",
       "imageRequired": "编辑需要图像",
       "insufficientCredits": "积分不足",
       "operationFailed": "操作失败。请重试。",
@@ -125,7 +125,7 @@
   },
   "video": {
     "title": "视频工作室",
-    "subtitle": "高级视频合成 (Sora)",
+    "subtitle": "高级视频合成",
     "creationSuite": "创作套件",
     "sections": {
       "sourceMaterial": "01. 源素材（可选）",
@@ -150,12 +150,12 @@
     },
     "prompt": {
       "label": "运动参数",
-      "placeholder": "定义运动参数（例如：慢速平移,柔和光线,10秒时长...）",
+      "placeholder": "定义运动参数（例如：慢速平移，柔和光线，10秒时长...）",
       "randomTitle": "给我一个惊喜运动提示词",
       "examples": {
-        "pan": "慢速向右平移,平滑过渡",
-        "zoom": "缓慢放大,聚焦中心",
-        "static": "静态镜头,轻微抖动"
+        "pan": "慢速向右平移，平滑过渡",
+        "zoom": "缓慢放大，聚焦中心",
+        "static": "静态镜头，轻微抖动"
       }
     },
     "sourceMaterial": {
@@ -231,8 +231,8 @@
       "title": "积分钱包",
       "label": "资源分配",
       "recharge": "充值",
-      "currentPlan": "标准计划",
-      "currentTier": "当前等级",
+      "currentPlan": "当前计划",
+      "currentTier": "积分包按需购买，无固定订阅",
       "nextRollover": "下次结算周期",
       "rolloverDate": "结算日期"
     },

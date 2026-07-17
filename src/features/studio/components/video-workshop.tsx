@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
@@ -11,12 +10,10 @@ import {
   Check,
   Copy,
   Download,
-  Film,
   ImageIcon,
   Maximize2,
   Mic,
   Paperclip,
-  Play,
   Plus,
   Search,
   Shuffle,
@@ -28,8 +25,11 @@ import {
 import { toast } from "sonner";
 import { AspectRatio } from "../types";
 import { VIDEO_PROMPTS } from "../utils/prompt-library";
+import dynamic from "next/dynamic";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
+import type { PromptGalleryItem } from "./shared/prompt-gallery";
+import { useUploadShortcut } from "../hooks/use-upload-shortcut";
 import { PromptEnhanceDialog } from "./prompt-enhance-dialog";
 import { DeepThinkingDialog } from "./shared/deep-thinking-dialog";
 import { SearchReferenceDialog } from "./shared/search-reference-dialog";
@@ -97,44 +97,9 @@ const VIDEO_ASPECT_OPTIONS = [
 
 const VIDEO_DURATION_OPTIONS = [8, 10, 15] as const;
 
-const STUDIO_VIDEO_EXAMPLES = [
-  {
-    id: "orbit-product",
-    title: "产品环绕",
-    image: "/studio-showcase/gold.png",
-    prompt: VIDEO_PROMPTS[3],
-  },
-  {
-    id: "lifestyle-pan",
-    title: "生活运镜",
-    image: "/studio-showcase/caricature-trend.png",
-    prompt: VIDEO_PROMPTS[1],
-  },
-  {
-    id: "macro-detail",
-    title: "细节特写",
-    image: "/studio-showcase/flower-petals.png",
-    prompt: VIDEO_PROMPTS[2],
-  },
-  {
-    id: "festival-cut",
-    title: "节日短片",
-    image: "/studio-showcase/lunar-new-year.png",
-    prompt: VIDEO_PROMPTS[5],
-  },
-  {
-    id: "soft-reveal",
-    title: "柔焦揭示",
-    image: "/studio-showcase/crayon.png",
-    prompt: VIDEO_PROMPTS[4],
-  },
-  {
-    id: "flash-capture",
-    title: "闪光镜头",
-    image: "/studio-showcase/paparazzi.png",
-    prompt: VIDEO_PROMPTS[6],
-  },
-];
+const VideoGallerySection = dynamic(() => import("./video-gallery-section"), {
+  loading: () => null,
+});
 
 function fileToDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -418,6 +383,7 @@ export default function VideoWorkshop() {
     Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.Quality,
   };
   const currentCost = isVeo ? creditCosts.Fast : creditCosts[mode];
+  const modeLabel = isVeo ? "Veo 快速" : mode === "Fast" ? "快速" : "高质量";
 
   const loadSession = useCallback(async () => {
     const requestId = sessionRequestRef.current + 1;
@@ -732,7 +698,7 @@ export default function VideoWorkshop() {
       buildDeepThinkingResult({
         kind: "video",
         prompt,
-        modeLabel: isVeo ? "Veo Fast" : mode,
+        modeLabel,
         aspectLabel: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
         durationLabel: `${isVeo ? 8 : duration} 秒`,
         referenceLabel: sourcePreview ? "已附加参考图" : undefined,
@@ -768,6 +734,14 @@ export default function VideoWorkshop() {
     setSourceImage(null);
     setSourcePreview(null);
   };
+
+  const handleGallerySelect = (item: PromptGalleryItem) => {
+    setPrompt(item.prompt);
+    toast.success(`已填入「${item.title}」提示词`);
+    window.setTimeout(() => promptInputRef.current?.focus(), 0);
+  };
+
+  useUploadShortcut(fileInputRef);
 
   const handleRandomPrompt = async () => {
     if (enhancing || randomizing) return;
@@ -864,7 +838,8 @@ export default function VideoWorkshop() {
   };
 
   const handleGenerate = async () => {
-    const resolvedPrompt = prompt.trim() || "Product showcase, cinematic lighting, 4k";
+    const resolvedPrompt =
+      prompt.trim() || "产品展示，电影级灯光，缓慢环绕运镜，4K 画质";
     if (!prompt.trim() && !sourceImage && !sourcePreview) {
       toast.error("请提供提示词或图像");
       return;
@@ -1086,7 +1061,7 @@ export default function VideoWorkshop() {
             </button>
 
             <span className="inline-flex h-8 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-sm text-[#555]">
-              {isVeo ? "Veo Fast" : mode}
+              {modeLabel}
             </span>
             <span className="inline-flex h-8 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-sm text-[#555]">
               {aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9"}
@@ -1399,7 +1374,7 @@ export default function VideoWorkshop() {
                   aria-label={isListening ? "停止语音输入" : "语音模式"}
                 >
                   <AudioLines className="size-4" strokeWidth={2.2} />
-                  <span>{isListening ? "听写中" : "Voice"}</span>
+                  <span>{isListening ? "听写中" : "语音"}</span>
                 </button>
               )}
             </div>
@@ -1463,7 +1438,7 @@ export default function VideoWorkshop() {
                   aria-label={isListening ? "停止语音输入" : "语音模式"}
                 >
                   <AudioLines className="size-4" strokeWidth={2.2} />
-                  <span>{isListening ? "听写中" : "Voice"}</span>
+                  <span>{isListening ? "听写中" : "语音"}</span>
                 </button>
               </IconHint>
             )}
@@ -1510,7 +1485,7 @@ export default function VideoWorkshop() {
         onOpenChange={setSearchReferenceOpen}
         kind="video"
         prompt={prompt}
-        modeLabel={isVeo ? "Veo Fast" : mode}
+        modeLabel={modeLabel}
         onConfirm={handleUseSearchReference}
       />
 
@@ -1522,53 +1497,30 @@ export default function VideoWorkshop() {
             </h1>
           </div>
           {renderComposer(true, true)}
-          <div className="mx-auto mt-12 w-full max-w-[768px] px-4 md:mt-14">
-            <h2 className="text-[18px] font-medium leading-7 text-[#0d0d0d]">
-              创建视频
-            </h2>
-          </div>
-          <div className="scrollbar-none relative mt-5 w-full max-w-[768px] overflow-x-auto px-4 pb-4">
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="flex w-36 shrink-0 flex-col items-center gap-3 text-[#777]"
-              >
-                <span className="flex h-[180px] w-36 items-center justify-center rounded-[20px] bg-[#f6f6f6] transition hover:bg-[#efefef]">
-                  <Paperclip className="size-6" />
-                </span>
-                <span className="block text-center text-[15px] leading-5">
-                  上传图片
-                </span>
-              </button>
-              <div className="h-[228px] w-px shrink-0 bg-[#dcdcdc]" />
-              {STUDIO_VIDEO_EXAMPLES.map((item) => (
+          <div className="mx-auto mt-12 w-full max-w-[1200px] px-4 pb-4 md:mt-14 md:px-6">
+            <div className="mb-5 flex items-baseline justify-between gap-3">
+              <h2 className="text-[18px] font-medium leading-7 text-[#0d0d0d]">
+                灵感库
+              </h2>
+              <span className="text-xs text-[#8a8a8a]">点击卡片填入提示词</span>
+            </div>
+            <VideoGallerySection
+              onSelect={handleGallerySelect}
+              leadingTile={
                 <button
                   type="button"
-                  key={item.id}
-                  onClick={() => setPrompt(item.prompt)}
-                  className="w-36 shrink-0 text-left"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="group/card flex min-w-0 flex-col text-[#777]"
                 >
-                  <span className="relative block h-[180px] w-36 overflow-hidden rounded-[20px] bg-[#f6f6f6]">
-                    <Image
-                      src={item.image}
-                      alt={item.title}
-                      width={144}
-                      height={180}
-                      priority={item.id === STUDIO_VIDEO_EXAMPLES[0]?.id}
-                      className="size-full object-cover transition duration-200 hover:scale-[1.02]"
-                    />
-                    <span className="absolute bottom-2 right-2 flex size-8 items-center justify-center rounded-full bg-black/80 text-white shadow-sm">
-                      <Play className="ml-0.5 size-4 fill-current" strokeWidth={2} />
-                    </span>
+                  <span className="flex aspect-[3/4] w-full items-center justify-center rounded-[20px] bg-[#f6f6f6] transition group-hover/card:bg-[#efefef]">
+                    <Paperclip className="size-6" />
                   </span>
-                  <span className="mt-3 flex items-center justify-center gap-1.5 text-center text-[15px] leading-5 text-[#777]">
-                    <Film className="size-3.5 shrink-0" strokeWidth={1.9} />
-                    {item.title}
+                  <span className="mt-2.5 block truncate text-center text-[14px] leading-5 transition group-hover/card:text-[#0d0d0d]">
+                    上传图片生成
                   </span>
                 </button>
-              ))}
-            </div>
+              }
+            />
           </div>
         </div>
       ) : (
