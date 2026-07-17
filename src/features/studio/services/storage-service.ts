@@ -2,6 +2,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 const BUCKET_NAME = "studio-assets";
 
+// 上传路径都带时间戳/taskId、内容写入后不再变化，
+// 让 Supabase CDN 缓存一年（默认仅 3600 秒）。
+const IMMUTABLE_CACHE_SECONDS = "31536000";
+
 // Hard ceiling for objects in the shared bucket. Holds both user images and
 // provider-fetched videos, so sized for the larger video case. Per-request
 // image limits are enforced upstream at the API boundary.
@@ -52,6 +56,7 @@ export const storageService = {
       .upload(path, file, {
         contentType,
         upsert: false,
+        cacheControl: IMMUTABLE_CACHE_SECONDS,
       });
 
     if (error) {
@@ -90,6 +95,7 @@ export const storageService = {
       .upload(path, videoBuffer, {
         contentType: "video/mp4",
         upsert: true,
+        cacheControl: IMMUTABLE_CACHE_SECONDS,
       });
 
     if (error) {
@@ -130,6 +136,7 @@ export const storageService = {
       .upload(path, imageBuffer, {
         contentType,
         upsert: true,
+        cacheControl: IMMUTABLE_CACHE_SECONDS,
       });
 
     if (error) {
