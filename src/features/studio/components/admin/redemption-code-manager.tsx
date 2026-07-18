@@ -16,6 +16,7 @@ import {
 import Link from "next/link";
 import { Ban, Copy, Download, Plus, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatAdminDate } from "@/lib/format";
 
 interface RedemptionCode {
   id: string;
@@ -160,11 +161,7 @@ export default function RedemptionCodeManager() {
 
   const formatDate = (value: string | null) => {
     if (!value) return "长期有效";
-    return new Date(value).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
+    return formatAdminDate(value);
   };
 
   const filters = [

@@ -35,8 +35,15 @@ type UserSubscriptionRow = typeof userSubscription.$inferSelect;
 
 const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
 
-function formatDateOnly(date: Date): string {
+export function formatDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
+}
+
+export class InsufficientCreditsError extends Error {
+  constructor(message = "积分不足") {
+    super(message);
+    this.name = "InsufficientCreditsError";
+  }
 }
 
 function parseDateOnly(dateString: string): Date {
@@ -302,7 +309,7 @@ export const creditService = {
       });
 
       if (totalBefore < amount) {
-        throw new Error("积分不足");
+        throw new InsufficientCreditsError();
       }
 
       let remaining = amount;

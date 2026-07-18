@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { exportStudioData } from "../../utils/studio-data-export";
+import { SettingsSwitch } from "./settings-controls";
 import {
   applyStudioAppearance,
   getAppearancePreferenceFromEvent,
@@ -74,37 +75,6 @@ const languageLabels: Record<StudioLanguagePreference, string> = {
   auto: "自动检测",
   "zh-CN": "简体中文",
 };
-
-function SettingsSwitch({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative h-6 w-10 rounded-full transition-colors",
-        checked ? "bg-[#0d0d0d]" : "bg-[#d9d9d9]"
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-5" : "translate-x-1"
-        )}
-      />
-    </button>
-  );
-}
 
 function SelectControl<T extends string>({
   value,
@@ -211,7 +181,6 @@ export function SettingsDialog({
   );
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
   const [historyEnabled, setHistoryEnabled] = React.useState(true);
-  const [loadedPreferences, setLoadedPreferences] = React.useState(false);
   const [exportingData, setExportingData] = React.useState(false);
 
   React.useEffect(() => {
@@ -225,7 +194,6 @@ export function SettingsDialog({
       readBooleanPreference(STUDIO_NOTIFICATIONS_ENABLED_KEY, true)
     );
     setHistoryEnabled(readBooleanPreference(STUDIO_HISTORY_ENABLED_KEY, true));
-    setLoadedPreferences(true);
   }, []);
 
   React.useEffect(() => {
@@ -271,12 +239,6 @@ export function SettingsDialog({
   }, []);
 
   React.useEffect(() => {
-    if (!loadedPreferences) return;
-
-    writeAppearancePreference(appearance);
-  }, [appearance, loadedPreferences]);
-
-  React.useEffect(() => {
     if (appearance !== "system") return;
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -297,27 +259,6 @@ export function SettingsDialog({
       media.removeEventListener("change", handleSystemThemeChange);
     };
   }, [appearance]);
-
-  React.useEffect(() => {
-    if (!loadedPreferences) return;
-
-    writeLanguagePreference(language);
-  }, [language, loadedPreferences]);
-
-  React.useEffect(() => {
-    if (!loadedPreferences) return;
-
-    writeBooleanPreference(
-      STUDIO_NOTIFICATIONS_ENABLED_KEY,
-      notificationsEnabled
-    );
-  }, [notificationsEnabled, loadedPreferences]);
-
-  React.useEffect(() => {
-    if (!loadedPreferences) return;
-
-    writeBooleanPreference(STUDIO_HISTORY_ENABLED_KEY, historyEnabled);
-  }, [historyEnabled, loadedPreferences]);
 
   const handleNavigate = (href: string) => {
     onOpenChange(false);
@@ -384,6 +325,7 @@ export function SettingsDialog({
               label="外观"
               onChange={(value) => {
                 setAppearance(value);
+                writeAppearancePreference(value);
                 toast.info(`外观已切换为${appearanceLabels[value]}`);
               }}
               options={[
@@ -402,6 +344,7 @@ export function SettingsDialog({
               label="语言"
               onChange={(value) => {
                 setLanguage(value);
+                writeLanguagePreference(value);
                 toast.info(`语言已切换为${languageLabels[value]}`);
               }}
               options={[
@@ -422,8 +365,10 @@ export function SettingsDialog({
             <SettingsSwitch
               checked={notificationsEnabled}
               label="任务完成通知"
+              size="sm"
               onChange={(checked) => {
                 setNotificationsEnabled(checked);
+                writeBooleanPreference(STUDIO_NOTIFICATIONS_ENABLED_KEY, checked);
                 toast.info(checked ? "已打开任务提醒" : "已关闭任务提醒");
               }}
             />
@@ -531,8 +476,10 @@ export function SettingsDialog({
             <SettingsSwitch
               checked={historyEnabled}
               label="保存创作记录"
+              size="sm"
               onChange={(checked) => {
                 setHistoryEnabled(checked);
+                writeBooleanPreference(STUDIO_HISTORY_ENABLED_KEY, checked);
                 toast.info(checked ? "已打开创作记录" : "已关闭创作记录");
               }}
             />

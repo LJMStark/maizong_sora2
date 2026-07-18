@@ -19,6 +19,9 @@ interface UseSimulatedProgressOptions {
   maxProgress?: number;
 }
 
+// 进度展示是整数百分比，250ms 的采样间隔足以保持视觉平滑，同时避免 60fps rAF 的持续重渲染开销。
+const PROGRESS_TICK_MS = 250;
+
 /**
  * 模拟进度条 Hook
  *
@@ -50,7 +53,7 @@ export function useSimulatedProgress({
 }: UseSimulatedProgressOptions): number {
   const [progress, setProgress] = useState(0);
   const startTimeRef = useRef<number | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!isRunning) {
@@ -58,9 +61,9 @@ export function useSimulatedProgress({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setProgress(0);
       startTimeRef.current = null;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
       return;
     }
@@ -82,7 +85,7 @@ export function useSimulatedProgress({
     }
 
     // 模拟进度动画
-    const animate = () => {
+    const tick = () => {
       if (!startTimeRef.current) return;
 
       const elapsed = Date.now() - startTimeRef.current;
@@ -102,18 +105,20 @@ export function useSimulatedProgress({
 
       setProgress(Math.floor(currentProgress));
 
-      // 如果还没到最大进度，继续动画
-      if (currentProgress < maxProgress) {
-        animationFrameRef.current = requestAnimationFrame(animate);
+      // 如果已到最大进度，停止定时器
+      if (currentProgress >= maxProgress && intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    tick();
+    intervalRef.current = setInterval(tick, PROGRESS_TICK_MS);
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-        animationFrameRef.current = null;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [isRunning, actualStatus, estimatedDuration, maxProgress]);

@@ -13,6 +13,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Ban, Pencil, RefreshCw, Search, ShieldCheck, Users } from "lucide-react";
+import { formatAdminDate } from "@/lib/format";
 
 interface User {
   id: string;
@@ -157,13 +158,6 @@ export default function UserManager() {
     return `${value} 次/天`;
   };
 
-  const formatDate = (value: string) =>
-    new Date(value).toLocaleDateString("zh-CN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 border-b border-[#ececec] pb-5">
@@ -278,7 +272,7 @@ export default function UserManager() {
                           {u.email}
                         </p>
                         <p className="mt-1 text-xs text-[#8a8a8a]">
-                          {u.username ? `@${u.username}` : "未设置用户名"} · {formatDate(u.createdAt)}
+                          {u.username ? `@${u.username}` : "未设置用户名"} · {formatAdminDate(u.createdAt)}
                         </p>
                       </div>
                     </div>

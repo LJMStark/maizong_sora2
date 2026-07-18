@@ -109,16 +109,6 @@ export const imageTaskService = {
     return task || null;
   },
 
-  async getTaskByDuomiId(duomiTaskId: string): Promise<ImageTaskType | null> {
-    const [task] = await db
-      .select()
-      .from(imageTask)
-      .where(eq(imageTask.duomiTaskId, duomiTaskId))
-      .limit(1);
-
-    return task || null;
-  },
-
   async getUserTasks(userId: string, limit = 50): Promise<ImageTaskType[]> {
     return db
       .select()
@@ -137,18 +127,6 @@ export const imageTaskService = {
       .from(imageTask)
       .where(and(eq(imageTask.userId, userId), eq(imageTask.sessionId, sessionId)))
       .orderBy(desc(imageTask.createdAt));
-  },
-
-  async getActiveTasks(userId: string): Promise<ImageTaskType[]> {
-    const tasks = await db
-      .select()
-      .from(imageTask)
-      .where(eq(imageTask.userId, userId))
-      .orderBy(desc(imageTask.createdAt));
-
-    return tasks.filter(
-      (task) => task.status === "pending" || task.status === "running"
-    );
   },
 
   async transitionToErrorIfActive(

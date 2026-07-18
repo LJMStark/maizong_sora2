@@ -7,7 +7,6 @@ import {
   AudioLines,
   Brain,
   ChevronDown,
-  Check,
   Copy,
   Download,
   ImageIcon,
@@ -29,7 +28,15 @@ import dynamic from "next/dynamic";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import type { PromptGalleryItem } from "./shared/prompt-gallery";
+import {
+  IconHint,
+  SettingsLoginCard,
+  ComposerNotice,
+  SettingsOption,
+  AttachmentMenuItem,
+} from "./shared/composer-primitives";
 import { useUploadShortcut } from "../hooks/use-upload-shortcut";
+import { useDismissableMenu } from "../hooks/use-dismissable-menu";
 import { PromptEnhanceDialog } from "./prompt-enhance-dialog";
 import { DeepThinkingDialog } from "./shared/deep-thinking-dialog";
 import { SearchReferenceDialog } from "./shared/search-reference-dialog";
@@ -43,8 +50,18 @@ import {
 } from "../utils/deep-thinking";
 import { buildSearchReferencePrompt } from "../utils/search-reference";
 import { resolveHasAuthUser } from "../utils/user-helpers";
+import { fileToBase64, urlToBase64, extractBase64Data } from "../utils/file-helpers";
+import {
+  STUDIO_NEW_SESSION_EVENT,
+  STUDIO_FOCUS_COMPOSER_EVENT,
+  openLoginDialog,
+  notifySessionsChanged,
+} from "../utils/studio-events";
+import { DEFAULT_CREDIT_COSTS } from "../data/credit-defaults";
 import { cn } from "@/lib/utils";
 import { getSession, useSession } from "@/lib/auth/client";
+import { formatTaskDate } from "@/lib/format";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 type RenderMode = "Fast" | "Quality";
 
@@ -81,15 +98,6 @@ interface VideoSessionTask {
   localErrorType?: "channel-unavailable";
 }
 
-const DEFAULT_CREDIT_COSTS = {
-  Fast: 30,
-  Quality: 100,
-} as const;
-
-function openLoginDialog() {
-  window.dispatchEvent(new CustomEvent("studio:open-login"));
-}
-
 const VIDEO_ASPECT_OPTIONS = [
   { value: AspectRatio.SOCIAL, label: "9:16" },
   { value: AspectRatio.LANDSCAPE, label: "16:9" },
@@ -101,40 +109,10 @@ const VideoGallerySection = dynamic(() => import("./video-gallery-section"), {
   loading: () => null,
 });
 
-function fileToDataUri(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-  });
-}
-
-async function urlToDataUri(url: string): Promise<string> {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return fileToDataUri(new File([blob], "source-image", { type: blob.type || "image/png" }));
-}
-
-function parseDataUri(dataUri: string): { base64: string; mimeType: string } | null {
-  const match = dataUri.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) return null;
-  return { mimeType: match[1], base64: match[2] };
-}
-
 async function getImageData(file: File | null, preview: string | null) {
-  if (file) return parseDataUri(await fileToDataUri(file));
-  if (preview && !preview.startsWith("blob:")) return parseDataUri(await urlToDataUri(preview));
+  if (file) return extractBase64Data(await fileToBase64(file));
+  if (preview && !preview.startsWith("blob:")) return extractBase64Data(await urlToBase64(preview));
   return null;
-}
-
-function taskDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function getVideoFailureReason(task: Pick<VideoSessionTask, "errorMessage">) {
@@ -147,183 +125,7 @@ function getVideoRefundMessage(
 ) {
   if (task.creditCost === 0) return "本次没有扣除积分。";
   if (repeatedFailure) return "本次不会扣除积分。";
-  return task.creditCost > 0
-    ? `已退回 ${task.creditCost} 积分。`
-    : "本次没有扣除积分。";
-}
-
-function IconHint({
-  label,
-  className,
-  disabled,
-  children,
-}: {
-  label: string;
-  className?: string;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className={cn("group/hint relative inline-flex", className)}>
-      {children}
-      {!disabled && (
-        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0d0d0d] px-2 py-1 text-xs text-white shadow-lg group-hover/hint:block group-focus-within/hint:block">
-          {label}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function SettingsLoginCard({
-  hasSession,
-  onLogin,
-  onSignup,
-}: {
-  hasSession: boolean;
-  onLogin: () => void;
-  onSignup: () => void;
-}) {
-  if (hasSession) return null;
-
-  return (
-    <div className="rounded-xl border border-black/10 bg-[#f7f7f7] p-3">
-      <div>
-        <p className="text-sm font-medium text-[#0d0d0d]">
-          登录后使用完整视频能力
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[#666]">
-          保存设置、读取作品库，并同步最近创作记录。
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onLogin}
-            className="h-8 rounded-full bg-[#0d0d0d] px-3.5 text-sm font-medium text-white hover:bg-[#2a2a2a]"
-          >
-            登录
-          </button>
-          <button
-            type="button"
-            onClick={onSignup}
-            className="h-8 rounded-full border border-black/10 bg-white px-3.5 text-sm font-medium text-[#0d0d0d] hover:bg-black/[0.04]"
-          >
-            免费注册
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ComposerNotice({ compact }: { compact: boolean }) {
-  return (
-    <p
-      className={cn(
-        "mx-auto max-w-[720px] px-4 text-center text-xs leading-5 text-[#8a8a8a]",
-        compact ? "mt-3 md:mt-[54px]" : "mt-2"
-      )}
-    >
-      生成内容可能不准确，重要用途请人工确认。
-    </p>
-  );
-}
-
-function SettingsOption({
-  label,
-  description,
-  active,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  description?: string;
-  active: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition",
-        disabled
-          ? "cursor-not-allowed text-[#b5b5b5]"
-          : "text-[#0d0d0d] hover:bg-black/[0.04]"
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {active && <Check className="size-3.5" strokeWidth={2} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{label}</span>
-        {description && (
-          <span className="block text-xs leading-4 text-[#777]">
-            {description}
-          </span>
-        )}
-      </span>
-    </button>
-  );
-}
-
-function AttachmentMenuItem({
-  icon,
-  label,
-  description,
-  trailing,
-  muted,
-  disabled,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description?: string;
-  trailing?: React.ReactNode;
-  muted?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex h-9 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left transition",
-        disabled
-          ? "cursor-not-allowed text-[#b5b5b5]"
-          : muted
-            ? "text-[#8a8a8a] hover:bg-black/[0.04]"
-            : "text-[#0d0d0d] hover:bg-black/[0.04]"
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-5 shrink-0 items-center justify-center",
-          muted || disabled ? "text-[#9b9b9b]" : "text-[#555]"
-        )}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-normal leading-5">{label}</span>
-        {description && (
-          <span className="mt-0.5 block text-xs leading-4 text-[#777]">
-            {description}
-          </span>
-        )}
-      </span>
-      {trailing && (
-        <span className="shrink-0 text-xs text-[#777]">
-          {trailing}
-        </span>
-      )}
-    </button>
-  );
+  return `已退回 ${task.creditCost} 积分。`;
 }
 
 export default function VideoWorkshop() {
@@ -379,11 +181,18 @@ export default function VideoWorkshop() {
   const allVeo =
     videoConfig?.fastProvider === "veo" && videoConfig?.qualityProvider === "veo";
   const creditCosts = {
-    Fast: videoConfig?.creditCosts.videoFast ?? DEFAULT_CREDIT_COSTS.Fast,
-    Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.Quality,
+    Fast: videoConfig?.creditCosts.videoFast ?? DEFAULT_CREDIT_COSTS.videoFast,
+    Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.videoQuality,
   };
   const currentCost = isVeo ? creditCosts.Fast : creditCosts[mode];
   const modeLabel = isVeo ? "Veo 快速" : mode === "Fast" ? "快速" : "高质量";
+  const aspectLabel = aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9";
+  const resolvedModel = isVeo
+    ? "veo3.1-fast"
+    : mode === "Quality"
+      ? "sora-2-pro"
+      : "sora-2-temporary";
+  const resolvedDuration = isVeo ? 8 : duration;
 
   const loadSession = useCallback(async () => {
     const requestId = sessionRequestRef.current + 1;
@@ -444,8 +253,8 @@ export default function VideoWorkshop() {
       setLoading(false);
       window.setTimeout(() => promptInputRef.current?.focus(), 0);
     };
-    window.addEventListener("studio:new-session", handler);
-    return () => window.removeEventListener("studio:new-session", handler);
+    window.addEventListener(STUDIO_NEW_SESSION_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_NEW_SESSION_EVENT, handler);
   }, []);
 
   useEffect(() => {
@@ -458,49 +267,21 @@ export default function VideoWorkshop() {
 
   useEffect(() => {
     const handler = () => promptInputRef.current?.focus();
-    window.addEventListener("studio:focus-composer", handler);
-    return () => window.removeEventListener("studio:focus-composer", handler);
+    window.addEventListener(STUDIO_FOCUS_COMPOSER_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_FOCUS_COMPOSER_EVENT, handler);
   }, []);
 
-  useEffect(() => {
-    if (!settingsOpen) return;
+  useDismissableMenu(
+    settingsOpen,
+    () => settingsRef.current,
+    () => setSettingsOpen(false)
+  );
 
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!settingsRef.current?.contains(event.target as Node)) {
-        setSettingsOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [settingsOpen]);
-
-  useEffect(() => {
-    if (!attachmentMenuOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!attachmentMenuRef.current?.contains(event.target as Node)) {
-        setAttachmentMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAttachmentMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [attachmentMenuOpen]);
+  useDismissableMenu(
+    attachmentMenuOpen,
+    () => attachmentMenuRef.current,
+    () => setAttachmentMenuOpen(false)
+  );
 
   useEffect(() => {
     if (imageParam) {
@@ -557,7 +338,7 @@ export default function VideoWorkshop() {
       void refreshCredits();
       void refreshVideoTasks();
       void loadSession();
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     },
     [loadSession, refreshCredits, refreshVideoTasks]
   );
@@ -675,7 +456,7 @@ export default function VideoWorkshop() {
 
   const handleCopyResultPrompt = useCallback(async (value: string) => {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyTextToClipboard(value);
       toast.success("提示词已复制。");
     } catch {
       toast.error("复制失败，请手动复制提示词。");
@@ -699,8 +480,8 @@ export default function VideoWorkshop() {
         kind: "video",
         prompt,
         modeLabel,
-        aspectLabel: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-        durationLabel: `${isVeo ? 8 : duration} 秒`,
+        aspectLabel,
+        durationLabel: `${resolvedDuration} 秒`,
         referenceLabel: sourcePreview ? "已附加参考图" : undefined,
       })
     );
@@ -856,13 +637,9 @@ export default function VideoWorkshop() {
         status: "pending",
         progress: 0,
         prompt: resolvedPrompt,
-        aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-        duration: isVeo ? 8 : duration,
-        model: isVeo
-          ? "veo3.1-fast"
-          : mode === "Quality"
-            ? "sora-2-pro"
-            : "sora-2-temporary",
+        aspectRatio: aspectLabel,
+        duration: resolvedDuration,
+        model: resolvedModel,
         sourceImageUrl: sourcePreview,
         creditCost: currentCost,
         createdAt: new Date().toISOString(),
@@ -886,13 +663,9 @@ export default function VideoWorkshop() {
         status: "error",
         progress: 0,
         prompt: resolvedPrompt,
-        aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-        duration: isVeo ? 8 : duration,
-        model: isVeo
-          ? "veo3.1-fast"
-          : mode === "Quality"
-            ? "sora-2-pro"
-            : "sora-2-temporary",
+        aspectRatio: aspectLabel,
+        duration: resolvedDuration,
+        model: resolvedModel,
         sourceImageUrl: sourcePreview,
         errorMessage: "该视频渠道暂不可用，请调整设置或稍后再试。",
         creditCost: 0,
@@ -924,8 +697,8 @@ export default function VideoWorkshop() {
         body: JSON.stringify({
           prompt: resolvedPrompt,
           mode: isVeo ? "Fast" : mode,
-          aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-          duration: isVeo ? 8 : duration,
+          aspectRatio: aspectLabel,
+          duration: resolvedDuration,
           sessionId: activeSessionId ?? undefined,
           imageBase64: imageData?.base64,
           imageMimeType: imageData?.mimeType,
@@ -944,9 +717,9 @@ export default function VideoWorkshop() {
         status: "running",
         progress: 0,
         prompt: resolvedPrompt,
-        aspectRatio: aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9",
-        duration: isVeo ? 8 : duration,
-        model: isVeo ? "veo3.1-fast" : mode === "Quality" ? "sora-2-pro" : "sora-2-temporary",
+        aspectRatio: aspectLabel,
+        duration: resolvedDuration,
+        model: resolvedModel,
         sourceImageUrl: sourcePreview,
         creditCost: data.creditCost ?? currentCost,
         createdAt: new Date().toISOString(),
@@ -960,7 +733,7 @@ export default function VideoWorkshop() {
       if (!activeSessionId) {
         router.replace(`${pathname}?session=${nextSessionId}`);
       }
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     } catch (error) {
       setLoading(false);
       setFailCount((prev) => prev + 1);
@@ -1064,10 +837,10 @@ export default function VideoWorkshop() {
               {modeLabel}
             </span>
             <span className="inline-flex h-8 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-sm text-[#555]">
-              {aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9"}
+              {aspectLabel}
             </span>
             <span className="inline-flex h-8 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-sm text-[#555]">
-              {isVeo ? 8 : duration} 秒
+              {resolvedDuration} 秒
             </span>
             <span className="inline-flex h-8 shrink-0 items-center rounded-full border border-black/10 bg-white px-3 text-sm text-[#555]">
               {currentCost} 积分
@@ -1088,6 +861,7 @@ export default function VideoWorkshop() {
               <div className="space-y-1.5">
                 <SettingsLoginCard
                   hasSession={hasSession}
+                  title="登录后使用完整视频能力"
                   onLogin={() => {
                     setSettingsOpen(false);
                     openLoginDialog();
@@ -1546,7 +1320,7 @@ export default function VideoWorkshop() {
                       <div className="mb-3 flex items-center gap-2 text-sm text-[#777]">
                         <Sparkles className="size-4" />
                         <span>
-                          视频生成 · {task.aspectRatio} · {task.duration} 秒 · {taskDate(task.createdAt)}
+                          视频生成 · {task.aspectRatio} · {task.duration} 秒 · {formatTaskDate(task.createdAt)}
                         </span>
                       </div>
                       {task.sourceImageUrl && (

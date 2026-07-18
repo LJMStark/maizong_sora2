@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth/client";
@@ -22,6 +22,8 @@ import RedemptionCodeManager from "./redemption-code-manager";
 import SettingsManager from "./settings-manager";
 import OrderManager from "./order-manager";
 import { cn } from "@/lib/utils";
+import { useHydrated } from "../../hooks/use-hydrated";
+import { openLoginDialog } from "../../utils/studio-events";
 
 const TABS = [
   {
@@ -58,31 +60,11 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-function openLoginDialog() {
-  window.dispatchEvent(new CustomEvent("studio:open-login"));
-}
-
-function subscribeHydration() {
-  return () => undefined;
-}
-
-function getHydratedClientSnapshot() {
-  return true;
-}
-
-function getHydratedServerSnapshot() {
-  return false;
-}
-
 export default function AdminPanel() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("announcements");
-  const hydrated = useSyncExternalStore(
-    subscribeHydration,
-    getHydratedClientSnapshot,
-    getHydratedServerSnapshot
-  );
+  const hydrated = useHydrated();
   const activeTabItem = TABS.find((tab) => tab.key === activeTab) ?? TABS[0];
   const ActiveIcon = activeTabItem.icon;
   const handleSignOut = async () => {

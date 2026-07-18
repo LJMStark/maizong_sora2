@@ -55,7 +55,20 @@ import { UserProfile } from "./shared/user-profile";
 import { getInitials, isAdmin } from "../utils/user-helpers";
 import { cn } from "@/lib/utils";
 import { APP_BRAND } from "@/lib/brand";
+import { formatShortDate } from "@/lib/format";
+import { copyTextToClipboard } from "@/lib/clipboard";
 import { toast } from "sonner";
+import { useHydrated } from "../hooks/use-hydrated";
+import { useDismissableMenu } from "../hooks/use-dismissable-menu";
+import {
+  dispatchStudioEvent,
+  notifySessionsChanged,
+  STUDIO_FOCUS_COMPOSER_EVENT,
+  STUDIO_MODAL_OPENED_EVENT,
+  STUDIO_NEW_SESSION_EVENT,
+  STUDIO_OPEN_LOGIN_EVENT,
+  STUDIO_SESSIONS_CHANGED_EVENT,
+} from "../utils/studio-events";
 import {
   applyStudioAppearance,
   getAppearancePreferenceFromEvent,
@@ -107,11 +120,8 @@ function getSessionHref(mode: StudioMode, sessionId: string) {
     : `/studio/video?session=${sessionId}`;
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-  }).format(new Date(value));
+function isNavActive(pathname: string, href: string) {
+  return href === "/studio" ? pathname === "/studio" : pathname.startsWith(href);
 }
 
 function BrandMark() {
@@ -175,7 +185,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const hydrated = useHydrated();
   const [historyEnabled, setHistoryEnabled] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [titleMenuOpen, setTitleMenuOpen] = useState(false);
@@ -205,7 +215,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     hydrated && !isPending && isAdmin(resolvedUser);
 
   useEffect(() => {
-    setHydrated(true);
     applyStudioAppearance(readAppearancePreference());
     setHistoryEnabled(readBooleanPreference(STUDIO_HISTORY_ENABLED_KEY, true));
   }, []);
@@ -248,7 +257,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       inviteOpen ||
       searchOpen
     ) {
-      window.dispatchEvent(new CustomEvent("studio:modal-opened"));
+      dispatchStudioEvent(STUDIO_MODAL_OPENED_EVENT);
     }
   }, [
     customizeOpen,
@@ -272,31 +281,43 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     return latestUser;
   }, [session?.user]);
 
-  const handleOpenSearch = useCallback(async () => {
+  const closeAllMenus = useCallback(() => {
     setTitleMenuOpen(false);
     setAccountMenuOpen(false);
     setAccountMenuPlacement(null);
-    setHelpDialogOpen(false);
     setSessionMenuId(null);
-    await resolveCurrentUser();
+  }, []);
 
-    if (searchOpenTimerRef.current) {
-      window.clearTimeout(searchOpenTimerRef.current);
-      searchOpenTimerRef.current = null;
-    }
+  // Closes the mobile sheet first (if open) and only then opens the target
+  // dialog, so the sheet's own close animation isn't interrupted.
+  const openAfterMobileClose = useCallback(
+    (open: () => void, timerRef: React.MutableRefObject<number | null>) => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
 
-    if (mobileOpen) {
+      if (mobileOpen) {
+        setMobileOpen(false);
+        timerRef.current = window.setTimeout(() => {
+          open();
+          timerRef.current = null;
+        }, 340);
+        return;
+      }
+
       setMobileOpen(false);
-      searchOpenTimerRef.current = window.setTimeout(() => {
-        setSearchOpen(true);
-        searchOpenTimerRef.current = null;
-      }, 340);
-      return;
-    }
+      open();
+    },
+    [mobileOpen]
+  );
 
-    setMobileOpen(false);
-    setSearchOpen(true);
-  }, [mobileOpen, resolveCurrentUser]);
+  const handleOpenSearch = useCallback(async () => {
+    closeAllMenus();
+    setHelpDialogOpen(false);
+    await resolveCurrentUser();
+    openAfterMobileClose(() => setSearchOpen(true), searchOpenTimerRef);
+  }, [closeAllMenus, openAfterMobileClose, resolveCurrentUser]);
 
   useEffect(() => {
     return () => {
@@ -340,9 +361,9 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     setAccountMenuPlacement(null);
     setHelpDialogOpen(false);
     setSearch("");
-    window.dispatchEvent(new CustomEvent("studio:new-session"));
+    dispatchStudioEvent(STUDIO_NEW_SESSION_EVENT);
     window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("studio:focus-composer"));
+      dispatchStudioEvent(STUDIO_FOCUS_COMPOSER_EVENT);
     }, 0);
   }, [newHref, router]);
 
@@ -404,29 +425,15 @@ export default function StudioShell({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const handler = () => void loadSessions();
-    window.addEventListener("studio:sessions-changed", handler);
-    return () => window.removeEventListener("studio:sessions-changed", handler);
+    window.addEventListener(STUDIO_SESSIONS_CHANGED_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_SESSIONS_CHANGED_EVENT, handler);
   }, [loadSessions]);
 
-  useEffect(() => {
-    if (!titleMenuOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!titleMenuRef.current?.contains(event.target as Node)) {
-        setTitleMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setTitleMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [titleMenuOpen]);
+  useDismissableMenu(
+    titleMenuOpen,
+    () => titleMenuRef.current,
+    () => setTitleMenuOpen(false)
+  );
 
   useEffect(() => {
     const handleEscapeCapture = (event: KeyboardEvent) => {
@@ -444,10 +451,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
         target?.isContentEditable;
 
       if (event.key === "Escape") {
-        setTitleMenuOpen(false);
-        setAccountMenuOpen(false);
-        setAccountMenuPlacement(null);
-        setSessionMenuId(null);
+        closeAllMenus();
         setMobileOpen(false);
         setCustomizeOpen(false);
         setHelpDialogOpen(false);
@@ -480,7 +484,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
 
       if (!isEditing && event.key === "/") {
         event.preventDefault();
-        window.dispatchEvent(new CustomEvent("studio:focus-composer"));
+        dispatchStudioEvent(STUDIO_FOCUS_COMPOSER_EVENT);
       }
     };
 
@@ -490,7 +494,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       document.removeEventListener("keydown", handleEscapeCapture, true);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleNew, handleOpenSearch, sessionActionLoading]);
+  }, [closeAllMenus, handleNew, handleOpenSearch, sessionActionLoading]);
 
   useEffect(() => {
     const handler = () => {
@@ -500,8 +504,8 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       setLoginOpen(true);
     };
 
-    window.addEventListener("studio:open-login", handler);
-    return () => window.removeEventListener("studio:open-login", handler);
+    window.addEventListener(STUDIO_OPEN_LOGIN_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_OPEN_LOGIN_EVENT, handler);
   }, []);
 
   const getActiveAccountMenuRef = useCallback(() => {
@@ -514,49 +518,22 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     return accountMenuRef;
   }, [accountMenuPlacement]);
 
-  useEffect(() => {
-    if (!accountMenuOpen) return;
+  const dismissAccountMenu = useCallback(() => {
+    setAccountMenuOpen(false);
+    setAccountMenuPlacement(null);
+  }, []);
 
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!getActiveAccountMenuRef().current?.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-        setAccountMenuPlacement(null);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setAccountMenuOpen(false);
-        setAccountMenuPlacement(null);
-      }
-    };
+  useDismissableMenu(
+    accountMenuOpen,
+    () => getActiveAccountMenuRef().current,
+    dismissAccountMenu
+  );
 
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [accountMenuOpen, getActiveAccountMenuRef]);
-
-  useEffect(() => {
-    if (!sessionMenuId) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!sessionMenuRef.current?.contains(event.target as Node)) {
-        setSessionMenuId(null);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSessionMenuId(null);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [sessionMenuId]);
+  useDismissableMenu(
+    Boolean(sessionMenuId),
+    () => sessionMenuRef.current,
+    () => setSessionMenuId(null)
+  );
 
   const handleSignOut = async () => {
     setAccountMenuOpen(false);
@@ -568,11 +545,8 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   };
 
   const handleNavigate = (href: string) => {
-    setTitleMenuOpen(false);
-    setAccountMenuOpen(false);
-    setAccountMenuPlacement(null);
+    closeAllMenus();
     setHelpDialogOpen(false);
-    setSessionMenuId(null);
     setMobileOpen(false);
     setSettingsOpen(false);
     setSearchOpen(false);
@@ -581,37 +555,15 @@ export default function StudioShell({ children }: { children: React.ReactNode })
   };
 
   const handleOpenSettings = () => {
-    setTitleMenuOpen(false);
-    setAccountMenuOpen(false);
-    setAccountMenuPlacement(null);
+    closeAllMenus();
     setHelpDialogOpen(false);
-    setSessionMenuId(null);
     setMobileOpen(false);
     setSettingsOpen(true);
   };
 
   const handleOpenHelpDialog = () => {
-    setTitleMenuOpen(false);
-    setAccountMenuOpen(false);
-    setAccountMenuPlacement(null);
-    setSessionMenuId(null);
-
-    if (helpDialogOpenTimerRef.current) {
-      window.clearTimeout(helpDialogOpenTimerRef.current);
-      helpDialogOpenTimerRef.current = null;
-    }
-
-    if (mobileOpen) {
-      setMobileOpen(false);
-      helpDialogOpenTimerRef.current = window.setTimeout(() => {
-        setHelpDialogOpen(true);
-        helpDialogOpenTimerRef.current = null;
-      }, 340);
-      return;
-    }
-
-    setMobileOpen(false);
-    setHelpDialogOpen(true);
+    closeAllMenus();
+    openAfterMobileClose(() => setHelpDialogOpen(true), helpDialogOpenTimerRef);
   };
 
   const handleOpenAccountMenu = (placement: AccountMenuPlacement) => {
@@ -641,11 +593,8 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       return;
     }
 
-    setTitleMenuOpen(false);
-    setAccountMenuOpen(false);
-    setAccountMenuPlacement(null);
+    closeAllMenus();
     setHelpDialogOpen(false);
-    setSessionMenuId(null);
     setInviteOpen(true);
   };
 
@@ -653,7 +602,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     const url = new URL(href, window.location.origin).toString();
 
     try {
-      await navigator.clipboard.writeText(url);
+      await copyTextToClipboard(url);
       toast.success("会话链接已复制");
     } catch {
       toast.error("复制失败，请手动复制地址栏链接");
@@ -673,7 +622,6 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     if (!renamingSession || !title) return;
 
     setSessionActionLoading(true);
-    let renamed = false;
     try {
       const response = await fetch(`/api/studio/sessions/${renamingSession.id}`, {
         method: "PATCH",
@@ -697,21 +645,17 @@ export default function StudioShell({ children }: { children: React.ReactNode })
             : item
         )
       );
-      renamed = true;
-      setSessionActionLoading(false);
       window.requestAnimationFrame(() => {
         setRenamingSession(null);
         setRenameTitle("");
       });
       toast.success("会话已重命名");
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(message);
     } finally {
-      if (!renamed) {
-        setSessionActionLoading(false);
-      }
+      setSessionActionLoading(false);
     }
   };
 
@@ -735,11 +679,11 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       const nextHref = deletingSession.type === "video" ? "/studio/video" : "/studio";
       if (activeSessionId === deletingSession.id) {
         router.replace(nextHref);
-        window.dispatchEvent(new CustomEvent("studio:new-session"));
+        dispatchStudioEvent(STUDIO_NEW_SESSION_EVENT);
       }
       setDeletingSession(null);
       toast.success("会话已删除");
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       toast.error(message);
@@ -968,10 +912,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       <nav className="mt-2 px-3">
         {sidebarNavItems.map((item) => {
           const Icon = item.icon;
-          const active =
-            item.href === "/studio"
-              ? pathname === "/studio"
-              : pathname.startsWith(item.href);
+          const active = isNavActive(pathname, item.href);
 
           if (item.href === "/studio/profile") {
             return (
@@ -1061,7 +1002,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                       >
                         <span className="block truncate">{item.title}</span>
                         <span className="mt-0.5 block text-[12px] leading-4 text-[#8a8a8a]">
-                          {formatDate(item.updatedAt)}
+                          {formatShortDate(item.updatedAt)}
                         </span>
                       </Link>
                       <button
@@ -1165,10 +1106,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
               <button
                 type="button"
                 onClick={() => {
-                  setTitleMenuOpen(false);
-                  setAccountMenuOpen(false);
-                  setAccountMenuPlacement(null);
-                  setSessionMenuId(null);
+                  closeAllMenus();
                   handleOpenHelpDialog();
                 }}
                 className="flex h-10 w-full items-center gap-3 rounded-lg px-2 text-left text-[15px] hover:bg-black/5"
@@ -1214,11 +1152,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
     );
   };
 
-  const railNavItems = [
-    { href: "/studio", label: "图像创作", icon: ImageIcon },
-    { href: "/studio/video", label: "视频创作", icon: Video },
-    { href: "/studio/assets", label: "作品库", icon: Grid2X2 },
-  ] as const;
+  const railNavItems = APP_NAV.filter((item) => item.href !== "/studio/profile");
 
   const renderCollapsedRail = () => (
     <div
@@ -1262,10 +1196,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       <nav className="mt-3 flex flex-col items-center gap-1">
         {railNavItems.map((item) => {
           const Icon = item.icon;
-          const active =
-            item.href === "/studio"
-              ? pathname === "/studio"
-              : pathname.startsWith(item.href);
+          const active = isNavActive(pathname, item.href);
 
           return (
             <Link
@@ -1389,10 +1320,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                       <>
                         {APP_NAV.map((item) => {
                           const Icon = item.icon;
-                          const active =
-                            item.href === "/studio"
-                              ? pathname === "/studio"
-                              : pathname.startsWith(item.href);
+                          const active = isNavActive(pathname, item.href);
                           return (
                             <button
                               role="menuitem"
@@ -1699,7 +1627,7 @@ export default function StudioShell({ children }: { children: React.ReactNode })
                             </span>
                             <span className="mt-0.5 flex items-center gap-1.5 text-xs text-[#8a8a8a]">
                               <Clock className="size-3.5" />
-                              {item.type === "video" ? "视频创作" : "图像创作"} · {formatDate(item.updatedAt)}
+                              {item.type === "video" ? "视频创作" : "图像创作"} · {formatShortDate(item.updatedAt)}
                             </span>
                           </span>
                         </button>

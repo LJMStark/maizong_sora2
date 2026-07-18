@@ -211,34 +211,15 @@ function getCreditSummary(packageInfo: Package | null) {
   return `${packageInfo.credits ?? 0} 积分`;
 }
 
-function PackageSkeleton() {
-  return (
-    <div className="min-h-[520px] animate-pulse rounded-[16px] border border-[#e5e5e5] bg-white p-5">
-      <div className="h-7 w-28 rounded bg-[#eeeeee]" />
-      <div className="mt-5 h-10 w-36 rounded bg-[#eeeeee]" />
-      <div className="mt-6 h-9 rounded-full bg-[#eeeeee]" />
-      <div className="mt-7 space-y-4">
-        {Array.from({ length: 7 }).map((_, index) => (
-          <div key={index} className="h-4 rounded bg-[#eeeeee]" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function PlanCard({
   plan,
   packageInfo,
-  loading,
   onPurchase,
 }: {
   plan: Plan;
   packageInfo: Package | null;
-  loading: boolean;
   onPurchase: () => void;
 }) {
-  if (loading) return <PackageSkeleton />;
-
   const price = packageInfo
     ? centsToYuan(packageInfo.price, { trimZeroFen: true })
     : "--";
@@ -371,7 +352,6 @@ function BusinessPlanCard({
 
 const Subscription: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>(DEFAULT_CREDIT_PACKAGES);
-  const [loading, setLoading] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
@@ -394,8 +374,6 @@ const Subscription: React.FC = () => {
         console.error("Failed to fetch packages:", error);
         const message = error instanceof Error ? error.message : String(error);
         toast.error(`加载套餐失败：${message}`);
-      } finally {
-        setLoading(false);
       }
     }
     fetchPackages();
@@ -504,7 +482,6 @@ const Subscription: React.FC = () => {
                   key={plan.name}
                   plan={plan}
                   packageInfo={packageInfo}
-                  loading={loading}
                   onPurchase={() => handlePurchase(packageInfo)}
                 />
               ))}

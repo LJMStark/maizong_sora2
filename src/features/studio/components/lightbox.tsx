@@ -3,6 +3,7 @@
 import React, { useEffect, useId, useRef } from "react";
 import { Copy, Download, ExternalLink, X } from "lucide-react";
 import { toast } from "sonner";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 interface Props {
   src: string;
@@ -32,7 +33,7 @@ const Lightbox: React.FC<Props> = ({ src, type, prompt, onClose }) => {
     if (!prompt) return;
 
     try {
-      await navigator.clipboard.writeText(prompt);
+      await copyTextToClipboard(prompt);
       toast.success("提示词已复制。");
     } catch {
       toast.error("复制失败，请手动复制提示词。");

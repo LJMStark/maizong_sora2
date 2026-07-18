@@ -8,7 +8,6 @@ import React, {
   useEffect,
   useMemo,
   useRef,
-  useSyncExternalStore,
   ReactNode,
 } from "react";
 import {
@@ -20,6 +19,7 @@ import {
   ImageTask,
 } from "../types";
 import { useSession } from "@/lib/auth/client";
+import { useHydrated } from "../hooks/use-hydrated";
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
@@ -44,27 +44,11 @@ function isActiveVideoTask(task: VideoTask): boolean {
   );
 }
 
-function subscribeHydration() {
-  return () => undefined;
-}
-
-function getHydratedClientSnapshot() {
-  return true;
-}
-
-function getHydratedServerSnapshot() {
-  return false;
-}
-
 export function StudioProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending: sessionPending } = useSession();
   const hasSession = Boolean(session?.user);
   const userId = session?.user?.id ?? null;
-  const hydrated = useSyncExternalStore(
-    subscribeHydration,
-    getHydratedClientSnapshot,
-    getHydratedServerSnapshot
-  );
+  const hydrated = useHydrated();
   const [ownedAppState, setOwnedAppStateValue] = useState<OwnedAppState>({
     ownerUserId: null,
     state: EMPTY_APP_STATE,
@@ -460,56 +444,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     };
   }, [pendingConfigReload, refreshVideoTasks, userId]);
 
-  const deductCredits = useCallback(
-    (amount: number, reason: string = "Service Usage") => {
-      setOwnedAppState(userId, (prev) => ({
-        ...prev,
-        credits: Math.max(0, prev.credits - amount),
-        creditHistory: [
-          {
-            id: Date.now().toString(),
-            type: "deduction",
-            amount,
-            reason,
-            date: new Date(),
-          },
-          ...prev.creditHistory,
-        ],
-      }));
-    },
-    [setOwnedAppState, userId]
-  );
-
-  const addCredits = useCallback(
-    (amount: number, reason: string = "Recharge") => {
-      setOwnedAppState(userId, (prev) => ({
-        ...prev,
-        credits: prev.credits + amount,
-        creditHistory: [
-          {
-            id: Date.now().toString(),
-            type: "addition",
-            amount,
-            reason,
-            date: new Date(),
-          },
-          ...prev.creditHistory,
-        ],
-      }));
-    },
-    [setOwnedAppState, userId]
-  );
-
-  const addToHistory = useCallback(
-    (item: GenerationResult) => {
-      setOwnedAppState(userId, (prev) => ({
-        ...prev,
-        history: [item, ...prev.history],
-      }));
-    },
-    [setOwnedAppState, userId]
-  );
-
   const clearLocalView = useCallback(() => {
     setOwnedAppState(userId, (prev) => ({
       ...prev,
@@ -529,9 +463,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const contextValue = useMemo(
     () => ({
       state: visibleState,
-      deductCredits,
-      addCredits,
-      addToHistory,
       refreshCredits,
       refreshVideoTasks,
       refreshImageTasks,
@@ -540,9 +471,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }),
     [
       visibleState,
-      deductCredits,
-      addCredits,
-      addToHistory,
       refreshCredits,
       refreshVideoTasks,
       refreshImageTasks,

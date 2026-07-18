@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Eye, EyeOff, Megaphone, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/format";
 
 interface Announcement {
   id: string;
@@ -180,14 +181,6 @@ export default function AnnouncementManager() {
     ["active", "启用", statusCounts.active],
     ["inactive", "停用", statusCounts.inactive],
   ] as const;
-
-  const formatDateTime = (value: string) =>
-    new Date(value).toLocaleString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
 
   if (loading) {
     return (

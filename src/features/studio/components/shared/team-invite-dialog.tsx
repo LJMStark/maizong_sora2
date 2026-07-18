@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { isEmail } from "@/lib/validations/email";
 
 interface TeamInviteDialogProps {
   open: boolean;
@@ -36,41 +38,9 @@ const roleLabels: Record<InviteRole, string> = {
   viewer: "仅查看",
 };
 
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 function getInviteUrl() {
   if (typeof window === "undefined") return "";
   return `${window.location.origin}/signup?invite=studio`;
-}
-
-async function copyText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fall through to the textarea copy path below.
-    }
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  textarea.style.top = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  try {
-    return document.execCommand("copy");
-  } catch {
-    return false;
-  } finally {
-    document.body.removeChild(textarea);
-  }
 }
 
 export function TeamInviteDialog({
@@ -110,15 +80,14 @@ export function TeamInviteDialog({
   };
 
   const handleCopyLink = async () => {
-    const success = await copyText(inviteUrl);
-    if (success) {
+    try {
+      await copyTextToClipboard(inviteUrl);
       setCopied(true);
       toast.success("邀请链接已复制。");
-      return;
+    } catch {
+      setCopied(false);
+      toast.error("复制失败，请手动复制链接。");
     }
-
-    setCopied(false);
-    toast.error("复制失败，请手动复制链接。");
   };
 
   const handleCopySummary = async () => {
@@ -132,13 +101,12 @@ export function TeamInviteDialog({
         : "邀请清单：暂无",
     ];
 
-    const success = await copyText(lines.join("\n"));
-    if (success) {
+    try {
+      await copyTextToClipboard(lines.join("\n"));
       toast.success("邀请信息已复制。");
-      return;
+    } catch {
+      toast.error("复制失败，请手动复制邀请链接。");
     }
-
-    toast.error("复制失败，请手动复制邀请链接。");
   };
 
   return (

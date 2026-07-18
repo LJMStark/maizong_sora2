@@ -11,6 +11,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { isEmail } from "@/lib/validations/email";
+import { dispatchStudioEvent, STUDIO_MODAL_OPENED_EVENT } from "../utils/studio-events";
 
 type TeamSize = "2-5" | "6-20" | "21-50" | "50+";
 
@@ -40,38 +43,6 @@ function buildRequestId() {
   return `BIZ-${stamp}-${suffix}`;
 }
 
-async function copyText(text: string) {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Fall through to the textarea copy path below.
-    }
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.left = "-9999px";
-  textarea.style.top = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  try {
-    return document.execCommand("copy");
-  } catch {
-    return false;
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
-
-function isEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
 export function BusinessContactDialog({
   open,
   onOpenChange,
@@ -86,7 +57,7 @@ export function BusinessContactDialog({
   React.useEffect(() => {
     if (!open) return;
 
-    window.dispatchEvent(new CustomEvent("studio:modal-opened"));
+    dispatchStudioEvent(STUDIO_MODAL_OPENED_EVENT);
     setEmail(userEmail ?? "");
     setTeamSize("6-20");
     setNeeds("");
@@ -115,13 +86,12 @@ export function BusinessContactDialog({
       return;
     }
 
-    const success = await copyText(summary);
-    if (success) {
+    try {
+      await copyTextToClipboard(summary);
       toast.success("团队采购申请已复制。");
-      return;
+    } catch {
+      toast.error("复制失败，请手动复制申请信息。");
     }
-
-    toast.error("复制失败，请手动复制申请信息。");
   };
 
   return (

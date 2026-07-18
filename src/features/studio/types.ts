@@ -83,9 +83,6 @@ export interface AppState {
 
 export interface StudioContextType {
   state: AppState;
-  deductCredits: (amount: number, reason?: string) => void;
-  addCredits: (amount: number, reason?: string) => void;
-  addToHistory: (item: GenerationResult) => void;
   refreshCredits: () => Promise<void>;
   refreshVideoTasks: () => Promise<void>;
   refreshImageTasks: () => Promise<void>;

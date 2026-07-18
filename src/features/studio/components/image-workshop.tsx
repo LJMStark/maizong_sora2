@@ -8,7 +8,6 @@ import {
   AudioLines,
   Brain,
   ChevronDown,
-  Check,
   Copy,
   Download,
   Film,
@@ -31,7 +30,15 @@ import dynamic from "next/dynamic";
 import Lightbox from "./lightbox";
 import AssetPicker from "./asset-picker";
 import type { PromptGalleryItem } from "./shared/prompt-gallery";
+import {
+  IconHint,
+  SettingsLoginCard,
+  ComposerNotice,
+  SettingsOption,
+  AttachmentMenuItem,
+} from "./shared/composer-primitives";
 import { useUploadShortcut } from "../hooks/use-upload-shortcut";
+import { useDismissableMenu } from "../hooks/use-dismissable-menu";
 import { DeepThinkingDialog } from "./shared/deep-thinking-dialog";
 import { SearchReferenceDialog } from "./shared/search-reference-dialog";
 import { useStudio } from "../context/studio-context";
@@ -44,8 +51,18 @@ import {
 } from "../utils/deep-thinking";
 import { buildSearchReferencePrompt } from "../utils/search-reference";
 import { resolveHasAuthUser } from "../utils/user-helpers";
+import { fileToBase64, urlToBase64, extractBase64Data } from "../utils/file-helpers";
+import {
+  STUDIO_NEW_SESSION_EVENT,
+  STUDIO_FOCUS_COMPOSER_EVENT,
+  openLoginDialog,
+  notifySessionsChanged,
+} from "../utils/studio-events";
+import { DEFAULT_CREDIT_COSTS } from "../data/credit-defaults";
 import { cn } from "@/lib/utils";
 import { getSession, useSession } from "@/lib/auth/client";
+import { formatTaskDate } from "@/lib/format";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 type Mode = "generate" | "edit";
 
@@ -64,35 +81,6 @@ interface ImageSessionTask {
   createdAt: string;
   completedAt?: string | null;
   requiresLogin?: boolean;
-}
-
-function fileToBase64(file: File): Promise<{ base64: string; mimeType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => {
-      const result = reader.result as string;
-      const [header, base64] = result.split(",");
-      const mimeType = header.match(/^data:([^;]+);base64$/)?.[1] || file.type;
-      resolve({ base64, mimeType });
-    };
-    reader.onerror = reject;
-  });
-}
-
-async function imageUrlToBase64(url: string) {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return fileToBase64(new File([blob], "source-image", { type: blob.type || "image/png" }));
-}
-
-function taskDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function getResultAspectRatio(value?: string | null) {
@@ -141,187 +129,9 @@ function getImageRefundMessage(task: Pick<ImageSessionTask, "creditCost">) {
     : "本次没有扣除积分。";
 }
 
-function openLoginDialog() {
-  window.dispatchEvent(new CustomEvent("studio:open-login"));
-}
-
 const ImageGallerySection = dynamic(() => import("./image-gallery-section"), {
   loading: () => null,
 });
-
-function IconHint({
-  label,
-  className,
-  disabled,
-  children,
-}: {
-  label: string;
-  className?: string;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <span className={cn("group/hint relative inline-flex", className)}>
-      {children}
-      {!disabled && (
-        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0d0d0d] px-2 py-1 text-xs text-white shadow-lg group-hover/hint:block group-focus-within/hint:block">
-          {label}
-        </span>
-      )}
-    </span>
-  );
-}
-
-function SettingsLoginCard({
-  hasSession,
-  onLogin,
-  onSignup,
-}: {
-  hasSession: boolean;
-  onLogin: () => void;
-  onSignup: () => void;
-}) {
-  if (hasSession) return null;
-
-  return (
-    <div className="rounded-xl border border-black/10 bg-[#f7f7f7] p-3">
-      <div>
-        <p className="text-sm font-medium text-[#0d0d0d]">
-          登录后使用完整创作能力
-        </p>
-        <p className="mt-1 text-xs leading-5 text-[#666]">
-          保存设置、读取作品库，并同步最近创作记录。
-        </p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onLogin}
-            className="h-8 rounded-full bg-[#0d0d0d] px-3.5 text-sm font-medium text-white hover:bg-[#2a2a2a]"
-          >
-            登录
-          </button>
-          <button
-            type="button"
-            onClick={onSignup}
-            className="h-8 rounded-full border border-black/10 bg-white px-3.5 text-sm font-medium text-[#0d0d0d] hover:bg-black/[0.04]"
-          >
-            免费注册
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ComposerNotice({ compact }: { compact: boolean }) {
-  return (
-    <p
-      className={cn(
-        "mx-auto max-w-[720px] px-4 text-center text-xs leading-5 text-[#8a8a8a]",
-        compact ? "mt-3 md:mt-[54px]" : "mt-2"
-      )}
-    >
-      生成内容可能不准确，重要用途请人工确认。
-    </p>
-  );
-}
-
-function SettingsOption({
-  label,
-  description,
-  active,
-  disabled,
-  onClick,
-}: {
-  label: string;
-  description?: string;
-  active: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex min-h-10 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition",
-        disabled
-          ? "cursor-not-allowed text-[#b5b5b5]"
-          : "text-[#0d0d0d] hover:bg-black/[0.04]"
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center">
-        {active && <Check className="size-3.5" strokeWidth={2} />}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">{label}</span>
-        {description && (
-          <span className="block text-xs leading-4 text-[#777]">
-            {description}
-          </span>
-        )}
-      </span>
-    </button>
-  );
-}
-
-function AttachmentMenuItem({
-  icon,
-  label,
-  description,
-  trailing,
-  muted,
-  disabled,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  description?: string;
-  trailing?: React.ReactNode;
-  muted?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        "flex h-9 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-left transition",
-        disabled
-          ? "cursor-not-allowed text-[#b5b5b5]"
-          : muted
-            ? "text-[#8a8a8a] hover:bg-black/[0.04]"
-            : "text-[#0d0d0d] hover:bg-black/[0.04]"
-      )}
-    >
-      <span
-        className={cn(
-          "flex size-5 shrink-0 items-center justify-center",
-          muted || disabled ? "text-[#9b9b9b]" : "text-[#555]"
-        )}
-      >
-        {icon}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-normal leading-5">{label}</span>
-        {description && (
-          <span className="mt-0.5 block text-xs leading-4 text-[#777]">
-            {description}
-          </span>
-        )}
-      </span>
-      {trailing && (
-        <span className="shrink-0 text-xs text-[#777]">
-          {trailing}
-        </span>
-      )}
-    </button>
-  );
-}
 
 export default function ImageWorkshop() {
   const router = useRouter();
@@ -345,7 +155,7 @@ export default function ImageWorkshop() {
   const [sessionTasks, setSessionTasks] = useState<ImageSessionTask[]>([]);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [imageCreditCost, setImageCreditCost] = useState(10);
+  const [imageCreditCost, setImageCreditCost] = useState(DEFAULT_CREDIT_COSTS.image);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [deepThinkingOpen, setDeepThinkingOpen] = useState(false);
@@ -423,8 +233,8 @@ export default function ImageWorkshop() {
       setLoading(false);
       window.setTimeout(() => promptInputRef.current?.focus(), 0);
     };
-    window.addEventListener("studio:new-session", handler);
-    return () => window.removeEventListener("studio:new-session", handler);
+    window.addEventListener(STUDIO_NEW_SESSION_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_NEW_SESSION_EVENT, handler);
   }, []);
 
   useEffect(() => {
@@ -437,49 +247,21 @@ export default function ImageWorkshop() {
 
   useEffect(() => {
     const handler = () => promptInputRef.current?.focus();
-    window.addEventListener("studio:focus-composer", handler);
-    return () => window.removeEventListener("studio:focus-composer", handler);
+    window.addEventListener(STUDIO_FOCUS_COMPOSER_EVENT, handler);
+    return () => window.removeEventListener(STUDIO_FOCUS_COMPOSER_EVENT, handler);
   }, []);
 
-  useEffect(() => {
-    if (!settingsOpen) return;
+  useDismissableMenu(
+    settingsOpen,
+    () => settingsRef.current,
+    () => setSettingsOpen(false)
+  );
 
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!settingsRef.current?.contains(event.target as Node)) {
-        setSettingsOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSettingsOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [settingsOpen]);
-
-  useEffect(() => {
-    if (!attachmentMenuOpen) return;
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!attachmentMenuRef.current?.contains(event.target as Node)) {
-        setAttachmentMenuOpen(false);
-      }
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAttachmentMenuOpen(false);
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [attachmentMenuOpen]);
+  useDismissableMenu(
+    attachmentMenuOpen,
+    () => attachmentMenuRef.current,
+    () => setAttachmentMenuOpen(false)
+  );
 
   useEffect(() => {
     if (sessionPending || !hasSession) {
@@ -521,7 +303,7 @@ export default function ImageWorkshop() {
       void refreshCredits();
       void refreshImageTasks();
       void loadSession();
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     },
     [refreshCredits, refreshImageTasks, loadSession]
   );
@@ -620,7 +402,7 @@ export default function ImageWorkshop() {
 
   const handleCopyResultPrompt = useCallback(async (value: string) => {
     try {
-      await navigator.clipboard.writeText(value);
+      await copyTextToClipboard(value);
       toast.success("提示词已复制。");
     } catch {
       toast.error("复制失败，请手动复制提示词。");
@@ -746,9 +528,9 @@ export default function ImageWorkshop() {
       if (mode === "edit") {
         let imageData: { base64: string; mimeType: string } | null = null;
         if (refImage) {
-          imageData = await fileToBase64(refImage);
+          imageData = extractBase64Data(await fileToBase64(refImage));
         } else if (refImagePreview) {
-          imageData = await imageUrlToBase64(refImagePreview);
+          imageData = extractBase64Data(await urlToBase64(refImagePreview));
         }
 
         if (!imageData) {
@@ -803,7 +585,7 @@ export default function ImageWorkshop() {
       if (!activeSessionId) {
         router.replace(`${pathname}?session=${nextSessionId}`);
       }
-      window.dispatchEvent(new CustomEvent("studio:sessions-changed"));
+      notifySessionsChanged();
     } catch (error) {
       setLoading(false);
       setTaskStatus("error");
@@ -929,6 +711,7 @@ export default function ImageWorkshop() {
               <div className="space-y-1.5">
                 <SettingsLoginCard
                   hasSession={hasSession}
+                  title="登录后使用完整创作能力"
                   onLogin={() => {
                     setSettingsOpen(false);
                     openLoginDialog();
@@ -1340,7 +1123,7 @@ export default function ImageWorkshop() {
                         <Sparkles className="size-4" />
                         <span>
                           {task.mode === "edit" ? "图像编辑" : "图像生成"} ·{" "}
-                          {taskDate(task.createdAt)}
+                          {formatTaskDate(task.createdAt)}
                         </span>
                       </div>
                       {task.sourceImageUrl && (

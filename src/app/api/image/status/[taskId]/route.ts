@@ -3,7 +3,7 @@ import { getServerSession } from "@/lib/auth/get-session";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { storageService } from "@/features/studio/services/storage-service";
-import { creditService } from "@/features/studio/services/credit-service";
+import { failImageTaskAndRefund } from "@/features/studio/services/task-failure";
 import { sanitizeError } from "@/lib/security/error-handler";
 
 export async function GET(
@@ -103,22 +103,14 @@ export async function GET(
         });
       } else if (duomiStatus.state === "error") {
         const errorMessage = duomiStatus.error || "图片生成失败";
-        const transitionedTask = await imageTaskService.transitionToErrorIfActive(
-          task.id,
-          errorMessage
-        );
-
-        if (transitionedTask) {
-          // Refund credits on error
-          await creditService.refundCredits({
-            userId: task.userId,
-            amount: task.creditCost,
-            reason: "图片生成失败 - 退款",
-            referenceType: "image_task",
-            referenceId: task.id,
-            sourceTransactionId: task.creditTransactionId ?? undefined,
-          });
-        }
+        await failImageTaskAndRefund({
+          taskId: task.id,
+          userId: task.userId,
+          amount: task.creditCost,
+          reason: "图片生成失败 - 退款",
+          sourceTransactionId: task.creditTransactionId ?? undefined,
+          errorMessage,
+        });
 
         return NextResponse.json({
           taskId: task.id,

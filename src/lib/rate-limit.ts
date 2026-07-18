@@ -18,6 +18,19 @@ export type RateLimitKey = keyof typeof RATE_LIMITS;
 // In-memory fallback for development
 const memoryStore = new Map<string, { count: number; expiresAt: number }>();
 
+// 惰性清理过期条目，避免内存无限增长；每隔一定调用次数扫描一次
+const MEMORY_STORE_SWEEP_INTERVAL = 100;
+let memoryStoreCallCount = 0;
+
+function sweepExpiredMemoryEntries(): void {
+  const now = Date.now();
+  for (const [key, record] of memoryStore) {
+    if (now > record.expiresAt) {
+      memoryStore.delete(key);
+    }
+  }
+}
+
 // Cache for Redis rate limiters with different configurations
 const redisLimiterCache = new Map<string, Ratelimit>();
 
@@ -67,6 +80,12 @@ export class RateLimiter {
     }
 
     // In-memory fallback (Fixed Window)
+    memoryStoreCallCount += 1;
+    if (memoryStoreCallCount >= MEMORY_STORE_SWEEP_INTERVAL) {
+      memoryStoreCallCount = 0;
+      sweepExpiredMemoryEntries();
+    }
+
     const now = Date.now();
     const windowMs = windowSeconds * 1000;
     const key = `${limitKey}:${identifier}`;

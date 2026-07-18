@@ -13,6 +13,7 @@ import {
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatYuan } from "@/lib/format";
+import { copyTextToClipboard } from "@/lib/clipboard";
 
 interface Package {
   id: string;
@@ -105,7 +106,7 @@ export function CreditPurchaseDialog({
     if (!paymentSummary) return;
 
     try {
-      await navigator.clipboard.writeText(paymentSummary);
+      await copyTextToClipboard(paymentSummary);
       setCopied(true);
       toast.success("订单信息已复制。");
     } catch {

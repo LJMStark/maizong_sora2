@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
-import { creditService } from "@/features/studio/services/credit-service";
+import {
+  creditService,
+  InsufficientCreditsError,
+} from "@/features/studio/services/credit-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { duomiImageService } from "@/features/studio/services/duomi-image-service";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { studioSessionService } from "@/features/studio/services/studio-session-service";
+import { failImageTaskAndRefund } from "@/features/studio/services/task-failure";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateImageSchema } from "@/lib/validations/schemas";
 import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
@@ -69,7 +73,7 @@ export async function POST(request: NextRequest) {
       });
       transactionId = result.transactionId;
     } catch (err) {
-      if (err instanceof Error && err.message === "积分不足") {
+      if (err instanceof InsufficientCreditsError) {
         const currentCredits = await creditService.getUserCredits(userId);
         return NextResponse.json(
           {
@@ -119,38 +123,26 @@ export async function POST(request: NextRequest) {
         await imageTaskService.updateDuomiTaskId(task.id, duomiResponse.task_id);
         await imageTaskService.updateTaskStatus(task.id, "running");
       } else {
-        const transitionedTask = await imageTaskService.transitionToErrorIfActive(
-          task.id,
-          "创建 Duomi 任务失败"
-        );
-        if (transitionedTask) {
-          await creditService.refundCredits({
-            userId,
-            amount: imageCreditCost,
-            reason: "图片生成失败 - 退款",
-            referenceType: "image_task",
-            referenceId: task.id,
-            sourceTransactionId: task.creditTransactionId ?? undefined,
-          });
-        }
+        await failImageTaskAndRefund({
+          taskId: task.id,
+          userId,
+          amount: imageCreditCost,
+          reason: "图片生成失败 - 退款",
+          sourceTransactionId: task.creditTransactionId ?? undefined,
+          errorMessage: "创建 Duomi 任务失败",
+        });
       }
     } catch (duomiError) {
       const errorMessage =
         duomiError instanceof Error ? duomiError.message : String(duomiError);
-      const transitionedTask = await imageTaskService.transitionToErrorIfActive(
-        task.id,
-        errorMessage
-      );
-      if (transitionedTask) {
-        await creditService.refundCredits({
-          userId,
-          amount: imageCreditCost,
-          reason: "图片生成失败 - 退款",
-          referenceType: "image_task",
-          referenceId: task.id,
-          sourceTransactionId: task.creditTransactionId ?? undefined,
-        });
-      }
+      await failImageTaskAndRefund({
+        taskId: task.id,
+        userId,
+        amount: imageCreditCost,
+        reason: "图片生成失败 - 退款",
+        sourceTransactionId: task.creditTransactionId ?? undefined,
+        errorMessage,
+      });
     }
 
     return NextResponse.json({

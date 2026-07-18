@@ -3,6 +3,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getServerSession } from "@/lib/auth/get-session";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 import { rateLimiter } from "@/lib/rate-limit";
+import {
+  MAX_IMAGE_BASE64_LENGTH,
+  ALLOWED_IMAGE_MIME_TYPES,
+} from "@/lib/validations/schemas";
 
 const SORA_SYSTEM_PROMPT = `你是一位专精 Sora 2 的创意总监（Creative Director），专门将用户的创意愿景转译为可制作、可连贯的视频提示词。
 
@@ -116,7 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 校验图片参数：必须成对出现，且限制大小 (10MB base64 ≈ 7.5MB 原图)
+    // 校验图片参数：必须成对出现，且限制大小（与全局图片上传限制一致，最多 10MB 原图）
     const hasImage = imageBase64 && imageMimeType;
     if (imageBase64 && !imageMimeType) {
       return NextResponse.json(
@@ -131,15 +135,13 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      const MAX_BASE64_LENGTH = 10 * 1024 * 1024; // ~10MB base64
-      if (imageBase64.length > MAX_BASE64_LENGTH) {
+      if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
         return NextResponse.json(
           { error: "Image too large, max 10MB" },
           { status: 400 }
         );
       }
-      const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-      if (!ALLOWED_MIME_TYPES.includes(imageMimeType)) {
+      if (!(ALLOWED_IMAGE_MIME_TYPES as readonly string[]).includes(imageMimeType)) {
         return NextResponse.json(
           { error: "Unsupported image type" },
           { status: 400 }

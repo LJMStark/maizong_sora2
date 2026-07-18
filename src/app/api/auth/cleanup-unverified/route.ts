@@ -3,7 +3,7 @@ import { user } from "@/db/schema/auth/user";
 import { account } from "@/db/schema/auth/account";
 import { session } from "@/db/schema/auth/session";
 import { verification } from "@/db/schema/auth/verification";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimiter } from "@/lib/rate-limit";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
@@ -51,11 +51,13 @@ export async function POST(request: NextRequest) {
       .from(user)
       .where(and(or(...conditions), eq(user.emailVerified, false)));
 
-    for (const u of unverifiedUsers) {
-      await db.delete(session).where(eq(session.userId, u.id));
-      await db.delete(account).where(eq(account.userId, u.id));
+    if (unverifiedUsers.length > 0) {
+      const ids = unverifiedUsers.map((u) => u.id);
+
+      await db.delete(session).where(inArray(session.userId, ids));
+      await db.delete(account).where(inArray(account.userId, ids));
       await db.delete(verification).where(eq(verification.identifier, email));
-      await db.delete(user).where(eq(user.id, u.id));
+      await db.delete(user).where(inArray(user.id, ids));
     }
 
     // Constant response: never disclose how many (if any) accounts matched.

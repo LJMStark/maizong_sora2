@@ -10,12 +10,9 @@ import {
   userSubscription,
 } from "@/db/schema";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
+import { formatDateOnly } from "@/features/studio/services/credit-service";
 
 type OrderAction = "mark_paid" | "cancel";
-
-function formatDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
 
 function addDays(date: Date, days: number): Date {
   const result = new Date(date);

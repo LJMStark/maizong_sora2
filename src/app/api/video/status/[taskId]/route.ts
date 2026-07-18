@@ -5,7 +5,7 @@ import { duomiService } from "@/features/studio/services/duomi-service";
 import { kieService } from "@/features/studio/services/kie-service";
 import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
-import { creditService } from "@/features/studio/services/credit-service";
+import { failVideoTaskAndRefund } from "@/features/studio/services/task-failure";
 import { sanitizeError } from "@/lib/security/error-handler";
 import type { VideoTaskType } from "@/db/schema";
 
@@ -107,22 +107,15 @@ export async function GET(
 
       if (state === "succeeded") {
         if (!providerVideoUrl) {
-          const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+          await failVideoTaskAndRefund({
             taskId: task.id,
+            userId: task.userId,
+            amount: task.creditCost,
+            reason: "视频生成失败 - 缺少视频地址",
+            sourceTransactionId: task.creditTransactionId ?? undefined,
             progress,
             errorMessage: "状态中缺少视频 URL",
           });
-
-          if (transitionedTask) {
-            await creditService.refundCredits({
-              userId: task.userId,
-              amount: task.creditCost,
-              reason: "视频生成失败 - 缺少视频地址",
-              referenceType: "video_task",
-              referenceId: task.id,
-              sourceTransactionId: task.creditTransactionId ?? undefined,
-            });
-          }
 
           return NextResponse.json(buildTaskResponse(task, {
             status: "error",
@@ -173,22 +166,15 @@ export async function GET(
 
       if (state === "error") {
         const errorMessage = providerStatus.message || providerStatus.error || "视频生成失败";
-        const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+        await failVideoTaskAndRefund({
           taskId: task.id,
+          userId: task.userId,
+          amount: task.creditCost,
+          reason: "视频生成失败 - 退款",
+          sourceTransactionId: task.creditTransactionId ?? undefined,
           progress,
           errorMessage,
         });
-
-        if (transitionedTask) {
-          await creditService.refundCredits({
-            userId: task.userId,
-            amount: task.creditCost,
-            reason: "视频生成失败 - 退款",
-            referenceType: "video_task",
-            referenceId: task.id,
-            sourceTransactionId: task.creditTransactionId ?? undefined,
-          });
-        }
 
         return NextResponse.json(buildTaskResponse(task, {
           status: "error",

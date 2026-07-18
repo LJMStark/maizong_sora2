@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { user, videoTask, systemConfig } from "@/db/schema";
 import { eq, and, gte, ne, inArray, sql } from "drizzle-orm";
+import { DEFAULT_CREDIT_COSTS } from "@/features/studio/data/credit-defaults";
 
 export type VideoType = "fast" | "quality";
 export type VideoProvider = "kie" | "duomi" | "veo";
@@ -62,11 +63,7 @@ export const videoLimitService = {
       );
 
     const result: VideoGenerationConfig = {
-      creditCosts: {
-        videoFast: 30,
-        videoQuality: 100,
-        image: 10,
-      },
+      creditCosts: { ...DEFAULT_CREDIT_COSTS },
       providers: {
         fast: "kie",
         quality: "kie",
@@ -153,8 +150,10 @@ export const videoLimitService = {
    * 检查用户是否可以生成视频
    */
   async checkLimit(userId: string, videoType: VideoType): Promise<LimitCheckResult> {
-    const todayCount = await this.getTodayGenerationCount(userId, videoType);
-    const limit = await this.getEffectiveLimit(userId, videoType);
+    const [todayCount, limit] = await Promise.all([
+      this.getTodayGenerationCount(userId, videoType),
+      this.getEffectiveLimit(userId, videoType),
+    ]);
 
     // -1 表示无限制
     if (limit === -1) {

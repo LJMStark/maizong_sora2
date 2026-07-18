@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useSyncExternalStore } from "react";
+import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import {
@@ -36,6 +36,13 @@ import { useSession } from "@/lib/auth/client";
 import { isAdmin as checkIsAdmin } from "../utils/user-helpers";
 import { cn } from "@/lib/utils";
 import { exportStudioData } from "../utils/studio-data-export";
+import { useHydrated } from "../hooks/use-hydrated";
+import {
+  dispatchStudioEvent,
+  openLoginDialog,
+  STUDIO_LOCAL_VIEW_CLEARED_EVENT,
+} from "../utils/studio-events";
+import { SettingsSwitch } from "./shared/settings-controls";
 import {
   getBooleanPreferenceFromEvent,
   getLanguagePreferenceFromEvent,
@@ -56,22 +63,6 @@ interface SettingsSectionItem {
   label: string;
   description: string;
   icon: SettingsIcon;
-}
-
-function subscribeHydration() {
-  return () => undefined;
-}
-
-function getHydratedClientSnapshot() {
-  return true;
-}
-
-function getHydratedServerSnapshot() {
-  return false;
-}
-
-function openLoginDialog() {
-  window.dispatchEvent(new CustomEvent("studio:open-login"));
 }
 
 function SettingsRow({
@@ -99,37 +90,6 @@ function SettingsRow({
 
 function RowDivider() {
   return <div className="h-px bg-[#eeeeee]" />;
-}
-
-function SettingsSwitch({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative h-7 w-12 rounded-full transition",
-        checked ? "bg-[#0d0d0d]" : "bg-[#d9d9d9]"
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-1 flex size-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform",
-          checked ? "translate-x-6" : "translate-x-1"
-        )}
-      />
-    </button>
-  );
 }
 
 function SmallButton({
@@ -217,11 +177,7 @@ const UserCenter: React.FC = () => {
   const [language, setLanguage] = useState<StudioLanguagePreference>("auto");
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [exportingData, setExportingData] = useState(false);
-  const hydrated = useSyncExternalStore(
-    subscribeHydration,
-    getHydratedClientSnapshot,
-    getHydratedServerSnapshot
-  );
+  const hydrated = useHydrated();
 
   React.useEffect(() => {
     setNotificationsEnabled(
@@ -432,7 +388,7 @@ const UserCenter: React.FC = () => {
   const handleClearLocalView = () => {
     clearLocalView();
     setClearDialogOpen(false);
-    window.dispatchEvent(new CustomEvent("studio:local-view-cleared"));
+    dispatchStudioEvent(STUDIO_LOCAL_VIEW_CLEARED_EVENT);
     toast.success("本地视图已清空。云端作品不会被删除。");
   };
 
@@ -505,6 +461,7 @@ const UserCenter: React.FC = () => {
                 toast.info(checked ? "已打开任务提醒" : "已关闭任务提醒");
               }}
               label="任务完成通知"
+              size="md"
             />
           }
         />
@@ -522,6 +479,7 @@ const UserCenter: React.FC = () => {
                 toast.info(checked ? "已打开创作记录" : "已关闭创作记录");
               }}
               label="保存创作记录"
+              size="md"
             />
           }
         />

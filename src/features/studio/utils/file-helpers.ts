@@ -10,7 +10,7 @@ export const fileToBase64 = (file: File): Promise<string> => {
 export const urlToBase64 = async (url: string): Promise<string> => {
   const response = await fetch(url);
   const blob = await response.blob();
-  return fileToBase64(new File([blob], "image"));
+  return fileToBase64(new File([blob], "image", { type: blob.type || "image/png" }));
 };
 
 export const extractBase64Data = (

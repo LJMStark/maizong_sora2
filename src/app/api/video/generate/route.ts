@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
-import { creditService } from "@/features/studio/services/credit-service";
+import {
+  creditService,
+  InsufficientCreditsError,
+} from "@/features/studio/services/credit-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
@@ -8,6 +11,7 @@ import { kieService } from "@/features/studio/services/kie-service";
 import { veoService } from "@/features/studio/services/veo-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { studioSessionService } from "@/features/studio/services/studio-session-service";
+import { failVideoTaskAndRefund } from "@/features/studio/services/task-failure";
 import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateVideoSchema } from "@/lib/validations/schemas";
 import {
@@ -16,13 +20,11 @@ import {
 } from "@/lib/api/request-limits";
 import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
+import { getAppBaseUrl } from "@/lib/config";
+import { delay } from "@/lib/utils";
 import type { VideoProvider } from "@/features/studio/services/video-task-service";
 
 const MAX_GENERATE_RETRIES = 3;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 const PROVIDER_LABELS: Record<VideoProvider, string> = {
   veo: "VEO",
@@ -171,7 +173,7 @@ export async function POST(request: NextRequest) {
       });
       transactionId = result.transactionId;
     } catch (err) {
-      if (err instanceof Error && err.message === "积分不足") {
+      if (err instanceof InsufficientCreditsError) {
         const currentCredits = await creditService.getUserCredits(userId);
         return NextResponse.json(
           { error: "积分不足", required: creditCost, current: currentCredits },
@@ -181,7 +183,7 @@ export async function POST(request: NextRequest) {
       throw err;
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
+    const baseUrl = getAppBaseUrl();
     const resolvedAspectRatio = aspectRatio === "9:16" ? "9:16" : "16:9";
     const resolvedDuration = isVeo ? 8 : (duration || 10);
 
@@ -246,22 +248,15 @@ export async function POST(request: NextRequest) {
 
     // 供应商调用失败
     if (lastError) {
-      const transitionedTask = await videoTaskService.transitionToErrorIfActive({
+      await failVideoTaskAndRefund({
         taskId: task.id,
+        userId,
+        amount: creditCost,
+        reason: "视频生成失败 - 退款",
+        sourceTransactionId: task.creditTransactionId ?? undefined,
         progress: 0,
         errorMessage: lastError.message,
       });
-
-      if (transitionedTask) {
-        await creditService.refundCredits({
-          userId,
-          amount: creditCost,
-          reason: "视频生成失败 - 退款",
-          referenceType: "video_task",
-          referenceId: task.id,
-          sourceTransactionId: task.creditTransactionId ?? undefined,
-        });
-      }
     }
 
     return NextResponse.json({

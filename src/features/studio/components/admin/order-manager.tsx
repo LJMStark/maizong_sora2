@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Check, RefreshCw, Search, ShoppingBag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatYuan } from "@/lib/format";
+import { formatYuan, formatDateTime as formatAdminDateTime } from "@/lib/format";
 
 type OrderStatus = "pending" | "paid" | "cancelled";
 type OrderStatusFilter = OrderStatus | "all";
@@ -72,12 +72,7 @@ function getPackageTypeLabel(type: PackageType | null): string {
 
 function formatDateTime(value: string | null): string {
   if (!value) return "-";
-  return new Date(value).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatAdminDateTime(value);
 }
 
 export default function OrderManager() {

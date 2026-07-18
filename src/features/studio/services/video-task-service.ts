@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { videoTask, VideoTaskType } from "@/db/schema";
-import { eq, desc, and, ne } from "drizzle-orm";
+import { eq, desc, and, ne, sql } from "drizzle-orm";
 
 export type VideoProvider = "duomi" | "kie" | "veo";
 
@@ -120,16 +120,6 @@ export const videoTaskService = {
     return task || null;
   },
 
-  async getTaskByDuomiId(duomiTaskId: string): Promise<VideoTaskType | null> {
-    const [task] = await db
-      .select()
-      .from(videoTask)
-      .where(eq(videoTask.duomiTaskId, duomiTaskId))
-      .limit(1);
-
-    return task || null;
-  },
-
   async getTaskByProviderTaskId(
     providerTaskId: string,
     provider: VideoProvider
@@ -168,18 +158,6 @@ export const videoTaskService = {
       .orderBy(desc(videoTask.createdAt));
   },
 
-  async getActiveTasks(userId: string): Promise<VideoTaskType[]> {
-    const tasks = await db
-      .select()
-      .from(videoTask)
-      .where(eq(videoTask.userId, userId))
-      .orderBy(desc(videoTask.createdAt));
-
-    return tasks.filter(
-      (task) => task.status === "pending" || task.status === "running" || task.status === "retrying"
-    );
-  },
-
   async updateProvider(
     taskId: string,
     provider: VideoProvider
@@ -197,26 +175,26 @@ export const videoTaskService = {
     taskId: string,
     type: "generate" | "callback"
   ): Promise<VideoTaskType> {
-    const task = await this.getTaskById(taskId);
-    if (!task) {
-      throw new Error("Task not found");
-    }
-
-    const updateData: Partial<VideoTaskType> = {
-      lastRetryAt: new Date(),
-    };
-
-    if (type === "generate") {
-      updateData.generateRetryCount = (task.generateRetryCount ?? 0) + 1;
-    } else {
-      updateData.callbackRetryCount = (task.callbackRetryCount ?? 0) + 1;
-    }
+    const updateData =
+      type === "generate"
+        ? {
+            generateRetryCount: sql`${videoTask.generateRetryCount} + 1`,
+            lastRetryAt: new Date(),
+          }
+        : {
+            callbackRetryCount: sql`${videoTask.callbackRetryCount} + 1`,
+            lastRetryAt: new Date(),
+          };
 
     const [updatedTask] = await db
       .update(videoTask)
       .set(updateData)
       .where(eq(videoTask.id, taskId))
       .returning();
+
+    if (!updatedTask) {
+      throw new Error("Task not found");
+    }
 
     return updatedTask;
   },

@@ -8,6 +8,49 @@ export const dynamic = "force-dynamic";
 const POLL_INTERVAL_MS = 3000;
 const HEARTBEAT_INTERVAL_MS = 15000;
 
+type ConfigVersionTick = { version: string } | { error: true };
+type ConfigVersionListener = (tick: ConfigVersionTick) => void;
+
+// 所有 SSE 连接共享一个轮询定时器，避免每个连接各自每 3s 打一次数据库。
+// 无连接订阅时定时器自动停止，方便无服务器实例空闲下线。
+let sharedPollTimer: ReturnType<typeof setInterval> | null = null;
+const configVersionListeners = new Set<ConfigVersionListener>();
+
+function startSharedPollIfNeeded(): void {
+  if (sharedPollTimer) return;
+
+  sharedPollTimer = setInterval(async () => {
+    try {
+      const latestVersion = await videoLimitService.getConfigVersion();
+      for (const listener of configVersionListeners) {
+        listener({ version: latestVersion });
+      }
+    } catch {
+      for (const listener of configVersionListeners) {
+        listener({ error: true });
+      }
+    }
+  }, POLL_INTERVAL_MS);
+}
+
+function stopSharedPollIfIdle(): void {
+  if (configVersionListeners.size > 0) return;
+  if (sharedPollTimer) {
+    clearInterval(sharedPollTimer);
+    sharedPollTimer = null;
+  }
+}
+
+function subscribeToConfigVersion(listener: ConfigVersionListener): () => void {
+  configVersionListeners.add(listener);
+  startSharedPollIfNeeded();
+
+  return () => {
+    configVersionListeners.delete(listener);
+    stopSharedPollIfIdle();
+  };
+}
+
 function toSseEvent(
   event: string,
   payload: Record<string, string | number | boolean>
@@ -24,7 +67,7 @@ export async function GET(request: Request) {
 
   const encoder = new TextEncoder();
   let closed = false;
-  let pollTimer: ReturnType<typeof setInterval> | null = null;
+  let unsubscribe: (() => void) | null = null;
   let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
   const stream = new ReadableStream({
@@ -41,9 +84,9 @@ export async function GET(request: Request) {
         if (closed) return;
         closed = true;
 
-        if (pollTimer) {
-          clearInterval(pollTimer);
-          pollTimer = null;
+        if (unsubscribe) {
+          unsubscribe();
+          unsubscribe = null;
         }
 
         if (heartbeatTimer) {
@@ -66,19 +109,19 @@ export async function GET(request: Request) {
 
       sendEvent("connected", { version: currentVersion });
 
-      pollTimer = setInterval(async () => {
+      unsubscribe = subscribeToConfigVersion((tick) => {
         if (closed) return;
 
-        try {
-          const latestVersion = await videoLimitService.getConfigVersion();
-          if (latestVersion !== currentVersion) {
-            currentVersion = latestVersion;
-            sendEvent("config-updated", { version: latestVersion });
-          }
-        } catch {
+        if ("error" in tick) {
           sendEvent("stream-error", { message: "CONFIG_VERSION_CHECK_FAILED" });
+          return;
         }
-      }, POLL_INTERVAL_MS);
+
+        if (tick.version !== currentVersion) {
+          currentVersion = tick.version;
+          sendEvent("config-updated", { version: tick.version });
+        }
+      });
 
       heartbeatTimer = setInterval(() => {
         sendEvent("heartbeat", { ts: Date.now() });
@@ -87,9 +130,9 @@ export async function GET(request: Request) {
     cancel() {
       closed = true;
 
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
+      if (unsubscribe) {
+        unsubscribe();
+        unsubscribe = null;
       }
 
       if (heartbeatTimer) {

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { AnnouncementType } from "@/db/schema/studio/announcement";
 import { ChevronDown, ChevronUp, Megaphone } from "lucide-react";
+import { STUDIO_MODAL_OPENED_EVENT } from "../utils/studio-events";
 
 const DISMISSED_KEY = "announcement_dismissed_date";
 
@@ -71,9 +72,9 @@ export default function AnnouncementDialog() {
       dismissToday();
     };
 
-    window.addEventListener("studio:modal-opened", handleAppDialogOpen);
+    window.addEventListener(STUDIO_MODAL_OPENED_EVENT, handleAppDialogOpen);
     return () => {
-      window.removeEventListener("studio:modal-opened", handleAppDialogOpen);
+      window.removeEventListener(STUDIO_MODAL_OPENED_EVENT, handleAppDialogOpen);
     };
   }, []);
 

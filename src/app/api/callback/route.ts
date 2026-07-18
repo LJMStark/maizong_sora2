@@ -1,32 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { storageService } from "@/features/studio/services/storage-service";
-import { creditService } from "@/features/studio/services/credit-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
 import { sanitizeError } from "@/lib/security/error-handler";
+import { safeEqual } from "@/lib/security/safe-equal";
+import { delay } from "@/lib/utils";
+import { getAppBaseUrl } from "@/lib/config";
+import {
+  MAX_RESOURCE_RETRIES,
+  MAX_GENERATION_FAILED_RETRIES,
+  PROMPT_REVIEW_ERROR,
+  isResourceAllocationError,
+  isGenerationFailedError,
+  transitionTaskToErrorAndRefund,
+} from "@/features/studio/services/provider-callback-shared";
 import { VideoTaskType } from "@/db/schema";
 import crypto from "crypto";
-
-// 资源分配错误最多重试 3 次
-const MAX_RESOURCE_RETRIES = 3;
-// 生成失败错误只重试 1 次
-const MAX_GENERATION_FAILED_RETRIES = 1;
-
-// 错误类型判断
-function isResourceAllocationError(message: string): boolean {
-  return message?.toLowerCase().includes("resources are being allocated");
-}
-
-function isGenerationFailedError(message: string): boolean {
-  return message?.toLowerCase().includes("failed to generate");
-}
-
-// 用户友好的错误消息
-const PROMPT_REVIEW_ERROR = "提示词未通过内容审核，请尝试：1) 使用更中性的描述 2) 避免敏感词汇 3) 简化复杂场景";
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function redactSensitiveHeaders(headers: Headers): Record<string, string> {
   const result = Object.fromEntries(headers.entries());
@@ -39,37 +28,9 @@ function redactSensitiveHeaders(headers: Headers): Record<string, string> {
   return result;
 }
 
-async function transitionTaskToErrorAndRefund(params: {
-  task: VideoTaskType;
-  progress: number;
-  errorMessage: string;
-  refundReason: string;
-}): Promise<boolean> {
-  const transitionedTask = await videoTaskService.transitionToErrorIfActive({
-    taskId: params.task.id,
-    progress: params.progress,
-    errorMessage: params.errorMessage,
-  });
-
-  if (!transitionedTask) {
-    return false;
-  }
-
-  await creditService.refundCredits({
-    userId: params.task.userId,
-    amount: params.task.creditCost,
-    reason: params.refundReason,
-    referenceType: "video_task",
-    referenceId: params.task.id,
-    sourceTransactionId: params.task.creditTransactionId ?? undefined,
-  });
-
-  return true;
-}
-
 // 异步重试 Duomi 任务
 async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "generation"): Promise<void> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sora2.681023.xyz";
+  const baseUrl = getAppBaseUrl();
   const callbackUrl = `${baseUrl}/api/callback`;
 
   // 资源分配错误等待更长时间（30s, 60s, 120s）
@@ -118,20 +79,6 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
         refundReason: "视频生成失败 - 退款",
       });
     }
-  }
-}
-
-// 时间恒定的字符串比较，防止 timing 攻击
-function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) {
-    return false;
-  }
-  try {
-    return crypto.timingSafeEqual(bufA, bufB);
-  } catch {
-    return false;
   }
 }
 
