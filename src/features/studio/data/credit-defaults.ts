@@ -6,4 +6,5 @@ export const DEFAULT_CREDIT_COSTS = {
   videoFast: 30,
   videoQuality: 100,
   image: 10,
+  pptPage: 10,
 } as const;

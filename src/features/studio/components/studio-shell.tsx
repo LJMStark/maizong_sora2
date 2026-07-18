@@ -25,6 +25,7 @@ import {
   Palette,
   PanelLeft,
   Pencil,
+  Presentation,
   Search,
   Settings,
   Sparkles,
@@ -104,6 +105,7 @@ function getUserFromAuthResult(result: unknown): StudioSessionUser | null {
 const APP_NAV = [
   { href: "/studio", label: "图像创作", icon: ImageIcon },
   { href: "/studio/video", label: "视频创作", icon: Video },
+  { href: "/studio/ppt", label: "PPT 生成", icon: Presentation },
   { href: "/studio/assets", label: "作品库", icon: Grid2X2 },
   { href: "/studio/profile", label: "设置", icon: Settings },
 ];
@@ -711,11 +713,13 @@ export default function StudioShell({ children }: { children: React.ReactNode })
       ? "设置"
       : pathname.startsWith("/studio/admin")
         ? "管理后台"
-        : mode === "video"
-          ? "视频创作"
-          : mode === "image"
-            ? "图像创作"
-            : APP_BRAND;
+        : pathname.startsWith("/studio/ppt")
+          ? "PPT 生成"
+          : mode === "video"
+            ? "视频创作"
+            : mode === "image"
+              ? "图像创作"
+              : APP_BRAND;
 
   const trimmedSearch = search.trim().toLowerCase();
   const hasSession = hydrated && !isPending && Boolean(resolvedUser);

@@ -23,6 +23,7 @@ export interface CreditCosts {
   videoFast: number;
   videoQuality: number;
   image: number;
+  pptPage: number;
 }
 
 export interface VideoGenerationConfig {
@@ -58,7 +59,7 @@ export const videoLimitService = {
       .where(
         sql`${systemConfig.key} IN (
           'credit_cost_video_fast', 'credit_cost_video_quality', 'credit_cost_image',
-          'video_fast_provider', 'video_quality_provider'
+          'credit_cost_ppt_page', 'video_fast_provider', 'video_quality_provider'
         )`
       );
 
@@ -85,6 +86,11 @@ export const videoLimitService = {
         case "credit_cost_image": {
           const v = parseInt(config.value, 10);
           if (!isNaN(v) && v >= 0) result.creditCosts.image = v;
+          break;
+        }
+        case "credit_cost_ppt_page": {
+          const v = parseInt(config.value, 10);
+          if (!isNaN(v) && v >= 0) result.creditCosts.pptPage = v;
           break;
         }
         case "video_fast_provider":
@@ -409,7 +415,7 @@ export const videoLimitService = {
    * 更新积分消耗配置
    */
   async updateCreditCosts(
-    costs: { videoFast?: number; videoQuality?: number; image?: number },
+    costs: { videoFast?: number; videoQuality?: number; image?: number; pptPage?: number },
     updatedBy: string
   ): Promise<void> {
     if (costs.videoFast !== undefined && costs.videoFast >= 0) {
@@ -433,6 +439,14 @@ export const videoLimitService = {
         "credit_cost_image",
         costs.image.toString(),
         "图片生成积分消耗",
+        updatedBy
+      );
+    }
+    if (costs.pptPage !== undefined && costs.pptPage >= 0) {
+      await this.upsertConfig(
+        "credit_cost_ppt_page",
+        costs.pptPage.toString(),
+        "PPT 单页生成积分消耗",
         updatedBy
       );
     }

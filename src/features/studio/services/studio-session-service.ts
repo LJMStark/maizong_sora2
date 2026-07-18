@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { studioSession, StudioSessionType } from "@/db/schema";
 import { and, desc, eq, ilike } from "drizzle-orm";
 
-export type StudioSessionKind = "image" | "video";
+export type StudioSessionKind = "image" | "video" | "ppt";
 
 export class StudioSessionAccessError extends Error {
   constructor() {
@@ -30,7 +30,11 @@ export const studioSessionService = {
         type: params.type,
         title: buildTitle(
           params.title,
-          params.type === "image" ? "未命名图像" : "未命名视频"
+          params.type === "image"
+            ? "未命名图像"
+            : params.type === "video"
+              ? "未命名视频"
+              : "未命名 PPT"
         ),
       })
       .returning();

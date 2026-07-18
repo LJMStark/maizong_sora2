@@ -1,6 +1,7 @@
 export const NAV_ITEMS = [
   { path: "/studio", icon: "image", labelKey: "imageWorkshop" },
   { path: "/studio/video", icon: "video_camera_back", labelKey: "videoWorkshop" },
+  { path: "/studio/ppt", icon: "co_present", labelKey: "pptWorkshop" },
   { path: "/studio/assets", icon: "grid_view", labelKey: "collections" },
   { path: "/studio/profile", icon: "person", labelKey: "profile" },
   { path: "/studio/subscription", icon: "payments", labelKey: "subscription" },

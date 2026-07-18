@@ -13,6 +13,7 @@ export const user = pgTable("user", {
   credits: integer("credits").notNull().default(50),
   dailyFastVideoLimit: integer("daily_fast_video_limit"),
   dailyQualityVideoLimit: integer("daily_quality_video_limit"),
+  dailyPptLimit: integer("daily_ppt_limit"),
   createdAt: timestamp("createdAt").defaultNow(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

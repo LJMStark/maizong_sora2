@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkAdmin, isAdminError, adminErrorResponse } from "@/lib/auth/check-admin";
 import { videoLimitService } from "@/features/studio/services/video-limit-service";
 import type { VideoProvider } from "@/features/studio/services/video-limit-service";
+import { pptLimitService } from "@/features/studio/services/ppt-limit-service";
 
 export async function GET() {
   const authCheck = await checkAdmin();
@@ -10,19 +11,22 @@ export async function GET() {
   }
 
   try {
-    const [limits, providers, creditCosts] = await Promise.all([
+    const [limits, providers, creditCosts, dailyPptLimit] = await Promise.all([
       videoLimitService.getGlobalLimits(),
       videoLimitService.getProviderSettings(),
       videoLimitService.getCreditCosts(),
+      pptLimitService.getGlobalLimit(),
     ]);
     return NextResponse.json({
       success: true,
       data: {
         ...limits,
         ...providers,
+        dailyPptLimit,
         creditCostVideoFast: creditCosts.videoFast,
         creditCostVideoQuality: creditCosts.videoQuality,
         creditCostImage: creditCosts.image,
+        creditCostPptPage: creditCosts.pptPage,
       },
     });
   } catch (error) {
@@ -42,11 +46,13 @@ export async function PATCH(request: Request) {
     const {
       dailyFastVideoLimit,
       dailyQualityVideoLimit,
+      dailyPptLimit,
       videoFastProvider,
       videoQualityProvider,
       creditCostVideoFast,
       creditCostVideoQuality,
       creditCostImage,
+      creditCostPptPage,
     } = body;
 
     // 验证视频限额
@@ -63,6 +69,15 @@ export async function PATCH(request: Request) {
       if (typeof dailyQualityVideoLimit !== "number" || dailyQualityVideoLimit < -1) {
         return NextResponse.json(
           { error: "dailyQualityVideoLimit 必须是 >= -1 的整数" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (dailyPptLimit !== undefined) {
+      if (typeof dailyPptLimit !== "number" || dailyPptLimit < -1) {
+        return NextResponse.json(
+          { error: "dailyPptLimit 必须是 >= -1 的整数" },
           { status: 400 }
         );
       }
@@ -108,6 +123,14 @@ export async function PATCH(request: Request) {
         );
       }
     }
+    if (creditCostPptPage !== undefined) {
+      if (typeof creditCostPptPage !== "number" || creditCostPptPage < 0) {
+        return NextResponse.json(
+          { error: "creditCostPptPage 必须是 >= 0 的整数" },
+          { status: 400 }
+        );
+      }
+    }
 
     // 更新视频限额
     if (dailyFastVideoLimit !== undefined || dailyQualityVideoLimit !== undefined) {
@@ -125,31 +148,46 @@ export async function PATCH(request: Request) {
       );
     }
 
+    // 更新 PPT 每日限额
+    if (dailyPptLimit !== undefined) {
+      await pptLimitService.updateGlobalLimit(dailyPptLimit, authCheck.userId);
+    }
+
     // 更新积分消耗配置
-    if (creditCostVideoFast !== undefined || creditCostVideoQuality !== undefined || creditCostImage !== undefined) {
+    if (
+      creditCostVideoFast !== undefined ||
+      creditCostVideoQuality !== undefined ||
+      creditCostImage !== undefined ||
+      creditCostPptPage !== undefined
+    ) {
       await videoLimitService.updateCreditCosts(
         {
           videoFast: creditCostVideoFast,
           videoQuality: creditCostVideoQuality,
           image: creditCostImage,
+          pptPage: creditCostPptPage,
         },
         authCheck.userId
       );
     }
 
-    const [updatedLimits, updatedProviders, updatedCreditCosts] = await Promise.all([
-      videoLimitService.getGlobalLimits(),
-      videoLimitService.getProviderSettings(),
-      videoLimitService.getCreditCosts(),
-    ]);
+    const [updatedLimits, updatedProviders, updatedCreditCosts, updatedPptLimit] =
+      await Promise.all([
+        videoLimitService.getGlobalLimits(),
+        videoLimitService.getProviderSettings(),
+        videoLimitService.getCreditCosts(),
+        pptLimitService.getGlobalLimit(),
+      ]);
     return NextResponse.json({
       success: true,
       data: {
         ...updatedLimits,
         ...updatedProviders,
+        dailyPptLimit: updatedPptLimit,
         creditCostVideoFast: updatedCreditCosts.videoFast,
         creditCostVideoQuality: updatedCreditCosts.videoQuality,
         creditCostImage: updatedCreditCosts.image,
+        creditCostPptPage: updatedCreditCosts.pptPage,
       },
     });
   } catch (error) {

@@ -4,6 +4,7 @@ import { user } from "../auth/user";
 export const studioSessionTypeEnum = pgEnum("studio_session_type", [
   "image",
   "video",
+  "ppt",
 ]);
 
 export const studioSession = pgTable("studio_session", {

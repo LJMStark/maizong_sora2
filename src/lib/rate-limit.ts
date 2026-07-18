@@ -10,6 +10,10 @@ export const RATE_LIMITS = {
   imageGenerate: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
   videoGenerate: { requests: 3, windowSeconds: 60 },  // 3 requests per minute
   enhancePrompt: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
+  pptOutline: { requests: 10, windowSeconds: 60 },    // 10 requests per minute
+  pptGenerate: { requests: 3, windowSeconds: 60 },    // 3 requests per minute
+  pptTemplateAnalyze: { requests: 5, windowSeconds: 60 }, // 5 requests per minute
+  pptSpeech: { requests: 5, windowSeconds: 60 },      // 5 requests per minute
   default: { requests: 20, windowSeconds: 60 },       // 20 requests per minute
 } as const;
 

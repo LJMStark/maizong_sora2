@@ -164,6 +164,48 @@ export const storageService = {
     return publicUrl;
   },
 
+  async uploadPptSlideFromUrl(
+    userId: string,
+    taskId: string,
+    slideIndex: number,
+    imageUrl: string
+  ): Promise<string> {
+    await this.ensureBucketExists();
+
+    // SSRF Check
+    const { validateUrl } = await import("@/lib/security/ssrf");
+    validateUrl(imageUrl);
+
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      throw new Error(`从 URL 获取图片失败: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type") || "image/png";
+    const extension = contentType.split("/")[1] || "png";
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const path = `users/${userId}/ppt/${taskId}/${slideIndex}.${extension}`;
+
+    const { error } = await getSupabase().storage
+      .from(BUCKET_NAME)
+      .upload(path, imageBuffer, {
+        contentType,
+        upsert: true,
+        cacheControl: IMMUTABLE_CACHE_SECONDS,
+      });
+
+    if (error) {
+      throw new Error(`上传图片失败: ${error.message}`);
+    }
+
+    const {
+      data: { publicUrl },
+    } = getSupabase().storage.from(BUCKET_NAME).getPublicUrl(path);
+
+    return publicUrl;
+  },
+
   async deleteFile(path: string): Promise<void> {
     const { error } = await getSupabase().storage.from(BUCKET_NAME).remove([path]);
 

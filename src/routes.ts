@@ -3,6 +3,7 @@ export const publicRoutes: string[] = [
   "/about",
   "/studio",
   "/studio/video",
+  "/studio/ppt",
   "/studio/assets",
   "/studio/subscription",
   "/studio/profile",
