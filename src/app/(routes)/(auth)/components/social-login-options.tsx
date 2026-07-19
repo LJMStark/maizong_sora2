@@ -5,6 +5,7 @@ import type {
   SocialAuthProviderId,
   SocialProviderAvailability,
 } from "@/lib/auth/social-providers";
+import { ENABLE_ALTERNATIVE_LOGIN_OPTIONS } from "@/lib/auth/login-options";
 
 const socialButtons = [
   {
@@ -37,6 +38,8 @@ export function SocialLoginOptions({
 }: {
   providers: SocialProviderAvailability;
 }) {
+  if (!ENABLE_ALTERNATIVE_LOGIN_OPTIONS) return null;
+
   return (
     <div className="flex w-full flex-col gap-3">
       {socialButtons.map((button) => (

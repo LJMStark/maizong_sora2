@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
 import { SocialAuthButtons } from "./social-auth-buttons";
+import { ENABLE_ALTERNATIVE_LOGIN_OPTIONS } from "@/lib/auth/login-options";
 
 interface LoginDialogProps {
   open: boolean;
@@ -73,12 +74,16 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
             {tAuth("welcomeDialog.description")}
           </DialogDescription>
         </DialogHeader>
-        <SocialAuthButtons />
-        <div className="my-5 flex items-center gap-4 text-xs font-medium text-[#777]">
-          <span className="h-px flex-1 bg-[#e8e8e8]" />
-          或
-          <span className="h-px flex-1 bg-[#e8e8e8]" />
-        </div>
+        {ENABLE_ALTERNATIVE_LOGIN_OPTIONS && (
+          <>
+            <SocialAuthButtons />
+            <div className="my-5 flex items-center gap-4 text-xs font-medium text-[#777]">
+              <span className="h-px flex-1 bg-[#e8e8e8]" />
+              或
+              <span className="h-px flex-1 bg-[#e8e8e8]" />
+            </div>
+          </>
+        )}
         <div className="flex flex-col gap-3">
           <input
             value={email}

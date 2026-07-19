@@ -9,6 +9,7 @@ import type {
   SocialAuthProviderId,
   SocialProviderAvailability,
 } from "@/lib/auth/social-providers";
+import { ENABLE_ALTERNATIVE_LOGIN_OPTIONS } from "@/lib/auth/login-options";
 
 type SocialAuthButtonConfig = {
   label: string;
@@ -44,7 +45,7 @@ const emptyProviders: SocialProviderAvailability = {
   microsoft: false,
 };
 
-export function SocialAuthButtons() {
+function EnabledSocialAuthButtons() {
   const [providers, setProviders] =
     React.useState<SocialProviderAvailability>(emptyProviders);
 
@@ -126,4 +127,10 @@ export function SocialAuthButtons() {
       })}
     </div>
   );
+}
+
+export function SocialAuthButtons() {
+  if (!ENABLE_ALTERNATIVE_LOGIN_OPTIONS) return null;
+
+  return <EnabledSocialAuthButtons />;
 }

@@ -1,3 +1,5 @@
+import { ENABLE_ALTERNATIVE_LOGIN_OPTIONS } from "./login-options";
+
 export type SocialAuthProviderId = "google" | "apple" | "microsoft";
 
 export type SocialProviderAvailability = Record<SocialAuthProviderId, boolean>;
@@ -9,6 +11,14 @@ type BetterAuthSocialProviders = NonNullable<
 const hasValue = (value: string | undefined) => Boolean(value?.trim());
 
 export function getSocialProviderAvailability(): SocialProviderAvailability {
+  if (!ENABLE_ALTERNATIVE_LOGIN_OPTIONS) {
+    return {
+      google: false,
+      apple: false,
+      microsoft: false,
+    };
+  }
+
   return {
     google:
       hasValue(process.env.GOOGLE_CLIENT_ID) &&
