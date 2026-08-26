@@ -21,6 +21,7 @@ export const publicApiRoutes: string[] = [
   "/api/packages",
   "/api/announcements",
   "/api/cron/grant-daily-credits",
+  "/api/gallery/xiaoxiaodong",
 ];
 
 export const DEFAULT_LOGIN_REDIRECT: string = "/";

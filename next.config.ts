@@ -3,12 +3,31 @@ import createNextIntlPlugin from 'next-intl/plugin';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
+function supabaseImageHost() {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").hostname;
+  } catch {
+    return "";
+  }
+}
+
+const supabaseHost = supabaseImageHost();
+
 const nextConfig: NextConfig = {
   devIndicators: false,
   images: {
     formats: ["image/avif", "image/webp"],
     // 灵感库配图等静态图基本不变，优化结果在边缘节点缓存 31 天
     minimumCacheTTL: 2678400,
+    remotePatterns: supabaseHost
+      ? [
+          {
+            protocol: "https",
+            hostname: supabaseHost,
+            pathname: "/storage/v1/object/public/**",
+          },
+        ]
+      : [],
   },
   async headers() {
     return [

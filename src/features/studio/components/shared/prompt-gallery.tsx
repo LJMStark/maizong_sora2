@@ -26,9 +26,47 @@ interface PromptGalleryProps {
   leadingTile?: React.ReactNode;
   /** 收起状态下最多显示的条目数 */
   initialCount?: number;
+  /** 栏目切换时通知（用于按需拉取 CDN 数据） */
+  onCategoryChange?: (key: string) => void;
+  loading?: boolean;
+  emptyLabel?: string;
 }
 
 const DEFAULT_INITIAL_COUNT = 11;
+
+const LOAD_MORE_SIZE = 24;
+
+function GalleryThumb({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  const remote = src.startsWith("http://") || src.startsWith("https://");
+
+  if (remote) {
+    return (
+      <img
+        src={src}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        className="absolute inset-0 size-full object-cover transition duration-200 group-hover/card:scale-[1.03]"
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      sizes="(max-width: 640px) 33vw, 190px"
+      className="object-cover transition duration-200 group-hover/card:scale-[1.03]"
+    />
+  );
+}
 
 export function PromptGallery({
   categories,
@@ -36,17 +74,22 @@ export function PromptGallery({
   onSelect,
   leadingTile,
   initialCount = DEFAULT_INITIAL_COUNT,
+  onCategoryChange,
+  loading = false,
+  emptyLabel = "这个分类还没有示例",
 }: PromptGalleryProps) {
   const [activeKey, setActiveKey] = useState(categories[0]?.key ?? "");
-  const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(initialCount);
 
   const filtered = items.filter((item) => item.category === activeKey);
-  const visible = expanded ? filtered : filtered.slice(0, initialCount);
+  const visible = filtered.slice(0, visibleCount);
   const hiddenCount = filtered.length - visible.length;
+  const canCollapse = visibleCount > initialCount;
 
   const handleCategoryChange = (key: string) => {
     setActiveKey(key);
-    setExpanded(false);
+    setVisibleCount(initialCount);
+    onCategoryChange?.(key);
   };
 
   return (
@@ -87,13 +130,7 @@ export function PromptGallery({
             className="group/card min-w-0 text-left"
           >
             <span className="relative block aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-[#f6f6f6]">
-              <Image
-                src={item.image}
-                alt={item.title}
-                fill
-                sizes="(max-width: 640px) 33vw, 190px"
-                className="object-cover transition duration-200 group-hover/card:scale-[1.03]"
-              />
+              <GalleryThumb src={item.image} alt={item.title} />
               <span className="absolute inset-0 rounded-[20px] ring-1 ring-inset ring-black/[0.06] transition group-hover/card:ring-black/[0.12]" />
             </span>
             <span className="mt-2.5 block truncate text-center text-[14px] leading-5 text-[#777] transition group-hover/card:text-[#0d0d0d]">
@@ -101,20 +138,42 @@ export function PromptGallery({
             </span>
           </button>
         ))}
+        {loading &&
+          Array.from({ length: 6 }).map((_, index) => (
+            <div key={`skeleton-${index}`} className="min-w-0">
+              <div className="aspect-[3/4] w-full animate-pulse rounded-[20px] bg-[#f0f0f0]" />
+              <div className="mx-auto mt-2.5 h-5 w-16 animate-pulse rounded bg-[#f0f0f0]" />
+            </div>
+          ))}
       </div>
 
-      {(hiddenCount > 0 || expanded) && (
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setExpanded((prev) => !prev)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 text-sm text-[#555] transition hover:bg-black/[0.04]"
-          >
-            {expanded ? "收起" : `展开全部 ${filtered.length} 条`}
-            <ChevronDown
-              className={cn("size-4 transition-transform", expanded && "rotate-180")}
-            />
-          </button>
+      {!loading && filtered.length === 0 && !leadingTile && (
+        <p className="mt-8 text-center text-sm text-[#8a8a8a]">{emptyLabel}</p>
+      )}
+
+      {(hiddenCount > 0 || canCollapse) && (
+        <div className="mt-6 flex justify-center gap-2">
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                setVisibleCount((count) => count + LOAD_MORE_SIZE)
+              }
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 text-sm text-[#555] transition hover:bg-black/[0.04]"
+            >
+              加载更多（剩余 {hiddenCount}）
+              <ChevronDown className="size-4" />
+            </button>
+          )}
+          {canCollapse && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount(initialCount)}
+              className="inline-flex h-9 items-center rounded-full border border-black/10 bg-white px-4 text-sm text-[#555] transition hover:bg-black/[0.04]"
+            >
+              收起
+            </button>
+          )}
         </div>
       )}
     </div>
