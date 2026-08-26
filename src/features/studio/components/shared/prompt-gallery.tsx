@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import Image from "next/image";
-import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useInfiniteSentinel } from "../../hooks/use-infinite-sentinel";
 
 export interface PromptGalleryItem {
   id: string;
@@ -24,7 +24,7 @@ interface PromptGalleryProps {
   onSelect: (item: PromptGalleryItem) => void;
   /** 固定显示在网格首位的自定义卡片（如上传入口） */
   leadingTile?: React.ReactNode;
-  /** 收起状态下最多显示的条目数 */
+  /** 首屏先渲染的条目数，其余随滚动预取 */
   initialCount?: number;
   /** 栏目切换时通知（用于按需拉取 CDN 数据） */
   onCategoryChange?: (key: string) => void;
@@ -32,7 +32,7 @@ interface PromptGalleryProps {
   emptyLabel?: string;
 }
 
-const DEFAULT_INITIAL_COUNT = 11;
+const DEFAULT_INITIAL_COUNT = 23;
 
 const LOAD_MORE_SIZE = 24;
 
@@ -84,7 +84,17 @@ export function PromptGallery({
   const filtered = items.filter((item) => item.category === activeKey);
   const visible = filtered.slice(0, visibleCount);
   const hiddenCount = filtered.length - visible.length;
-  const canCollapse = visibleCount > initialCount;
+  const canLoadMore = hiddenCount > 0 && !loading;
+
+  const loadMore = useCallback(() => {
+    setVisibleCount((count) => count + LOAD_MORE_SIZE);
+  }, []);
+
+  const sentinelRef = useInfiniteSentinel<HTMLDivElement>({
+    enabled: canLoadMore,
+    onIntersect: loadMore,
+    observeKey: `${activeKey}:${visibleCount}:${filtered.length}`,
+  });
 
   const handleCategoryChange = (key: string) => {
     setActiveKey(key);
@@ -127,7 +137,7 @@ export function PromptGallery({
             key={item.id}
             onClick={() => onSelect(item)}
             title={item.title}
-            className="group/card min-w-0 text-left"
+            className="group/card min-w-0 text-left [content-visibility:auto] [contain-intrinsic-size:auto_280px]"
           >
             <span className="relative block aspect-[3/4] w-full overflow-hidden rounded-[20px] bg-[#f6f6f6]">
               <GalleryThumb src={item.image} alt={item.title} />
@@ -151,29 +161,13 @@ export function PromptGallery({
         <p className="mt-8 text-center text-sm text-[#8a8a8a]">{emptyLabel}</p>
       )}
 
-      {(hiddenCount > 0 || canCollapse) && (
-        <div className="mt-6 flex justify-center gap-2">
-          {hiddenCount > 0 && (
-            <button
-              type="button"
-              onClick={() =>
-                setVisibleCount((count) => count + LOAD_MORE_SIZE)
-              }
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-black/10 bg-white px-4 text-sm text-[#555] transition hover:bg-black/[0.04]"
-            >
-              加载更多（剩余 {hiddenCount}）
-              <ChevronDown className="size-4" />
-            </button>
-          )}
-          {canCollapse && (
-            <button
-              type="button"
-              onClick={() => setVisibleCount(initialCount)}
-              className="inline-flex h-9 items-center rounded-full border border-black/10 bg-white px-4 text-sm text-[#555] transition hover:bg-black/[0.04]"
-            >
-              收起
-            </button>
-          )}
+      {canLoadMore && (
+        <div
+          ref={sentinelRef}
+          className="mt-6 flex justify-center"
+          aria-live="polite"
+        >
+          <p className="text-xs text-[#b0b0b0]">下滑查看更多 · 剩余 {hiddenCount}</p>
         </div>
       )}
     </div>

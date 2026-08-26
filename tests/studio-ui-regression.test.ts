@@ -2,6 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+test("prompt gallery prefetches with a scroll sentinel instead of click-to-load", async () => {
+  const sourcePath = new URL(
+    "../src/features/studio/components/shared/prompt-gallery.tsx",
+    import.meta.url
+  );
+  const source = await readFile(sourcePath, "utf8");
+
+  assert.match(source, /useInfiniteSentinel/);
+  assert.match(source, /下滑查看更多/);
+  assert.doesNotMatch(source, /加载更多/);
+});
+
 test("zh-CN studio messages expose shared asset picker namespace", async () => {
   const messagesPath = new URL(
     "../src/i18n/locales/zh-CN/studio.json",
