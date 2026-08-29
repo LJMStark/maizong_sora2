@@ -11,7 +11,7 @@ import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 export const dynamic = "force-dynamic";
 
 function catalogUrl(topic?: string | null) {
-  const base = getXiaoxiaodongGalleryBase();
+  const base = getXiaoxiaodongGalleryBase(true);
   if (!base) return null;
   if (!topic) return `${base}/index.json`;
   return `${base}/topics/${xiaoxiaodongTopicFileName(topic)}`;

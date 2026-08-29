@@ -37,7 +37,7 @@ async function checkDatabase(): Promise<CheckResult> {
  * 因此纳入探活。回报上游状态码以便区分「上游 4xx」与「网络不可达」。
  */
 async function checkGallery(): Promise<CheckResult | string> {
-  const base = getXiaoxiaodongGalleryBase();
+  const base = getXiaoxiaodongGalleryBase(true);
   if (!base) return "not_configured";
 
   try {
@@ -50,8 +50,14 @@ async function checkGallery(): Promise<CheckResult | string> {
     return response.ok ? "ok" : `fail_http_${response.status}`;
   } catch (error) {
     const name = error instanceof Error ? error.name : "Error";
+    // fetch 失败时真正的原因在 cause 上（DNS/连接/TLS），
+    // 只有这层信息才能区分「域名解析不了」和「证书不对」
+    const cause =
+      error instanceof Error && error.cause instanceof Error
+        ? `:${error.cause.message}`
+        : "";
     console.error("[Health] 灵感库检查失败:", { base, error });
-    return `fail_${name}`;
+    return `fail_${name}${cause}`;
   }
 }
 

@@ -106,9 +106,41 @@ export function toStoragePath(stored: string | null | undefined): string | null 
   return path;
 }
 
+/**
+ * 服务端访问 Supabase 用的地址。
+ *
+ * 应用与 Supabase 同在 Zeabur 上时，容器往往访问不到兄弟服务的**公网**
+ * 域名（hairpin），此时需要用内网地址。设置 SUPABASE_INTERNAL_URL 即可。
+ * 未设置则回落到公网地址，行为与之前一致。
+ */
+function getServerSupabaseUrl(): string {
+  return (
+    process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+  );
+}
+
+/**
+ * 把服务端生成的地址换回浏览器可访问的公网主机。
+ * 签名只覆盖路径与 token，不含主机名，所以换主机不会让签名失效。
+ */
+function toBrowserUrl(url: string): string {
+  const internal = process.env.SUPABASE_INTERNAL_URL;
+  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!internal || !publicUrl || internal === publicUrl) return url;
+
+  try {
+    const parsed = new URL(url);
+    const internalOrigin = new URL(internal).origin;
+    if (parsed.origin !== internalOrigin) return url;
+    return `${new URL(publicUrl).origin}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return url;
+  }
+}
+
 function getSupabase(): SupabaseClient {
   if (!supabaseClient) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseUrl = getServerSupabaseUrl();
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
@@ -168,7 +200,7 @@ export const storageService = {
       return null;
     }
 
-    return data.signedUrl;
+    return toBrowserUrl(data.signedUrl);
   },
 
   /** 供外部 AI 拉取的源图链接，有效期更长 */
@@ -210,7 +242,7 @@ export const storageService = {
 
     for (const item of data ?? []) {
       if (item.path && item.signedUrl) {
-        signedByPath.set(item.path, item.signedUrl);
+        signedByPath.set(item.path, toBrowserUrl(item.signedUrl));
       }
     }
 
