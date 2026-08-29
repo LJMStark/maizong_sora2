@@ -1,4 +1,12 @@
-import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
 import { studioSession } from "./studio-session";
 
@@ -45,7 +53,17 @@ export const videoTask = pgTable("video_task", {
     .notNull()
     .$onUpdate(() => new Date()),
   completedAt: timestamp("completed_at"),
-}).enableRLS();
+}, (table) => [
+  // 对账任务每分钟扫描在途任务。绝大多数行最终是终态，用部分索引把
+  // 索引体积压到只覆盖活跃行，写入开销几乎为零。
+  index("video_task_active_idx")
+    .on(table.status, table.updatedAt)
+    .where(sql`${table.status} in ('pending', 'running', 'retrying')`),
+  // 对账扫描"已失败但可能漏退款"的任务
+  index("video_task_error_idx")
+    .on(table.updatedAt)
+    .where(sql`${table.status} = 'error'`),
+]).enableRLS();
 
 export type VideoTaskType = typeof videoTask.$inferSelect;
 export type VideoTaskInsert = typeof videoTask.$inferInsert;

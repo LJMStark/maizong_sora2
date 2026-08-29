@@ -1,4 +1,12 @@
-import { integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
 import { studioSession } from "./studio-session";
 
@@ -42,7 +50,12 @@ export const imageTask = pgTable("image_task", {
     .notNull()
     .$onUpdate(() => new Date()),
   completedAt: timestamp("completed_at"),
-}).enableRLS();
+}, (table) => [
+  // 对账扫描"已失败但可能漏退款"的图片任务（部分索引，只覆盖 error 行）
+  index("image_task_error_idx")
+    .on(table.updatedAt)
+    .where(sql`${table.status} = 'error'`),
+]).enableRLS();
 
 export type ImageTaskType = typeof imageTask.$inferSelect;
 export type ImageTaskInsert = typeof imageTask.$inferInsert;

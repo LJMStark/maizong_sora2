@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -56,7 +58,15 @@ export const pptSlide = pgTable(
       .$onUpdate(() => new Date()),
     completedAt: timestamp("completed_at"),
   },
-  (table) => [uniqueIndex("ppt_slide_task_index_idx").on(table.taskId, table.slideIndex)]
+  (table) => [
+    uniqueIndex("ppt_slide_task_index_idx").on(table.taskId, table.slideIndex),
+    // 对账扫描可能漏退款的页：已退标记 or 终态未退。部分索引只覆盖候选行。
+    index("ppt_slide_refund_audit_idx")
+      .on(table.updatedAt)
+      .where(
+        sql`${table.refunded} = true OR ${table.status} in ('error', 'cancelled')`
+      ),
+  ]
 ).enableRLS();
 
 export type PptSlideType = typeof pptSlide.$inferSelect;
