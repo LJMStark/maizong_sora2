@@ -5,7 +5,10 @@ import {
 } from "@/features/studio/data/xiaoxiaodong-cdn";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
-export const revalidate = 3600;
+// 不用 Next 的数据缓存：上游一次失败会被连同状态码缓存 3600 秒，
+// 且 Zeabur 的构建缓存会让它跨部署存活——曾导致上游恢复后图库仍瘫痪。
+// 缓存改由下面响应头交给 CDN/浏览器，失败响应不会被长期保留。
+export const dynamic = "force-dynamic";
 
 function catalogUrl(topic?: string | null) {
   const base = getXiaoxiaodongGalleryBase();
@@ -23,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(url, { next: { revalidate: 3600 } });
+    const response = await fetch(url, { cache: "no-store" });
     if (!response.ok) {
       // 只记录状态与目标，便于区分「上游 4xx/5xx」与「网络不可达」，
       // 不回显给调用方
