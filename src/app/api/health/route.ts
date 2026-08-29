@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql } from "drizzle-orm";
 import { Redis } from "@upstash/redis";
 import { db } from "@/db";
+import { getXiaoxiaodongGalleryBase } from "@/features/studio/data/xiaoxiaodong-cdn";
 
 // 探活不缓存，且必须每次真实执行依赖检查
 export const dynamic = "force-dynamic";
@@ -31,6 +32,29 @@ async function checkDatabase(): Promise<CheckResult> {
   }
 }
 
+/**
+ * 灵感库目录是首页要用的外部依赖，坏了页面直接空白，
+ * 因此纳入探活。回报上游状态码以便区分「上游 4xx」与「网络不可达」。
+ */
+async function checkGallery(): Promise<CheckResult | string> {
+  const base = getXiaoxiaodongGalleryBase();
+  if (!base) return "not_configured";
+
+  try {
+    const response = await withTimeout(
+      fetch(`${base}/index.json`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
+      })
+    );
+    return response.ok ? "ok" : `fail_http_${response.status}`;
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "Error";
+    console.error("[Health] 灵感库检查失败:", { base, error });
+    return `fail_${name}`;
+  }
+}
+
 async function checkRedis(): Promise<CheckResult> {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -52,10 +76,15 @@ async function checkRedis(): Promise<CheckResult> {
  * 任一依赖故障返回 503，供外部 uptime 监控告警。
  */
 export async function GET() {
-  const [database, redis] = await Promise.all([checkDatabase(), checkRedis()]);
+  const [database, redis, gallery] = await Promise.all([
+    checkDatabase(),
+    checkRedis(),
+    checkGallery(),
+  ]);
 
-  const checks = { database, redis };
-  const healthy = Object.values(checks).every((state) => state !== "fail");
+  const checks = { database, redis, gallery };
+  // 灵感库是展示型依赖，坏了不代表服务不可用，只降级不判死
+  const healthy = database !== "fail" && redis !== "fail";
 
   return NextResponse.json(
     {
