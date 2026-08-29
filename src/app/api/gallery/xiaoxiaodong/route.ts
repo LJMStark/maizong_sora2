@@ -25,6 +25,12 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(url, { next: { revalidate: 3600 } });
     if (!response.ok) {
+      // 只记录状态与目标，便于区分「上游 4xx/5xx」与「网络不可达」，
+      // 不回显给调用方
+      console.error("[XiaoxiaodongGallery] 上游返回非 2xx:", {
+        status: response.status,
+        url,
+      });
       return NextResponse.json(
         { error: "图库暂不可用" },
         { status: response.status === 404 ? 404 : 502 }

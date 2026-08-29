@@ -15,6 +15,15 @@ const supabaseHost = supabaseImageHost();
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  env: {
+    // 构建时固化，用于确认某次部署是否真的生效（/api/health 会回显）
+    APP_BUILD_TIME: new Date().toISOString(),
+    APP_COMMIT_SHA:
+      process.env.ZEABUR_GIT_COMMIT_SHA ||
+      process.env.VERCEL_GIT_COMMIT_SHA ||
+      process.env.GIT_COMMIT_SHA ||
+      "unknown",
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     // 灵感库配图等静态图基本不变，优化结果在边缘节点缓存 31 天

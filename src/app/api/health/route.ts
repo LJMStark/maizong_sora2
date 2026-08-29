@@ -61,6 +61,11 @@ export async function GET() {
     {
       status: healthy ? "ok" : "degraded",
       checks,
+      // 回显构建标记，用于确认部署是否真的生效
+      build: {
+        builtAt: process.env.APP_BUILD_TIME ?? "unknown",
+        commit: process.env.APP_COMMIT_SHA ?? "unknown",
+      },
       timestamp: new Date().toISOString(),
     },
     {
