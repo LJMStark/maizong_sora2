@@ -1,7 +1,15 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { fetchPublicResource } from "@/lib/security/ssrf";
 
-const BUCKET_NAME = "studio-assets";
+// 用户作品桶：私有，只能通过服务端签发的限时链接访问。
+// 与公开的 studio-assets 分开——后者装的是灵感库等公开素材，
+// 数量上占绝大多数且本就该匿名可读，两类内容混在一个桶里
+// 无法同时满足「用户作品要私密」和「灵感库要公开」。
+const BUCKET_NAME = "studio-user-assets";
+
+// 历史上用户作品曾与公开素材同处 studio-assets，库里仍有指向它的
+// 完整 URL，反解路径时需要一并识别。
+const LEGACY_BUCKET_NAME = "studio-assets";
 
 // 上传路径都带时间戳/taskId、内容写入后不再变化，
 // 让 Supabase CDN 缓存一年（默认仅 3600 秒）。
@@ -81,11 +89,21 @@ export function toStoragePath(stored: string | null | undefined): string | null 
 
   // /storage/v1/object/public/<bucket>/<path> 或 .../object/sign/<bucket>/<path>
   const match = url.pathname.match(
-    new RegExp(`/storage/v1/object/(?:public|sign)/${BUCKET_NAME}/(.+)$`)
+    new RegExp(
+      `/storage/v1/object/(?:public|sign)/(${BUCKET_NAME}|${LEGACY_BUCKET_NAME})/(.+)$`
+    )
   );
   if (!match) return null;
 
-  return decodeURIComponent(match[1]);
+  const path = decodeURIComponent(match[2]);
+
+  // 旧桶里只有 users/ 前缀属于用户作品；gallery/ 等公开素材仍留在
+  // 公开桶，必须原样返回，不能当成私有对象去签名
+  if (match[1] === LEGACY_BUCKET_NAME && !path.startsWith("users/")) {
+    return null;
+  }
+
+  return path;
 }
 
 function getSupabase(): SupabaseClient {

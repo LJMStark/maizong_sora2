@@ -1,85 +1,68 @@
 # 存储私有化 与 数据库迁移 操作手册
 
-代码改动已完成，但有两件事必须在 Supabase / 生产库上手工执行一次。
-**执行顺序：先部署代码，再翻转 bucket。** 反过来会让线上作品短暂 404。
+本文记录存储分桶与迁移流程切换的**已完成状态**及其原因，供后续维护参考。
+第一、二节的线上操作已于 2026-08-29 执行完毕，无需重做。
 
 ---
 
-## 一、把 studio-assets bucket 转为私有
+## 一、存储分桶（已完成）
 
-### 为什么
+### 为什么是两个桶
 
-此前 bucket 是 public，意味着任何人拿到对象地址就能读取任意用户的作品，
-地址本身没有任何鉴权。转私有后，作品只能通过服务端签发的限时链接访问。
+原先只有一个 `studio-assets` 且是 public，用户作品和灵感库素材混在一起。
+直接把它转私有会连带打死灵感库——实际对象分布是：
 
-### 代码侧已经做了什么
+| 前缀 | 数量 | 性质 |
+|---|---|---|
+| `gallery/xiaoxiaodong/` | 9037 | 灵感库，公开展示，本就该匿名可读 |
+| `users/` | 7 | 用户作品，必须私密 |
 
-- 上传函数不再返回公开 URL，改为返回 **bucket 内路径**（如 `users/<uid>/images/xxx.png`），入库存的也是路径。
-- 所有对外输出作品地址的接口，在返回前调用 `storageService.resolveAssetUrls()` 现场签发限时链接（展示 1 小时）。
-- 传给外部 AI 的源图/参考图单独签发 6 小时链接（`resolveProviderAssetUrl`）——否则 provider 拉不到图。
-- `toStoragePath()` 同时认识**历史遗留的完整公开 URL**和新的路径，所以**存量数据不需要迁移**，老行会被自动反解成路径再签名。
-- `next.config.ts` 的图片白名单已加入 `/storage/v1/object/sign/**`。
+所以拆成两个桶，而不是把整桶翻私有：
 
-### 需要你手工执行
+- **`studio-assets`** — 保持 **public**，装灵感库等公开素材。
+- **`studio-user-assets`** — **private**，装用户作品，只能通过服务端签发的限时链接访问。
 
-1. Supabase Dashboard → Storage → `studio-assets` → 设为 Private
-   （或用 service role 调 `updateBucket('studio-assets', { public: false })`）。
-   **文件不需要搬迁**，只是改 bucket 属性。
+### 已执行的操作
 
-2. 在 SQL Editor 执行下面的 RLS 策略。
+1. 建 `studio-user-assets` 私有桶（不设 `fileSizeLimit`——自建 Supabase 的
+   全局上限低于 100MB，显式传更大的值会被拒绝）。
+2. 把 `users/` 下 7 个对象搬过去。
+3. 数据库里 7 行 `ppt_slide.final_image_url` 的完整公开 URL 改写成裸路径。
+4. `storage.objects` 上的三条 RLS 策略指向 `studio-user-assets`。
 
-   注意：本项目所有读写都走服务端 + service role key，**service role 会完全绕过 RLS**，
-   所以真正的隔离来自"服务端先校验归属、再签发限时链接"。
-   下面的策略是**纵深防御**——万一以后有客户端直连，或 anon key 泄露，
-   它能挡住越权读写。
+### 代码侧
 
-```sql
--- 用户只能读自己目录下的对象
-create policy "studio_assets_select_own"
-on storage.objects for select
-to authenticated
-using (
-  bucket_id = 'studio-assets'
-  and (storage.foldername(name))[1] = 'users'
-  and (storage.foldername(name))[2] = (select auth.uid())::text
-);
+- `storage-service.ts` 的 `BUCKET_NAME` = `studio-user-assets`。
+- `toStoragePath()` 同时认识裸路径、新桶 URL、以及**旧桶里 `users/` 前缀**的
+  历史 URL；旧桶里 `gallery/` 等公开前缀会被原样返回，不会被误当私有对象签名。
+- 对外输出前用 `resolveAssetUrls()` 批量签发限时链接（展示 1h）。
+- 传给外部 AI 的源图/参考图单独签 6h（`resolveProviderAssetUrl`）。
+- `next.config.ts` 图片白名单已含 `/storage/v1/object/sign/**`。
 
--- 用户只能写入自己目录
-create policy "studio_assets_insert_own"
-on storage.objects for insert
-to authenticated
-with check (
-  bucket_id = 'studio-assets'
-  and (storage.foldername(name))[1] = 'users'
-  and (storage.foldername(name))[2] = (select auth.uid())::text
-);
+### 自查
 
--- 用户只能删除自己目录下的对象
-create policy "studio_assets_delete_own"
-on storage.objects for delete
-to authenticated
-using (
-  bucket_id = 'studio-assets'
-  and (storage.foldername(name))[1] = 'users'
-  and (storage.foldername(name))[2] = (select auth.uid())::text
-);
+```bash
+# 用户作品的公开地址应当被拒绝
+curl -o /dev/null -w "%{http_code}\n" \
+  "$SUPABASE_URL/storage/v1/object/public/studio-user-assets/users/<uid>/ppt/<task>/1.png"
+# 期望 400
+
+# 灵感库应当仍然可读
+curl -o /dev/null -w "%{http_code}\n" \
+  "$SUPABASE_URL/storage/v1/object/public/studio-assets/gallery/xiaoxiaodong/index.json"
+# 期望 200
 ```
 
-> `(select auth.uid())` 的括号不是风格问题：不包一层的话 Postgres 会对每一行
-> 重新求值该函数，大表上差距可达两个数量级。Supabase 的 `auth_rls_initplan`
-> linter 专门检查这一点。
+### 踩过的坑（留作记录）
 
-### 翻转后自查
-
-- 打开一个作品详情页，图片/视频能正常显示（地址里应含 `/object/sign/` 和 `token=`）。
-- 把该地址里的 `token` 参数删掉再访问，应当被拒绝。
-- 发起一次图生视频/图生图，确认外部 AI 能成功拉到源图（失败会体现为任务报错）。
+- 一次性把 `studio-assets` 整桶转私有会让灵感库 502：它的目录 JSON 是通过
+  `/object/public/` 拿的。已回滚并改为分桶。
+- 灵感库路由带 `revalidate = 3600`，失败结果会被缓存约一小时；重新部署可清除。
 
 ### 已知取舍
 
-- 签名链接的**过期**和 **CDN 缓存**是两回事：链接过期后，已被边缘节点缓存的
-  响应仍可能被返回。要立刻断开某个对象的访问，唯一可靠办法是删除该对象。
-- 私有 bucket 的 CDN 命中率天然低于 public，首次访问会慢一些。
+- 签名链接的**过期**和 **CDN 缓存**是两回事：链接过期后，已被边缘缓存的响应
+  仍可能被返回。要立刻断开某对象的访问，唯一可靠办法是删除该对象。
 
 ---
 
@@ -103,10 +86,10 @@ db:baseline  tools/db-baseline.ts   一次性：把已生效的迁移补登记
 另外 `supabase/migrations/` 已删除——那 5 个文件与 `drizzle/` 下的完全逐字节相同，
 两套目录并存会导致两个工具各自以为掌握了全部历史。**`drizzle/` 现在是唯一来源。**
 
-### 需要你手工执行（只做一次）
+### 已执行（只做一次，无需重做）
 
-生产库此前只用过 `push`，所以 drizzle 的迁移记录表是空的。直接跑 `db:migrate`
-会从 `0000` 开始重放，撞上已存在的表而失败。必须先打基线：
+生产库此前只用过 `push`，drizzle 的迁移记录表是空的。直接跑 `db:migrate`
+会从 `0000` 开始重放并失败，所以先打了基线：
 
 ```bash
 # 1. 确认线上库的结构对应到哪个迁移（正常情况是最后一个已应用的）
@@ -120,6 +103,7 @@ pnpm db:baseline 0015_late_namor
 pnpm db:migrate
 ```
 
+已登记 0000~0015 共 16 条，随后 `db:migrate` 应用了 `0016`（对账用的索引）。
 `db:baseline` 是幂等的，重复执行不会产生重复登记。
 
 > 打基线前请确认线上库结构确实与 `0015` 一致。如果中途手工改过表，
