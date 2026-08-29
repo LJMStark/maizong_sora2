@@ -7,6 +7,7 @@ import {
 import { imageTaskService } from "@/features/studio/services/image-task-service";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
+import { storageService } from "@/features/studio/services/storage-service";
 
 function parseType(value: string | null): StudioSessionKind | undefined {
   if (value === "image" || value === "video") return value;
@@ -49,6 +50,12 @@ export async function GET(
         studioSession.id
       );
 
+      // 私有 bucket：库里存的是路径，输出前批量签发限时链接
+      const [imageSourceUrls, imageUrls] = await Promise.all([
+        storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
+        storageService.resolveAssetUrls(tasks.map((t) => t.finalImageUrl)),
+      ]);
+
       return NextResponse.json({
         success: true,
         session: {
@@ -58,7 +65,7 @@ export async function GET(
           createdAt: studioSession.createdAt,
           updatedAt: studioSession.updatedAt,
         },
-        tasks: tasks.map((task) => ({
+        tasks: tasks.map((task, index) => ({
           id: task.id,
           sessionId: task.sessionId,
           mode: task.mode,
@@ -67,8 +74,8 @@ export async function GET(
           aspectRatio: task.aspectRatio,
           status: task.status,
           errorMessage: task.errorMessage,
-          sourceImageUrl: task.sourceImageUrl,
-          imageUrl: task.finalImageUrl,
+          sourceImageUrl: imageSourceUrls[index],
+          imageUrl: imageUrls[index],
           creditCost: task.creditCost,
           createdAt: task.createdAt,
           completedAt: task.completedAt,
@@ -81,6 +88,14 @@ export async function GET(
       studioSession.id
     );
 
+    // 私有 bucket：库里存的是路径，输出前批量签发限时链接
+    const [videoUrls, videoSourceUrls] = await Promise.all([
+      storageService.resolveAssetUrls(
+        tasks.map((t) => t.finalVideoUrl || t.duomiVideoUrl)
+      ),
+      storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
+    ]);
+
     return NextResponse.json({
       success: true,
       session: {
@@ -90,7 +105,7 @@ export async function GET(
         createdAt: studioSession.createdAt,
         updatedAt: studioSession.updatedAt,
       },
-      tasks: tasks.map((task) => ({
+      tasks: tasks.map((task, index) => ({
         id: task.id,
         sessionId: task.sessionId,
         status: task.status,
@@ -99,8 +114,8 @@ export async function GET(
         aspectRatio: task.aspectRatio,
         duration: task.duration,
         model: task.model,
-        videoUrl: task.finalVideoUrl || task.duomiVideoUrl,
-        sourceImageUrl: task.sourceImageUrl,
+        videoUrl: videoUrls[index],
+        sourceImageUrl: videoSourceUrls[index],
         errorMessage: task.errorMessage,
         creditCost: task.creditCost,
         createdAt: task.createdAt,

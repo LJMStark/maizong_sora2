@@ -15,16 +15,23 @@ import { buildAllSlidePrompts } from "@/features/studio/services/ppt-prompt-buil
 import { getPptStyle } from "@/features/studio/data/ppt-skills";
 import { PptGenerateSchema } from "@/lib/validations/schemas";
 import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
+import { toStoragePath } from "@/features/studio/services/storage-service";
 
 export const maxDuration = 60;
 
-/** 参考图只允许来自本站 Supabase 存储（analyze 路由的产物） */
-function validateRefImageUrls(urls: string[] | undefined): string | null {
-  if (!urls || urls.length === 0) return null;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) return "参考图功能未配置";
-  for (const url of urls) {
-    if (!url.startsWith(supabaseUrl)) {
+/**
+ * 参考图必须是 analyze 路由上传到当前用户目录下的对象。
+ * 校验归属而不只是校验来源——否则可以引用他人目录下的图片。
+ */
+function validateRefImagePaths(
+  paths: string[] | undefined,
+  userId: string
+): string | null {
+  if (!paths || paths.length === 0) return null;
+  const prefix = `users/${userId}/`;
+  for (const value of paths) {
+    const path = toStoragePath(value);
+    if (!path || !path.startsWith(prefix) || path.includes("..")) {
       return "参考图地址无效";
     }
   }
@@ -76,7 +83,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const refUrlError = validateRefImageUrls(data.templateRefImageUrls);
+    const refUrlError = validateRefImagePaths(
+      data.templateRefImageUrls,
+      userId
+    );
     if (refUrlError) {
       return NextResponse.json({ error: refUrlError }, { status: 400 });
     }

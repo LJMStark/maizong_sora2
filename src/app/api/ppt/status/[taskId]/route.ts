@@ -4,14 +4,20 @@ import { pptTaskService } from "@/features/studio/services/ppt-task-service";
 import { pptPipelineService } from "@/features/studio/services/ppt-pipeline-service";
 import { sanitizeError } from "@/lib/security/error-handler";
 import type { PptSlideType, PptTaskType } from "@/db/schema";
+import { storageService } from "@/features/studio/services/storage-service";
 
 export const maxDuration = 60;
 
-function buildSnapshot(task: PptTaskType, slides: PptSlideType[]) {
+async function buildSnapshot(task: PptTaskType, slides: PptSlideType[]) {
   const succeeded = slides.filter((s) => s.status === "succeeded").length;
   const failed = slides.filter((s) => s.status === "error").length;
   const active = slides.find(
     (s) => s.status === "running" || s.status === "queued"
+  );
+
+  // 私有 bucket：库里存的是路径，输出前批量签发限时链接
+  const slideUrls = await storageService.resolveAssetUrls(
+    slides.map((s) => s.finalImageUrl)
   );
 
   return {
@@ -36,11 +42,11 @@ function buildSnapshot(task: PptTaskType, slides: PptSlideType[]) {
       total: task.pageCount,
       currentIndex: active?.slideIndex ?? null,
     },
-    slides: slides.map((s) => ({
+    slides: slides.map((s, index) => ({
       slideIndex: s.slideIndex,
       title: s.title,
       status: s.status,
-      finalImageUrl: s.finalImageUrl,
+      finalImageUrl: slideUrls[index],
       retryCount: s.retryCount,
       errorMessage: s.errorMessage,
       speechNotes: s.speechNotes,
@@ -83,7 +89,7 @@ export async function GET(
       return NextResponse.json({ error: "任务未找到" }, { status: 404 });
     }
 
-    return NextResponse.json(buildSnapshot(freshTask, slides));
+    return NextResponse.json(await buildSnapshot(freshTask, slides));
   } catch (error) {
     return NextResponse.json({ error: sanitizeError(error) }, { status: 500 });
   }

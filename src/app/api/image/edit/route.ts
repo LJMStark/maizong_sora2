@@ -71,12 +71,15 @@ export async function POST(request: NextRequest) {
     // Upload source image to Supabase
     const imageBuffer = Buffer.from(imageBase64, "base64");
     const filename = `source-${Date.now()}.${imageMimeType.split("/")[1] || "png"}`;
-    const sourceImageUrl = await storageService.uploadImage(
+    const sourceImagePath = await storageService.uploadImage(
       userId,
       imageBuffer,
       filename,
       imageMimeType
     );
+    // provider 需要能直接拉取源图，另外签发限时链接
+    const providerSourceImageUrl =
+      await storageService.resolveProviderAssetUrl(sourceImagePath);
 
     // deductCredits 内部使用 advisory lock + 事务原子校验余额
     let transactionId: string;
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
         model: selectedModel,
         prompt,
         aspectRatio,
-        sourceImageUrl,
+        sourceImageUrl: sourceImagePath,
         creditCost: imageCreditCost,
         creditTransactionId: transactionId,
       });
@@ -132,7 +135,7 @@ export async function POST(request: NextRequest) {
       const duomiResponse = await duomiImageService.createImageToImageTask({
         prompt,
         model: selectedModel,
-        imageUrls: [sourceImageUrl],
+        imageUrls: providerSourceImageUrl ? [providerSourceImageUrl] : [],
         aspectRatio,
         imageSize,
       });

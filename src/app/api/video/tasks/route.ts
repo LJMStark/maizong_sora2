@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { sanitizeError } from "@/lib/security/error-handler";
+import { storageService } from "@/features/studio/services/storage-service";
 
 export async function GET() {
   const session = await getServerSession();
@@ -13,7 +14,15 @@ export async function GET() {
   try {
     const tasks = await videoTaskService.getUserTasks(session.user.id);
 
-    const formattedTasks = tasks.map((task) => ({
+    // 私有 bucket：库里存的是路径，输出前批量签发限时链接
+    const [videoUrls, sourceUrls] = await Promise.all([
+      storageService.resolveAssetUrls(
+        tasks.map((t) => t.finalVideoUrl || t.duomiVideoUrl)
+      ),
+      storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
+    ]);
+
+    const formattedTasks = tasks.map((task, index) => ({
       id: task.id,
       sessionId: task.sessionId,
       status: task.status,
@@ -22,8 +31,8 @@ export async function GET() {
       aspectRatio: task.aspectRatio,
       duration: task.duration,
       model: task.model,
-      videoUrl: task.finalVideoUrl || task.duomiVideoUrl,
-      sourceImageUrl: task.sourceImageUrl,
+      videoUrl: videoUrls[index],
+      sourceImageUrl: sourceUrls[index],
       errorMessage: task.errorMessage,
       creditCost: task.creditCost,
       createdAt: task.createdAt,

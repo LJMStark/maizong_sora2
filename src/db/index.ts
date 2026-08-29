@@ -31,3 +31,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export const db = drizzle(client, { schema });
+
+// 调度器需要一条独占连接来持有 session 级 advisory lock（事务级的锁
+// 会随事务结束释放，撑不住一整轮任务），因此这里把底层客户端也导出。
+export const pgClient = client;

@@ -53,7 +53,10 @@ async function retryDuomiTask(task: VideoTaskType, errorType: "resource" | "gene
       model: task.model as "sora-2-temporary" | "sora-2-pro",
       aspectRatio: task.aspectRatio === "9:16" ? "9:16" : "16:9",
       duration: task.duration,
-      imageUrl: task.sourceImageUrl ?? undefined,
+      // 库里存的是私有 bucket 路径，provider 需要限时可访问的链接
+      imageUrl:
+        (await storageService.resolveProviderAssetUrl(task.sourceImageUrl)) ??
+        undefined,
       callbackUrl,
     });
 

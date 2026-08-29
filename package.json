@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:baseline": "tsx tools/db-baseline.ts",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

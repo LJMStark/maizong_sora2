@@ -19,8 +19,15 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     // 灵感库配图等静态图基本不变，优化结果在边缘节点缓存 31 天
     minimumCacheTTL: 2678400,
+    // bucket 已转为私有，作品通过 /object/sign/ 的限时链接访问。
+    // 仍保留 public 前缀以兼容尚未替换完的历史链接。
     remotePatterns: supabaseHost
       ? [
+          {
+            protocol: "https",
+            hostname: supabaseHost,
+            pathname: "/storage/v1/object/sign/**",
+          },
           {
             protocol: "https",
             hostname: supabaseHost,

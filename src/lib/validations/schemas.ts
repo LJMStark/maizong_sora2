@@ -1,17 +1,17 @@
 import { z } from "zod";
 
 // Max decoded image payload accepted from the client. Base64 inflates bytes by
-// ~4/3 and Vercel rejects request bodies over 4.5 MB before the route runs, so
-// the decoded cap must keep encoded-payload + JSON envelope under that ceiling.
-// Routes should also reject oversized requests via Content-Length before
-// parsing the body.
-export const MAX_IMAGE_UPLOAD_BYTES = 3 * 1024 * 1024;
+// ~4/3, so the encoded string is capped accordingly. Deployment is a long-lived
+// Node container on Zeabur, so there is no serverless request-body ceiling here
+// — the cap is a product/memory decision, not a platform one. Routes also reject
+// oversized requests via Content-Length before parsing the body.
+export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_UPLOAD_BYTES / 3) * 4;
 
 const imageBase64Schema = z
   .string()
   .min(1, "图像为必填项")
-  .max(MAX_IMAGE_BASE64_LENGTH, "图像过大（最多 3MB）");
+  .max(MAX_IMAGE_BASE64_LENGTH, "图像过大（最多 10MB）");
 
 export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -56,8 +56,8 @@ export const PPT_LAYOUT_ROLES = [
 export const PPT_MIN_PAGES = 3;
 export const PPT_MAX_PAGES = 20;
 
-// .pptx 模板上传上限（base64 按 4/3 膨胀；受 Vercel 4.5MB 请求体上限约束）
-export const MAX_PPTX_UPLOAD_BYTES = 3 * 1024 * 1024;
+// .pptx 模板上传上限（base64 按 4/3 膨胀）
+export const MAX_PPTX_UPLOAD_BYTES = 20 * 1024 * 1024;
 export const MAX_PPTX_BASE64_LENGTH = Math.ceil(MAX_PPTX_UPLOAD_BYTES / 3) * 4;
 
 const pptOutlineSlideSchema = z.object({
@@ -102,7 +102,8 @@ export const PptGenerateSchema = z
     sampleFirst: z.boolean().default(true),
     speechNotesEnabled: z.boolean().default(false),
     templateProfile: pptTemplateProfileSchema.optional(),
-    templateRefImageUrls: z.array(z.string().url()).max(5).optional(),
+    // analyze 路由返回的是私有 bucket 内的对象路径，不再是可直接访问的 URL
+    templateRefImageUrls: z.array(z.string().min(1).max(500)).max(5).optional(),
     sessionId: z.string().optional(),
   })
   .refine((d) => d.outline.length === d.pageCount, {
@@ -135,7 +136,7 @@ export const PptTemplateAnalyzeSchema = z
   .object({
     pptxBase64: z
       .string()
-      .max(MAX_PPTX_BASE64_LENGTH, "模板文件过大（最多 3MB）")
+      .max(MAX_PPTX_BASE64_LENGTH, "模板文件过大（最多 20MB）")
       .optional(),
     images: z
       .array(

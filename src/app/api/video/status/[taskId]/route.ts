@@ -9,7 +9,7 @@ import { failVideoTaskAndRefund } from "@/features/studio/services/task-failure"
 import { sanitizeError } from "@/lib/security/error-handler";
 import type { VideoTaskType } from "@/db/schema";
 
-function buildTaskResponse(
+async function buildTaskResponse(
   task: VideoTaskType,
   overrides: Partial<{
     status: string;
@@ -26,7 +26,12 @@ function buildTaskResponse(
     sessionId: task.sessionId,
     status: overrides.status ?? task.status,
     progress: overrides.progress ?? task.progress,
-    videoUrl: overrides.videoUrl !== undefined ? overrides.videoUrl : (task.finalVideoUrl || task.duomiVideoUrl || null),
+    // 私有 bucket：库里存的是路径，输出前签发限时链接
+    videoUrl: await storageService.resolveAssetUrl(
+      overrides.videoUrl !== undefined
+        ? overrides.videoUrl
+        : task.finalVideoUrl || task.duomiVideoUrl || null
+    ),
     errorMessage: overrides.errorMessage !== undefined ? overrides.errorMessage : task.errorMessage,
     prompt: task.prompt,
     createdAt: task.createdAt,
@@ -73,14 +78,14 @@ export async function GET(
     }
 
     if (task.status === "succeeded" || task.status === "error") {
-      return NextResponse.json(buildTaskResponse(task, {
+      return NextResponse.json(await buildTaskResponse(task, {
         progress: task.status === "succeeded" ? 100 : task.progress,
         canRetry: task.status === "error",
       }));
     }
 
     if (task.status === "retrying") {
-      return NextResponse.json(buildTaskResponse(task, {
+      return NextResponse.json(await buildTaskResponse(task, {
         videoUrl: null,
         errorMessage: null,
         completedAt: null,
@@ -89,7 +94,7 @@ export async function GET(
     }
 
     if (!task.duomiTaskId) {
-      return NextResponse.json(buildTaskResponse(task, {
+      return NextResponse.json(await buildTaskResponse(task, {
         errorMessage: task.errorMessage || "任务创建中",
       }));
     }
@@ -117,7 +122,7 @@ export async function GET(
             errorMessage: "状态中缺少视频 URL",
           });
 
-          return NextResponse.json(buildTaskResponse(task, {
+          return NextResponse.json(await buildTaskResponse(task, {
             status: "error",
             progress,
             errorMessage: "状态中缺少视频 URL",
@@ -150,13 +155,13 @@ export async function GET(
           if (!latestTask) {
             return NextResponse.json({ error: "任务未找到" }, { status: 404 });
           }
-          return NextResponse.json(buildTaskResponse(latestTask, {
+          return NextResponse.json(await buildTaskResponse(latestTask, {
             progress: latestTask.status === "succeeded" ? 100 : latestTask.progress,
             canRetry: latestTask.status === "error",
           }));
         }
 
-        return NextResponse.json(buildTaskResponse(updatedTask, {
+        return NextResponse.json(await buildTaskResponse(updatedTask, {
           status: "succeeded",
           progress: 100,
           videoUrl: finalVideoUrl,
@@ -176,7 +181,7 @@ export async function GET(
           errorMessage,
         });
 
-        return NextResponse.json(buildTaskResponse(task, {
+        return NextResponse.json(await buildTaskResponse(task, {
           status: "error",
           progress,
           errorMessage,
@@ -190,14 +195,14 @@ export async function GET(
         await videoTaskService.updateTaskStatus(task.id, mappedStatus, progress);
       }
 
-      return NextResponse.json(buildTaskResponse(task, {
+      return NextResponse.json(await buildTaskResponse(task, {
         status: mappedStatus,
         progress,
       }));
     } catch (pollError) {
       const message = pollError instanceof Error ? pollError.message : "获取状态失败";
       const statusStr = task.status as string;
-      return NextResponse.json(buildTaskResponse(task, {
+      return NextResponse.json(await buildTaskResponse(task, {
         errorMessage: message,
         isRetrying: statusStr === "retrying",
         canRetry: statusStr === "error",

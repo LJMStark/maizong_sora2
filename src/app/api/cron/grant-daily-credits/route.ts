@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, gte, isNull, lt, lte, or } from "drizzle-orm";
-import { db } from "@/db";
-import { userSubscription } from "@/db/schema";
+import { refreshDailySubscriptionQuota } from "@/features/studio/services/subscription-quota-service";
 import { sanitizeApiErrorMessage } from "@/lib/api/sanitize-error-message";
 
+/**
+ * 订阅额度刷新的手动/外部触发入口。
+ * 常规调度由进程内 scheduler 负责（见 src/lib/scheduler.ts），
+ * 本路由保留用于人工触发和外部调度器兜底。
+ */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -12,46 +15,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-
   try {
-    const expiredRows = await db
-      .update(userSubscription)
-      .set({ status: "expired" })
-      .where(
-        and(
-          eq(userSubscription.status, "active"),
-          lt(userSubscription.endDate, today)
-        )
-      )
-      .returning({ id: userSubscription.id });
-
-    // 新模型下每日额度不再写入 user.credits，而是刷新 daily_credits_remaining。
-    const refreshedRows = await db
-      .update(userSubscription)
-      .set({
-        dailyCreditsRemaining: userSubscription.dailyCredits,
-        lastGrantDate: today,
-      })
-      .where(
-        and(
-          eq(userSubscription.status, "active"),
-          lte(userSubscription.startDate, today),
-          gte(userSubscription.endDate, today),
-          or(
-            isNull(userSubscription.lastGrantDate),
-            lt(userSubscription.lastGrantDate, today)
-          )
-        )
-      )
-      .returning({ id: userSubscription.id });
-
-    return NextResponse.json({
-      success: true,
-      refreshedDailyQuota: refreshedRows.length,
-      expiredSubscriptions: expiredRows.length,
-      date: today,
-    });
+    const result = await refreshDailySubscriptionQuota();
+    return NextResponse.json({ success: true, ...result });
   } catch (error) {
     const message = sanitizeApiErrorMessage(error);
     return NextResponse.json(

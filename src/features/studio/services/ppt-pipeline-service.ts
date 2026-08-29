@@ -15,6 +15,8 @@ import {
 const ZOMBIE_STALE_MS = 60 * 1000;
 // 单页生成超时
 const SLIDE_TIMEOUT_MS = 10 * 60 * 1000;
+// 模板参考图签名链接有效期：整卷 PPT 逐页生成可能持续较久
+const PPT_REF_IMAGE_TTL_SECONDS = 6 * 60 * 60;
 // provider 创建/查询瞬态错误（5xx、网络）最多重试次数
 const MAX_TRANSIENT_RETRIES = 2;
 
@@ -86,13 +88,21 @@ async function refundSlide(
 /** 已认领页（running、providerTaskId 为空）→ 创建 provider 任务 */
 async function kickSlide(task: PptTaskType, slide: PptSlideType): Promise<void> {
   try {
+    // 参考图存的是私有 bucket 路径，provider 需要限时可访问的链接
+    const refImageUrls =
+      task.templateRefImageUrls && task.templateRefImageUrls.length > 0
+        ? (
+            await storageService.resolveAssetUrls(
+              task.templateRefImageUrls,
+              PPT_REF_IMAGE_TTL_SECONDS
+            )
+          ).filter((url): url is string => Boolean(url))
+        : [];
+
     const response = await duomiGptImageService.createTask({
       prompt: slide.prompt,
       resolution: task.resolution,
-      imageUrls:
-        task.templateRefImageUrls && task.templateRefImageUrls.length > 0
-          ? task.templateRefImageUrls
-          : undefined,
+      imageUrls: refImageUrls.length > 0 ? refImageUrls : undefined,
     });
     await pptTaskService.setSlideProviderTaskId(slide.id, response.task_id);
   } catch (error) {

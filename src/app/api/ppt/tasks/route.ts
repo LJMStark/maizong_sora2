@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth/get-session";
 import { pptTaskService } from "@/features/studio/services/ppt-task-service";
 import { sanitizeError } from "@/lib/security/error-handler";
+import { storageService } from "@/features/studio/services/storage-service";
 
 export async function GET() {
   const session = await getServerSession();
@@ -24,8 +25,13 @@ export async function GET() {
       }
     }
 
+    // 私有 bucket：库里存的是路径，输出前批量签发限时链接
+    const coverUrls = await storageService.resolveAssetUrls(
+      tasks.map((t) => coverByTask.get(t.id) ?? null)
+    );
+
     return NextResponse.json({
-      tasks: tasks.map((task) => ({
+      tasks: tasks.map((task, index) => ({
         taskId: task.id,
         sessionId: task.sessionId,
         title: task.title,
@@ -33,7 +39,7 @@ export async function GET() {
         skillKey: task.skillKey,
         styleKey: task.styleKey,
         pageCount: task.pageCount,
-        coverImageUrl: coverByTask.get(task.id) ?? null,
+        coverImageUrl: coverUrls[index],
         creditCostTotal: task.creditCostTotal,
         refundedCredits: task.refundedCredits,
         createdAt: task.createdAt,

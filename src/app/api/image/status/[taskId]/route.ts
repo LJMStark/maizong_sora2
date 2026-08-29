@@ -35,7 +35,7 @@ export async function GET(
         taskId: task.id,
         sessionId: task.sessionId,
         status: task.status,
-        imageUrl: task.finalImageUrl,
+        imageUrl: await storageService.resolveAssetUrl(task.finalImageUrl),
         errorMessage: task.errorMessage,
       });
     }
@@ -90,7 +90,9 @@ export async function GET(
             taskId: latestTask.id,
             sessionId: latestTask.sessionId,
             status: latestTask.status,
-            imageUrl: latestTask.finalImageUrl,
+            imageUrl: await storageService.resolveAssetUrl(
+              latestTask.finalImageUrl
+            ),
             errorMessage: latestTask.errorMessage,
           });
         }
@@ -99,7 +101,7 @@ export async function GET(
           taskId: updatedTask.id,
           sessionId: updatedTask.sessionId,
           status: "succeeded",
-          imageUrl: finalImageUrl,
+          imageUrl: await storageService.resolveAssetUrl(finalImageUrl),
         });
       } else if (duomiStatus.state === "error") {
         const errorMessage = duomiStatus.error || "图片生成失败";

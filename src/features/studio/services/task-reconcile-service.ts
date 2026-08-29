@@ -373,6 +373,11 @@ export async function recoverStuckVideoTasks(): Promise<VideoRecoveryStats> {
 
   for (const task of stuckRetrying) {
     try {
+      // 库里存的是私有 bucket 路径，provider 需要限时可访问的链接
+      const providerSourceImageUrl =
+        (await storageService.resolveProviderAssetUrl(task.sourceImageUrl)) ??
+        undefined;
+
       let providerTaskId: string | undefined;
       if (task.provider === "duomi") {
         const response = await duomiService.createVideoTask({
@@ -380,7 +385,7 @@ export async function recoverStuckVideoTasks(): Promise<VideoRecoveryStats> {
           model: task.model as "sora-2-temporary" | "sora-2-pro",
           aspectRatio: task.aspectRatio === "9:16" ? "9:16" : "16:9",
           duration: task.duration,
-          imageUrl: task.sourceImageUrl ?? undefined,
+          imageUrl: providerSourceImageUrl,
           callbackUrl: `${getAppBaseUrl()}/api/callback`,
         });
         providerTaskId = response.id;
@@ -390,7 +395,7 @@ export async function recoverStuckVideoTasks(): Promise<VideoRecoveryStats> {
           prompt: task.prompt,
           aspectRatio: task.aspectRatio === "9:16" ? "9:16" : "16:9",
           duration: task.duration,
-          imageUrl: task.sourceImageUrl ?? undefined,
+          imageUrl: providerSourceImageUrl,
           callbackUrl,
           progressCallbackUrl: callbackUrl,
           isPro: task.model === "sora-2-pro",

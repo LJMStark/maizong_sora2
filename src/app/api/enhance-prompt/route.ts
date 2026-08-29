@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       }
       if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
         return NextResponse.json(
-          { error: "Image too large, max 3MB" },
+          { error: "Image too large, max 10MB" },
           { status: 400 }
         );
       }

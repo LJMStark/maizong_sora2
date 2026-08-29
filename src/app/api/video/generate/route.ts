@@ -154,16 +154,21 @@ export async function POST(request: NextRequest) {
       sessionId,
     });
 
-    let sourceImageUrl: string | undefined;
+    // sourceImagePath 入库；provider 需要能直接拉取，因此另外签发限时链接
+    let sourceImagePath: string | undefined;
+    let providerSourceImageUrl: string | undefined;
     if (imageBase64 && imageMimeType) {
       const imageBuffer = Buffer.from(imageBase64, "base64");
       const filename = `source-${Date.now()}.${imageMimeType.split("/")[1] || "png"}`;
-      sourceImageUrl = await storageService.uploadImage(
+      sourceImagePath = await storageService.uploadImage(
         userId,
         imageBuffer,
         filename,
         imageMimeType
       );
+      providerSourceImageUrl =
+        (await storageService.resolveProviderAssetUrl(sourceImagePath)) ??
+        undefined;
     }
 
     // deductCredits 内部使用 advisory lock + 事务原子校验余额，
@@ -201,7 +206,7 @@ export async function POST(request: NextRequest) {
         prompt,
         aspectRatio: aspectRatio || "16:9",
         duration: resolvedDuration,
-        sourceImageUrl,
+        sourceImageUrl: sourceImagePath,
         creditCost,
         creditTransactionId: transactionId,
         provider: actualProvider,
@@ -226,7 +231,9 @@ export async function POST(request: NextRequest) {
           return veoService.createVideoTask({
             prompt,
             aspectRatio: resolvedAspectRatio,
-            imageUrls: sourceImageUrl ? [sourceImageUrl] : undefined,
+            imageUrls: providerSourceImageUrl
+              ? [providerSourceImageUrl]
+              : undefined,
           });
         }
         if (actualProvider === "kie") {
@@ -234,7 +241,7 @@ export async function POST(request: NextRequest) {
             prompt,
             aspectRatio: resolvedAspectRatio,
             duration: resolvedDuration,
-            imageUrl: sourceImageUrl,
+            imageUrl: providerSourceImageUrl,
             callbackUrl: `${baseUrl}/api/callback/kie`,
             progressCallbackUrl: `${baseUrl}/api/callback/kie`,
             isPro: model === "sora-2-pro",
@@ -245,7 +252,7 @@ export async function POST(request: NextRequest) {
           model: model as "sora-2-temporary" | "sora-2-pro",
           aspectRatio: resolvedAspectRatio,
           duration: resolvedDuration,
-          imageUrl: sourceImageUrl,
+          imageUrl: providerSourceImageUrl,
           callbackUrl: `${baseUrl}/api/callback`,
         });
       },
