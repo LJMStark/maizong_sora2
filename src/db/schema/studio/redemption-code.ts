@@ -1,4 +1,12 @@
-import { pgEnum, pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  check,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { user } from "../auth/user";
 
 export const redemptionCodeStatusEnum = pgEnum("redemption_code_status", [
@@ -19,7 +27,9 @@ export const redemptionCode = pgTable("redemption_code", {
   createdBy: text("created_by").notNull().references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   note: text("note"),
-}).enableRLS();
+}, (table) => [
+  check("redemption_code_credits_non_negative", sql`${table.credits} >= 0`),
+]).enableRLS();
 
 export type RedemptionCodeType = typeof redemptionCode.$inferSelect;
 export type RedemptionCodeInsert = typeof redemptionCode.$inferInsert;

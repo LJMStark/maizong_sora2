@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   boolean,
   integer,
   jsonb,
@@ -71,7 +73,14 @@ export const pptTask = pgTable("ppt_task", {
     .notNull()
     .$onUpdate(() => new Date()),
   completedAt: timestamp("completed_at"),
-}).enableRLS();
+}, (table) => [
+  // 计费与退款金额不能为负
+  check(
+    "ppt_task_amounts_non_negative",
+    sql`${table.creditCostPerPage} >= 0 and ${table.creditCostTotal} >= 0
+      and ${table.refundedCredits} >= 0 and ${table.pageCount} >= 0`
+  ),
+]).enableRLS();
 
 export type PptTaskType = typeof pptTask.$inferSelect;
 export type PptTaskInsert = typeof pptTask.$inferInsert;

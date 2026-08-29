@@ -1,4 +1,12 @@
-import { boolean, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -18,6 +26,11 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updatedAt")
     .defaultNow()
     .$onUpdate(() => new Date()),
-}).enableRLS();
+}, (table) => [
+  // 余额永远不能为负。应用层已有 advisory lock + 事务校验，但那挡不住
+  // 并发竞态漏网、也挡不住运维手工改库——这是最后一道防线。
+  // 每日限额字段不加约束：-1 表示不限、null 表示用全局配置，语义不是「非负」。
+  check("user_credits_non_negative", sql`${table.credits} >= 0`),
+]).enableRLS();
 
 export type UserType = typeof user.$inferSelect;

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   pgEnum,
@@ -63,6 +64,10 @@ export const videoTask = pgTable("video_task", {
   index("video_task_error_idx")
     .on(table.updatedAt)
     .where(sql`${table.status} = 'error'`),
+  check(
+    "video_task_amounts_non_negative",
+    sql`${table.creditCost} >= 0 and ${table.progress} >= 0`
+  ),
 ]).enableRLS();
 
 export type VideoTaskType = typeof videoTask.$inferSelect;

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   jsonb,
@@ -46,6 +47,11 @@ export const creditTransaction = pgTable(
     // 且会拖慢这张高频写入表。
     index("credit_transaction_source_txn_idx").on(
       sql`(${table.metadata} ->> 'sourceTransactionId')`
+    ),
+    // 三种类型的 amount 一律存正数（方向由 type 表达），余额快照非负
+    check(
+      "credit_transaction_amounts_non_negative",
+      sql`${table.amount} >= 0 and ${table.balanceBefore} >= 0 and ${table.balanceAfter} >= 0`
     ),
   ]
 ).enableRLS();

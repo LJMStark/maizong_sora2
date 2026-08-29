@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   pgEnum,
@@ -55,6 +56,10 @@ export const imageTask = pgTable("image_task", {
   index("image_task_error_idx")
     .on(table.updatedAt)
     .where(sql`${table.status} = 'error'`),
+  check(
+    "image_task_amounts_non_negative",
+    sql`${table.creditCost} >= 0`
+  ),
 ]).enableRLS();
 
 export type ImageTaskType = typeof imageTask.$inferSelect;
