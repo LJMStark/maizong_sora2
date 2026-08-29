@@ -1,5 +1,30 @@
 # 存储私有化 与 数据库迁移 操作手册
 
+> ## ⚠️ 先做这一步，否则下面全部不生效
+>
+> 线上 `NEXT_PUBLIC_SUPABASE_URL` 指向 `https://wtadldjelwicwpvtuzae.supabase.co`
+> —— 一个**已停用的 Supabase Cloud 老项目**，容器里直接 `ENOTFOUND`。
+> 而 `DATABASE_URL` 指向的是自建实例（正常）。线上环境变量是半新半旧的。
+>
+> **后果：生产环境的对象存储从未真正可用。** 灵感库 502；所有
+> `uploadXxxFromUrl` 都失败并静默回落到 provider 原始 URL（代码里
+> `catch {}` 吞掉了），作品从未落到自己的存储，provider 链接过期即丢失。
+>
+> **在 Zeabur 控制台改这两个变量，然后重新构建**
+> （`NEXT_PUBLIC_*` 是构建期内联的，改完必须重建）：
+>
+> ```
+> NEXT_PUBLIC_SUPABASE_URL   = https://maizongsora.zeabur.app
+> SUPABASE_SERVICE_ROLE_KEY  = <自建实例的 service role key>
+> ```
+>
+> 若容器访问兄弟服务的公网域名不通（hairpin NAT），再设
+> `SUPABASE_INTERNAL_URL` 为内网地址——代码已支持，签名后会把主机
+> 换回公网域名给浏览器。
+>
+> 改完用 `/api/health` 验证：`checks.gallery` 应从
+> `fail_TypeError:getaddrinfo ENOTFOUND ...` 变成 `ok`。
+
 本文记录存储分桶与迁移流程切换的**已完成状态**及其原因，供后续维护参考。
 第一、二节的线上操作已于 2026-08-29 执行完毕，无需重做。
 
