@@ -1,4 +1,7 @@
-import { duomiService } from "./duomi-service";
+import {
+  duomiService,
+  PROVIDER_CREATE_TIMEOUT_MS,
+} from "./duomi-service";
 
 export interface VeoCreateTaskParams {
   prompt: string;
@@ -51,6 +54,7 @@ export const veoService = {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
     });
 
     if (!response.ok) {

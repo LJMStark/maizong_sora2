@@ -33,7 +33,10 @@ export function useInfiniteSentinel<T extends HTMLElement>({
 }) {
   const ref = useRef<T | null>(null);
   const onIntersectRef = useRef(onIntersect);
-  onIntersectRef.current = onIntersect;
+
+  useEffect(() => {
+    onIntersectRef.current = onIntersect;
+  }, [onIntersect]);
 
   useEffect(() => {
     if (!enabled) return;

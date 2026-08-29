@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { kieService } from "@/features/studio/services/kie-service";
@@ -15,6 +16,9 @@ import {
   transitionTaskToErrorAndRefund,
 } from "@/features/studio/services/provider-callback-shared";
 import { VideoTaskType } from "@/db/schema";
+
+// 后台重试最长等待 120s + provider 调用时间，需要比默认更长的函数生命周期
+export const maxDuration = 300;
 
 async function retryKieTask(
   task: VideoTaskType,
@@ -284,8 +288,13 @@ export async function POST(request: NextRequest) {
             task.id,
             "callback"
           );
-          retryKieTask(task, "resource").catch((err) => {
-            console.error("[KIE Callback] 重试失败:", err);
+          // after() 让平台在响应返回后保活函数执行重试
+          after(async () => {
+            try {
+              await retryKieTask(task, "resource");
+            } catch (err) {
+              console.error("[KIE Callback] 重试失败:", err);
+            }
           });
           return NextResponse.json({ success: true });
         }
@@ -306,8 +315,12 @@ export async function POST(request: NextRequest) {
             task.id,
             "callback"
           );
-          retryKieTask(task, "generation").catch((err) => {
-            console.error("[KIE Callback] 重试失败:", err);
+          after(async () => {
+            try {
+              await retryKieTask(task, "generation");
+            } catch (err) {
+              console.error("[KIE Callback] 重试失败:", err);
+            }
           });
           return NextResponse.json({ success: true });
         }

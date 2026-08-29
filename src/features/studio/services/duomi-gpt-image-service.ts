@@ -7,6 +7,11 @@
 //         → { id, state: pending|running|succeeded|error, progress,
 //             data?: { images: [{ url, file_name }], description }, ... }
 
+import {
+  PROVIDER_CREATE_TIMEOUT_MS,
+  PROVIDER_STATUS_TIMEOUT_MS,
+} from "./duomi-service";
+
 export type PptResolution = "2k" | "4k";
 
 // 16:9 整页幻灯片尺寸（宽高均被 16 整除）
@@ -84,6 +89,7 @@ export const duomiGptImageService = {
           Authorization: getApiKey(),
         },
         body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
       }
     );
 
@@ -105,6 +111,7 @@ export const duomiGptImageService = {
     const response = await fetch(`${getApiBase()}/v1/tasks/${taskId}`, {
       method: "GET",
       headers: { Authorization: getApiKey() },
+      signal: AbortSignal.timeout(PROVIDER_STATUS_TIMEOUT_MS),
     });
 
     if (!response.ok) {

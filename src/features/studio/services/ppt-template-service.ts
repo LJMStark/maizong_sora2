@@ -8,6 +8,48 @@ import type { PptTemplateProfile } from "@/db/schema";
 const MAX_REF_IMAGES = 3;
 // 从 pptx 内嵌媒体中筛选的最小体积（跳过图标等小图）
 const MIN_MEDIA_BYTES = 20 * 1024;
+// 压缩炸弹防护：条目数与单条目解压后大小上限
+const MAX_ZIP_ENTRIES = 2000;
+const MAX_ENTRY_BYTES = 20 * 1024 * 1024;
+const MAX_THEME_XML_BYTES = 5 * 1024 * 1024;
+
+/** 流式解压单个条目并限制解压后字节数（防压缩炸弹） */
+function readEntryWithCap(
+  file: JSZip.JSZipObject,
+  maxBytes: number
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let settled = false;
+    const stream = file.nodeStream("nodebuffer") as NodeJS.ReadableStream & {
+      destroy?: () => void;
+    };
+    stream.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      total += chunk.length;
+      if (total > maxBytes) {
+        settled = true;
+        stream.pause();
+        stream.destroy?.();
+        reject(new Error("模板内嵌文件过大"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    stream.on("error", (err: Error) => {
+      if (settled) return;
+      settled = true;
+      reject(err);
+    });
+    stream.on("end", () => {
+      if (settled) return;
+      settled = true;
+      resolve(Buffer.concat(chunks));
+    });
+    stream.resume();
+  });
+}
 
 const TEMPLATE_ANALYSIS_SYSTEM_PROMPT = `你是资深演示文稿视觉分析师。用户会提供 PPT 模板的页面截图或内嵌素材图，请提取可复用的视觉画像。
 
@@ -50,12 +92,17 @@ async function extractFromPptx(pptxBuffer: Buffer): Promise<{
   themeFonts: string[];
 }> {
   const zip = await JSZip.loadAsync(pptxBuffer);
+
+  if (Object.keys(zip.files).length > MAX_ZIP_ENTRIES) {
+    throw new Error("模板文件条目过多，疑似异常文件");
+  }
+
   const images: ExtractedImage[] = [];
 
   // docProps/thumbnail.jpeg 为首页缩略图（非必存）
   const thumbnail = zip.file("docProps/thumbnail.jpeg");
   if (thumbnail) {
-    const buffer = Buffer.from(await thumbnail.async("arraybuffer"));
+    const buffer = await readEntryWithCap(thumbnail, MAX_ENTRY_BYTES);
     images.push({ buffer, mimeType: "image/jpeg", extension: "jpeg" });
   }
 
@@ -68,7 +115,7 @@ async function extractFromPptx(pptxBuffer: Buffer): Promise<{
     if (!mimeType) continue;
     const file = zip.file(name);
     if (!file) continue;
-    const buffer = Buffer.from(await file.async("arraybuffer"));
+    const buffer = await readEntryWithCap(file, MAX_ENTRY_BYTES);
     if (buffer.length < MIN_MEDIA_BYTES) continue;
     images.push({
       buffer,
@@ -81,7 +128,9 @@ async function extractFromPptx(pptxBuffer: Buffer): Promise<{
   let themeFonts: string[] = [];
   const theme = zip.file("ppt/theme/theme1.xml");
   if (theme) {
-    const xml = await theme.async("string");
+    const xml = (await readEntryWithCap(theme, MAX_THEME_XML_BYTES)).toString(
+      "utf8"
+    );
     themeColors = Array.from(
       new Set(
         Array.from(xml.matchAll(/<a:srgbClr val="([0-9A-Fa-f]{6})"/g)).map(

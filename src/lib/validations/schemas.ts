@@ -1,15 +1,17 @@
 import { z } from "zod";
 
-// Max decoded image payload accepted from the client (10 MB). Base64 inflates
-// bytes by ~4/3, so cap the encoded string accordingly. Routes should also
-// reject oversized requests via Content-Length before parsing the body.
-export const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
+// Max decoded image payload accepted from the client. Base64 inflates bytes by
+// ~4/3 and Vercel rejects request bodies over 4.5 MB before the route runs, so
+// the decoded cap must keep encoded-payload + JSON envelope under that ceiling.
+// Routes should also reject oversized requests via Content-Length before
+// parsing the body.
+export const MAX_IMAGE_UPLOAD_BYTES = 3 * 1024 * 1024;
 export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_UPLOAD_BYTES / 3) * 4;
 
 const imageBase64Schema = z
   .string()
   .min(1, "图像为必填项")
-  .max(MAX_IMAGE_BASE64_LENGTH, "图像过大（最多 10MB）");
+  .max(MAX_IMAGE_BASE64_LENGTH, "图像过大（最多 3MB）");
 
 export const ALLOWED_IMAGE_MIME_TYPES = [
   "image/jpeg",
@@ -54,8 +56,8 @@ export const PPT_LAYOUT_ROLES = [
 export const PPT_MIN_PAGES = 3;
 export const PPT_MAX_PAGES = 20;
 
-// .pptx 模板上传上限（20MB，base64 按 4/3 膨胀）
-export const MAX_PPTX_UPLOAD_BYTES = 20 * 1024 * 1024;
+// .pptx 模板上传上限（base64 按 4/3 膨胀；受 Vercel 4.5MB 请求体上限约束）
+export const MAX_PPTX_UPLOAD_BYTES = 3 * 1024 * 1024;
 export const MAX_PPTX_BASE64_LENGTH = Math.ceil(MAX_PPTX_UPLOAD_BYTES / 3) * 4;
 
 const pptOutlineSlideSchema = z.object({
@@ -133,7 +135,7 @@ export const PptTemplateAnalyzeSchema = z
   .object({
     pptxBase64: z
       .string()
-      .max(MAX_PPTX_BASE64_LENGTH, "模板文件过大（最多 20MB）")
+      .max(MAX_PPTX_BASE64_LENGTH, "模板文件过大（最多 3MB）")
       .optional(),
     images: z
       .array(

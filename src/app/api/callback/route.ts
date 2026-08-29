@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { after } from "next/server";
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import { duomiService } from "@/features/studio/services/duomi-service";
@@ -16,6 +17,9 @@ import {
 } from "@/features/studio/services/provider-callback-shared";
 import { VideoTaskType } from "@/db/schema";
 import crypto from "crypto";
+
+// 后台重试最长等待 120s + provider 调用时间，需要比默认更长的函数生命周期
+export const maxDuration = 300;
 
 function redactSensitiveHeaders(headers: Headers): Record<string, string> {
   const result = Object.fromEntries(headers.entries());
@@ -228,8 +232,14 @@ export async function POST(request: NextRequest) {
           await videoTaskService.updateTaskStatus(task.id, "retrying", 0);
           await videoTaskService.incrementRetryCount(task.id, "callback");
 
-          retryDuomiTask(task, "resource").catch((err) => {
-            console.error("[Callback] 重试失败:", err);
+          // after() 让平台在响应返回后保活函数执行重试，
+          // 避免 fire-and-forget Promise 在 serverless 响应后被回收
+          after(async () => {
+            try {
+              await retryDuomiTask(task, "resource");
+            } catch (err) {
+              console.error("[Callback] 重试失败:", err);
+            }
           });
 
           return NextResponse.json({ success: true });
@@ -246,8 +256,12 @@ export async function POST(request: NextRequest) {
           await videoTaskService.updateTaskStatus(task.id, "retrying", 0);
           await videoTaskService.incrementRetryCount(task.id, "callback");
 
-          retryDuomiTask(task, "generation").catch((err) => {
-            console.error("[Callback] 重试失败:", err);
+          after(async () => {
+            try {
+              await retryDuomiTask(task, "generation");
+            } catch (err) {
+              console.error("[Callback] 重试失败:", err);
+            }
           });
 
           return NextResponse.json({ success: true });

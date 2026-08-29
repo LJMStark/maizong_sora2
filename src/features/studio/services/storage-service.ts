@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { fetchPublicResource } from "@/lib/security/ssrf";
 
 const BUCKET_NAME = "studio-assets";
 
@@ -10,6 +11,25 @@ const IMMUTABLE_CACHE_SECONDS = "31536000";
 // provider-fetched videos, so sized for the larger video case. Per-request
 // image limits are enforced upstream at the API boundary.
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+
+// 从 provider 拉取远程资源的限制（防内存耗尽/慢速攻击）
+const MAX_REMOTE_VIDEO_BYTES = MAX_UPLOAD_BYTES;
+const MAX_REMOTE_IMAGE_BYTES = 30 * 1024 * 1024;
+const REMOTE_VIDEO_TIMEOUT_MS = 120_000;
+const REMOTE_IMAGE_TIMEOUT_MS = 60_000;
+
+// 由 content-type 推导存储扩展名（白名单，防注入怪异扩展名）
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+function imageExtensionOf(contentType: string | null): string {
+  if (!contentType) return "png";
+  return IMAGE_EXTENSIONS[contentType.split(";")[0].trim().toLowerCase()] ?? "png";
+}
 
 let supabaseClient: SupabaseClient | null = null;
 
@@ -90,23 +110,18 @@ export const storageService = {
     videoUrl: string
   ): Promise<string> {
     await this.ensureBucketExists();
-    
-    // SSRF Check
-    const { validateUrl } = await import("@/lib/security/ssrf");
-    validateUrl(videoUrl);
 
-    const response = await fetch(videoUrl);
+    // SSRF/大小/超时受控下载
+    const { buffer } = await fetchPublicResource(videoUrl, {
+      maxBytes: MAX_REMOTE_VIDEO_BYTES,
+      timeoutMs: REMOTE_VIDEO_TIMEOUT_MS,
+    });
 
-    if (!response.ok) {
-      throw new Error(`从 URL 获取视频失败: ${response.status}`);
-    }
-
-    const videoArrayBuffer = await response.arrayBuffer();
     const path = `users/${userId}/videos/${taskId}.mp4`;
 
     const { error } = await getSupabase().storage
       .from(BUCKET_NAME)
-      .upload(path, videoArrayBuffer, {
+      .upload(path, buffer, {
         contentType: "video/mp4",
         upsert: true,
         cacheControl: IMMUTABLE_CACHE_SECONDS,
@@ -130,25 +145,19 @@ export const storageService = {
   ): Promise<string> {
     await this.ensureBucketExists();
 
-    // SSRF Check
-    const { validateUrl } = await import("@/lib/security/ssrf");
-    validateUrl(imageUrl);
+    // SSRF/大小/超时受控下载
+    const { buffer, contentType } = await fetchPublicResource(imageUrl, {
+      maxBytes: MAX_REMOTE_IMAGE_BYTES,
+      timeoutMs: REMOTE_IMAGE_TIMEOUT_MS,
+    });
 
-    const response = await fetch(imageUrl);
-
-    if (!response.ok) {
-      throw new Error(`从 URL 获取图片失败: ${response.status}`);
-    }
-
-    const contentType = response.headers.get("content-type") || "image/png";
-    const extension = contentType.split("/")[1] || "png";
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const extension = imageExtensionOf(contentType);
     const path = `users/${userId}/images/${taskId}.${extension}`;
 
     const { error } = await getSupabase().storage
       .from(BUCKET_NAME)
-      .upload(path, imageBuffer, {
-        contentType,
+      .upload(path, buffer, {
+        contentType: contentType || "image/png",
         upsert: true,
         cacheControl: IMMUTABLE_CACHE_SECONDS,
       });
@@ -172,25 +181,19 @@ export const storageService = {
   ): Promise<string> {
     await this.ensureBucketExists();
 
-    // SSRF Check
-    const { validateUrl } = await import("@/lib/security/ssrf");
-    validateUrl(imageUrl);
+    // SSRF/大小/超时受控下载
+    const { buffer, contentType } = await fetchPublicResource(imageUrl, {
+      maxBytes: MAX_REMOTE_IMAGE_BYTES,
+      timeoutMs: REMOTE_IMAGE_TIMEOUT_MS,
+    });
 
-    const response = await fetch(imageUrl);
-
-    if (!response.ok) {
-      throw new Error(`从 URL 获取图片失败: ${response.status}`);
-    }
-
-    const contentType = response.headers.get("content-type") || "image/png";
-    const extension = contentType.split("/")[1] || "png";
-    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    const extension = imageExtensionOf(contentType);
     const path = `users/${userId}/ppt/${taskId}/${slideIndex}.${extension}`;
 
     const { error } = await getSupabase().storage
       .from(BUCKET_NAME)
-      .upload(path, imageBuffer, {
-        contentType,
+      .upload(path, buffer, {
+        contentType: contentType || "image/png",
         upsert: true,
         cacheControl: IMMUTABLE_CACHE_SECONDS,
       });

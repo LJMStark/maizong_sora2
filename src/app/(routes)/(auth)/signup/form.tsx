@@ -10,7 +10,7 @@ import {
 import { useEffect, useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signUp } from "@/lib/auth/client";
+import { signUp, sendVerificationEmail } from "@/lib/auth/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { SignUpSchema, SignUpValues } from "./validate";
@@ -54,7 +54,7 @@ export default function SignUpForm() {
 
   function onSubmit(data: SignUpValues) {
     startTransition(async () => {
-      // Clean up unverified accounts with same email/username
+      // Clean up stale (>24h) unverified accounts with same email/username
       await fetch("/api/auth/cleanup-unverified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -78,6 +78,18 @@ export default function SignUpForm() {
         } else if (msg.includes("password") && msg.includes("short")) {
           errorKey = "passwordTooShort";
         }
+
+        // 邮箱已注册：若账号尚未验证（常见于 24 小时内重复注册），
+        // 直接重发验证邮件并进入"查收邮件"页；对已验证账号该请求同样
+        // 返回成功（不泄露账号状态），用户可从邮件/登录页自行处理。
+        if (errorKey === "userExists" || errorKey === "emailExists") {
+          const resend = await sendVerificationEmail({ email: data.email });
+          if (!resend.error) {
+            setEmailSent(true);
+            return;
+          }
+        }
+
         toast.error(tErrors(errorKey, { message: msg }));
       } else {
         setEmailSent(true);

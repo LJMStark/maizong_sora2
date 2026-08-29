@@ -433,22 +433,77 @@ export const creditService = {
           source?.metadata as Record<string, unknown> | null | undefined
         );
 
-        if (parsedBreakdown) {
-          const parsedTotal =
-            parsedBreakdown.purchased +
-            parsedBreakdown.subscriptions.reduce(
-              (sum, allocation) => sum + allocation.daily + allocation.monthly,
-              0
+        if (parsedBreakdown && parsedBreakdown.subscriptions.length > 0) {
+          // 部分退款可能针对同一笔扣费发生多次（如 PPT 整套扣费、逐页退款）。
+          // 汇总此前已回补到订阅的明细，剩余可回补额度 = 原扣费分摊 - 已回补。
+          const priorRefundRows = await tx
+            .select({ metadata: creditTransaction.metadata })
+            .from(creditTransaction)
+            .where(
+              and(
+                eq(creditTransaction.userId, userId),
+                eq(creditTransaction.type, "refund"),
+                sql`${creditTransaction.metadata}->>'sourceTransactionId' = ${sourceTransactionId}`
+              )
             );
 
-          if (parsedTotal === amount) {
+          const alreadyRefunded = new Map<
+            string,
+            { daily: number; monthly: number }
+          >();
+          let priorBreakdownMissing = false;
+          for (const row of priorRefundRows) {
+            const meta = row.metadata as Record<string, unknown> | null;
+            const rawBreakdown = meta?.refundBreakdown as
+              | {
+                  subscriptions?: Array<{
+                    subscriptionId?: unknown;
+                    daily?: unknown;
+                    monthly?: unknown;
+                  }>;
+                }
+              | undefined;
+            if (!rawBreakdown || !Array.isArray(rawBreakdown.subscriptions)) {
+              priorBreakdownMissing = true;
+              continue;
+            }
+            for (const item of rawBreakdown.subscriptions) {
+              if (!item || typeof item.subscriptionId !== "string") continue;
+              const acc = alreadyRefunded.get(item.subscriptionId) ?? {
+                daily: 0,
+                monthly: 0,
+              };
+              alreadyRefunded.set(item.subscriptionId, {
+                daily: acc.daily + toSafeCredits(item.daily as number),
+                monthly: acc.monthly + toSafeCredits(item.monthly as number),
+              });
+            }
+          }
+
+          // 旧退款记录缺少明细时无法判定剩余可回补额度，保守退到永久积分
+          if (!priorBreakdownMissing) {
+            let remainingToAllocate = amount;
             for (const allocation of parsedBreakdown.subscriptions) {
+              if (remainingToAllocate <= 0) break;
+
               const activeSubscription = activeSubscriptions.get(
                 allocation.subscriptionId
               );
               if (!activeSubscription) {
                 continue;
               }
+
+              const refundedSoFar = alreadyRefunded.get(
+                allocation.subscriptionId
+              ) ?? { daily: 0, monthly: 0 };
+              const dailyAllocRemaining = Math.max(
+                0,
+                allocation.daily - refundedSoFar.daily
+              );
+              const monthlyAllocRemaining = Math.max(
+                0,
+                allocation.monthly - refundedSoFar.monthly
+              );
 
               const dailyRemaining = toSafeCredits(
                 activeSubscription.dailyCreditsRemaining
@@ -465,8 +520,18 @@ export const creditService = {
                 toSafeCredits(activeSubscription.monthlyCredits) - monthlyRemaining
               );
 
-              const dailyRefund = Math.min(allocation.daily, dailyCapacity);
-              const monthlyRefund = Math.min(allocation.monthly, monthlyCapacity);
+              const dailyRefund = Math.min(
+                remainingToAllocate,
+                dailyAllocRemaining,
+                dailyCapacity
+              );
+              remainingToAllocate -= dailyRefund;
+              const monthlyRefund = Math.min(
+                remainingToAllocate,
+                monthlyAllocRemaining,
+                monthlyCapacity
+              );
+              remainingToAllocate -= monthlyRefund;
 
               if (dailyRefund > 0 || monthlyRefund > 0) {
                 await tx

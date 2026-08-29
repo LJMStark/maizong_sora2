@@ -1,3 +1,8 @@
+import {
+  PROVIDER_CREATE_TIMEOUT_MS,
+  PROVIDER_STATUS_TIMEOUT_MS,
+} from "./duomi-service";
+
 export interface DuomiTextToImageParams {
   prompt: string;
   model: "gemini-3-pro-image-preview" | "gemini-2.5-flash-image";
@@ -80,6 +85,7 @@ export const duomiImageService = {
         Authorization: apiKey,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -129,6 +135,7 @@ export const duomiImageService = {
           Authorization: apiKey,
         },
         body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
       }
     );
 
@@ -161,6 +168,7 @@ export const duomiImageService = {
         headers: {
           Authorization: apiKey,
         },
+        signal: AbortSignal.timeout(PROVIDER_STATUS_TIMEOUT_MS),
       }
     );
 

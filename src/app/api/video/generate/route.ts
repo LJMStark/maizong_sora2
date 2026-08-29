@@ -55,6 +55,11 @@ async function callProviderWithRetry(params: {
       const error = err instanceof Error ? err : new Error("未知错误");
       console.log(`[Generate] ${label} API 调用失败 (尝试 ${attempt + 1}/${MAX_GENERATE_RETRIES}):`, error.message);
 
+      // 超时/中止说明请求可能已被 provider 接单，重试会创建重复计费任务
+      if (error.name === "TimeoutError" || error.name === "AbortError") {
+        return error;
+      }
+
       if (attempt > 0) {
         await videoTaskService.incrementRetryCount(taskId, "generate");
       }

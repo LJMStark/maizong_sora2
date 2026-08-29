@@ -1,6 +1,28 @@
 import { videoTaskService } from "@/features/studio/services/video-task-service";
 import { imageTaskService } from "@/features/studio/services/image-task-service";
-import { creditService } from "@/features/studio/services/credit-service";
+import {
+  creditService,
+  RefundCreditsParams,
+} from "@/features/studio/services/credit-service";
+
+/**
+ * 任务已进入终态后的退款：失败时不向上抛（否则回调方会重复推送、
+ * 而任务已终态导致重复回调直接跳过，退款永久丢失）。
+ * 漏退由 /api/cron/reconcile-tasks 对账补退。
+ */
+async function refundOrDefer(params: RefundCreditsParams): Promise<void> {
+  try {
+    await creditService.refundCredits(params);
+  } catch (error) {
+    console.error("[Refund] 退款失败，等待对账任务补退:", {
+      userId: params.userId,
+      referenceType: params.referenceType,
+      referenceId: params.referenceId,
+      amount: params.amount,
+      error,
+    });
+  }
+}
 
 export interface FailVideoTaskParams {
   taskId: string;
@@ -26,7 +48,7 @@ export async function failVideoTaskAndRefund(
     return false;
   }
 
-  await creditService.refundCredits({
+  await refundOrDefer({
     userId: params.userId,
     amount: params.amount,
     reason: params.reason,
@@ -60,7 +82,7 @@ export async function failImageTaskAndRefund(
     return false;
   }
 
-  await creditService.refundCredits({
+  await refundOrDefer({
     userId: params.userId,
     amount: params.amount,
     reason: params.reason,

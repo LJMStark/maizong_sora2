@@ -1,3 +1,8 @@
+import {
+  PROVIDER_CREATE_TIMEOUT_MS,
+  PROVIDER_STATUS_TIMEOUT_MS,
+} from "./duomi-service";
+
 export interface KieCreateTaskParams {
   prompt: string;
   aspectRatio: "16:9" | "9:16";
@@ -120,6 +125,7 @@ export const kieService = {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -156,6 +162,7 @@ export const kieService = {
         headers: {
           Authorization: `Bearer ${apiKey}`,
         },
+        signal: AbortSignal.timeout(PROVIDER_STATUS_TIMEOUT_MS),
       }
     );
 

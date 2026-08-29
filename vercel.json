@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/grant-daily-credits",
       "schedule": "5 0 * * *"
+    },
+    {
+      "path": "/api/cron/reconcile-tasks",
+      "schedule": "* * * * *"
     }
   ]
 }

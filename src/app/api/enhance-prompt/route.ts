@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 校验图片参数：必须成对出现，且限制大小（与全局图片上传限制一致，最多 10MB 原图）
+    // 校验图片参数：必须成对出现，且限制大小（与全局图片上传限制一致）
     const hasImage = imageBase64 && imageMimeType;
     if (imageBase64 && !imageMimeType) {
       return NextResponse.json(
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       }
       if (imageBase64.length > MAX_IMAGE_BASE64_LENGTH) {
         return NextResponse.json(
-          { error: "Image too large, max 10MB" },
+          { error: "Image too large, max 3MB" },
           { status: 400 }
         );
       }

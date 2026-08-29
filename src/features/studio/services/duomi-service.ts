@@ -29,6 +29,10 @@ export interface DuomiVideoTaskStatusResponse {
 
 const DUOMI_API_BASE = "https://duomiapi.com/v1";
 
+// 外呼超时：避免连接悬挂导致任务卡死；创建接口较慢，给更长窗口
+export const PROVIDER_CREATE_TIMEOUT_MS = 60_000;
+export const PROVIDER_STATUS_TIMEOUT_MS = 30_000;
+
 async function getDuomiErrorDetail(response: Response): Promise<string> {
   const contentType = response.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -79,6 +83,7 @@ export const duomiService = {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(PROVIDER_CREATE_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -105,6 +110,7 @@ export const duomiService = {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
+      signal: AbortSignal.timeout(PROVIDER_STATUS_TIMEOUT_MS),
     });
 
     if (!response.ok) {

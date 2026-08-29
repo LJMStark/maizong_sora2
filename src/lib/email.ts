@@ -4,17 +4,42 @@ let _resend: Resend | null = null;
 
 function getResend() {
   if (!_resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY 未配置，无法发送邮件");
+    }
     _resend = new Resend(process.env.RESEND_API_KEY);
   }
   return _resend;
 }
 
-const getFromEmail = () =>
-  process.env.RESEND_FROM_EMAIL || "noreply@example.com";
+function getFromEmail(): string {
+  const fromEmail = process.env.RESEND_FROM_EMAIL;
+  if (fromEmail) return fromEmail;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("RESEND_FROM_EMAIL 未配置，无法发送邮件");
+  }
+  // Resend 官方提供的测试发件地址，仅限开发环境
+  return "onboarding@resend.dev";
+}
+
+async function sendEmail(payload: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  const { error } = await getResend().emails.send({
+    from: getFromEmail(),
+    ...payload,
+  });
+
+  if (error) {
+    console.error("[Email] 发送失败:", { subject: payload.subject, error });
+    throw new Error(`邮件发送失败: ${error.message}`);
+  }
+}
 
 export async function sendVerificationEmail(email: string, url: string) {
-  await getResend().emails.send({
-    from: getFromEmail(),
+  await sendEmail({
     to: email,
     subject: "验证您的邮箱 - Little Elephant Studio",
     html: `
@@ -29,8 +54,7 @@ export async function sendVerificationEmail(email: string, url: string) {
 }
 
 export async function sendResetPasswordEmail(email: string, url: string) {
-  await getResend().emails.send({
-    from: getFromEmail(),
+  await sendEmail({
     to: email,
     subject: "重置密码 - Little Elephant Studio",
     html: `
