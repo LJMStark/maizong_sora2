@@ -180,11 +180,12 @@ export default function VideoWorkshop() {
       : videoConfig?.qualityProvider === "veo";
   const allVeo =
     videoConfig?.fastProvider === "veo" && videoConfig?.qualityProvider === "veo";
+  const effectiveMode = isVeo ? "Fast" : mode;
   const creditCosts = {
     Fast: videoConfig?.creditCosts.videoFast ?? DEFAULT_CREDIT_COSTS.videoFast,
     Quality: videoConfig?.creditCosts.videoQuality ?? DEFAULT_CREDIT_COSTS.videoQuality,
   };
-  const currentCost = isVeo ? creditCosts.Fast : creditCosts[mode];
+  const currentCost = creditCosts[effectiveMode];
   const modeLabel = isVeo ? "Veo 快速" : mode === "Fast" ? "快速" : "高质量";
   const aspectLabel = aspectRatio === AspectRatio.SOCIAL ? "9:16" : "16:9";
   const resolvedModel = isVeo
@@ -294,21 +295,34 @@ export default function VideoWorkshop() {
       return;
     }
 
+    const controller = new AbortController();
+    let fetching = false;
     const fetchConfig = async () => {
+      if (fetching || document.visibilityState === "hidden") return;
+      fetching = true;
       try {
-        const res = await fetch("/api/video/config");
+        const res = await fetch("/api/video/config", { signal: controller.signal });
+        if (!res.ok) return;
         const json = await res.json();
-        if (json.success) {
+        if (json.success && !controller.signal.aborted) {
           setVideoConfig(json.data);
-          if (json.data.fastProvider === "veo" && json.data.qualityProvider === "veo") {
-            setDuration(8);
-          }
         }
       } catch (error) {
-        console.error("获取视频配置失败:", error);
+        if (!controller.signal.aborted) console.error("获取视频配置失败:", error);
+      } finally {
+        fetching = false;
       }
     };
     void fetchConfig();
+    const timer = window.setInterval(() => void fetchConfig(), 60_000);
+    window.addEventListener("focus", fetchConfig);
+    document.addEventListener("visibilitychange", fetchConfig);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener("focus", fetchConfig);
+      document.removeEventListener("visibilitychange", fetchConfig);
+    };
   }, [hasSession, sessionPending]);
 
   useEffect(() => {
@@ -653,7 +667,7 @@ export default function VideoWorkshop() {
       return;
     }
 
-    const currentLimit = mode === "Fast"
+    const currentLimit = effectiveMode === "Fast"
       ? videoConfig?.dailyLimits?.fast
       : videoConfig?.dailyLimits?.quality;
     if (currentLimit === 0) {
@@ -696,7 +710,7 @@ export default function VideoWorkshop() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: resolvedPrompt,
-          mode: isVeo ? "Fast" : mode,
+          mode: effectiveMode,
           aspectRatio: aspectLabel,
           duration: resolvedDuration,
           sessionId: activeSessionId ?? undefined,

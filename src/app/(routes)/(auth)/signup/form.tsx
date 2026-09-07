@@ -54,13 +54,6 @@ export default function SignUpForm() {
 
   function onSubmit(data: SignUpValues) {
     startTransition(async () => {
-      // Clean up stale (>24h) unverified accounts with same email/username
-      await fetch("/api/auth/cleanup-unverified", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.email, username: data.username }),
-      });
-
       const response = await signUp.email(data);
 
       if (response.error) {
@@ -71,7 +64,8 @@ export default function SignUpForm() {
           errorKey = "userExists";
         } else if (msg.includes("email") && msg.includes("already")) {
           errorKey = "emailExists";
-        } else if (msg.includes("username") && msg.includes("already")) {
+        } else if (code.startsWith("USERNAME_IS_ALREADY_TAKEN") ||
+          (msg.toLowerCase().includes("username") && msg.includes("already"))) {
           errorKey = "usernameExists";
         } else if (code === "TOO_MANY_REQUESTS" || response.error.status === 429) {
           errorKey = "tooManyRequests";
@@ -79,7 +73,7 @@ export default function SignUpForm() {
           errorKey = "passwordTooShort";
         }
 
-        // 邮箱已注册：若账号尚未验证（常见于 24 小时内重复注册），
+        // 邮箱已注册：若账号尚未验证，
         // 直接重发验证邮件并进入"查收邮件"页；对已验证账号该请求同样
         // 返回成功（不泄露账号状态），用户可从邮件/登录页自行处理。
         if (errorKey === "userExists" || errorKey === "emailExists") {
@@ -91,6 +85,18 @@ export default function SignUpForm() {
         }
 
         toast.error(tErrors(errorKey, { message: msg }));
+      } else {
+        setEmailSent(true);
+      }
+    });
+  }
+
+  async function handleResendVerification() {
+    if (!(await form.trigger("email"))) return;
+    startTransition(async () => {
+      const response = await sendVerificationEmail({ email: form.getValues("email") });
+      if (response.error) {
+        toast.error(tErrors("unknown", { message: response.error.message ?? "" }));
       } else {
         setEmailSent(true);
       }
@@ -241,6 +247,14 @@ export default function SignUpForm() {
                 t('submit')
               )}
             </Button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => void handleResendVerification()}
+              className="text-sm text-[#a6baff] hover:underline disabled:opacity-50"
+            >
+              已注册但未验证？重发验证邮件
+            </button>
           </>
         )}
       </form>

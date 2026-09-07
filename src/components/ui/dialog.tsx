@@ -31,44 +31,6 @@ function Dialog({ open, onOpenChange, children }: DialogProps) {
   )
 }
 
-function DialogTrigger({
-  children,
-  asChild,
-  ...props
-}: {
-  children: React.ReactNode
-  asChild?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  if (asChild && React.isValidElement(children)) {
-    return children
-  }
-  return <button {...props}>{children}</button>
-}
-
-function DialogPortal({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
-}
-
-function DialogClose({
-  children,
-  className,
-  asChild,
-  ...props
-}: {
-  children?: React.ReactNode
-  className?: string
-  asChild?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <CloseButton
-      className={className}
-      {...props}
-    >
-      {children}
-    </CloseButton>
-  )
-}
-
 const DialogOverlay = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -177,10 +139,7 @@ DialogDescription.displayName = "DialogDescription"
 
 export {
   Dialog,
-  DialogPortal,
   DialogOverlay,
-  DialogClose,
-  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,

@@ -16,20 +16,20 @@ pnpm build            # Production build (Turbopack)
 pnpm start            # Start production server
 pnpm lint             # ESLint
 pnpm db:generate      # Generate Drizzle migrations
-pnpm db:migrate       # Push schema to database (see Known Issues)
+pnpm db:migrate       # Apply generated migrations
 pnpm db:studio        # Open Drizzle Studio
 ```
 
 ## Testing
 
-Tests live in `tests/` and use Node's built-in `node:test` runner via `tsx` (there is no `test` script in package.json):
+Tests live in `tests/` and use Node's built-in `node:test` runner via `tsx`:
 
 ```bash
-npx tsx --test tests/**/*.test.ts                        # All tests
+pnpm test                                              # All tests
 npx tsx --test tests/validations/sign-up-schema.test.ts  # Single file
 ```
 
-Current coverage: Zod validation schemas (`tests/validations/`) and studio UI regression checks (i18n message shape, clipboard fallback).
+Current coverage: validation schemas, login configuration, gallery publishing and studio UI regressions. Run `pnpm typecheck` and `pnpm lint` alongside tests.
 
 ## Tech Stack
 
@@ -45,7 +45,7 @@ Current coverage: Zod validation schemas (`tests/validations/`) and studio UI re
 | Forms | React Hook Form + @hookform/resolvers |
 | Rate Limit | Upstash Redis + @upstash/ratelimit |
 | AI APIs | Duomi (image/video), Google Generative AI (prompt enhance), Kie (video), Veo (video) |
-| Deploy | Vercel |
+| Deploy | Zeabur (persistent Node container; see `docs/storage-and-migrations.md`) |
 
 ## Architecture
 
@@ -61,7 +61,7 @@ src/
       auth/            # Better Auth handler
       callback/        # Webhook receivers (Duomi, Kie)
       credits/         # Credit balance & redeem
-      cron/            # Vercel Cron (daily credit grants)
+      cron/            # Authenticated manual/external reconciliation triggers
       enhance-prompt/  # AI prompt enhancement (Gemini)
       image/           # Image generation & task queries
       orders/          # Credit package orders
@@ -170,7 +170,7 @@ Configured in `src/routes.ts`:
 - Credits deducted before task, auto-refund on failure
 - Redemption codes in `redemption_code` table
 - Daily video limits in `system_config` table (user-level overrides available)
-- Vercel Cron job grants daily credits at 00:05 UTC
+- Subscription quotas refresh lazily on wallet access; `src/lib/scheduler.ts` also drives quota refresh, task recovery and refund reconciliation.
 
 ## Environment Variables
 
@@ -182,8 +182,8 @@ See `env.example` for connection string format.
 
 ## Known Issues
 
-1. **`pnpm db:migrate` bug**: drizzle-kit 0.31.8 fails with Supabase CHECK constraints. Workaround: apply the generated SQL from `drizzle/` directly via the Supabase dashboard SQL editor.
-2. **Video callback delay**: Video tasks show "处理中 0%" for 10-30+ min. This is by design -- callback-only API, no polling. Debug with server log: `[Callback] Received callback request`.
+1. **Database migrations**: `drizzle/` is the migration authority. `pnpm db:migrate` applies migrations; `db:push` is for local prototyping only. Existing databases previously managed by push need the baseline procedure in `docs/storage-and-migrations.md` before migrate.
+2. **Video callback delay**: Videos normally finish through callbacks; the internal scheduler queries stale provider tasks and reconciles missing refunds. Keep this recovery path when changing callbacks.
 
 ## Conventions
 

@@ -36,14 +36,6 @@ type OwnedAppState = {
   state: AppState;
 };
 
-function isActiveVideoTask(task: VideoTask): boolean {
-  return (
-    task.status === "pending" ||
-    task.status === "running" ||
-    task.status === "retrying"
-  );
-}
-
 export function StudioProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending: sessionPending } = useSession();
   const hasSession = Boolean(session?.user);
@@ -53,20 +45,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     ownerUserId: null,
     state: EMPTY_APP_STATE,
   });
-  const [pendingConfigReload, setPendingConfigReload] = useState(false);
-  const videoTasksRef = useRef<VideoTask[]>([]);
-  const reloadingRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(userId);
-  const pendingConfigReloadUserRef = useRef<string | null>(null);
-  const appState = ownedAppState.state;
 
   useEffect(() => {
     currentUserIdRef.current = userId;
   }, [userId]);
-
-  useEffect(() => {
-    videoTasksRef.current = appState.videoTasks;
-  }, [appState.videoTasks]);
 
   const setOwnedAppState = useCallback(
     (
@@ -83,7 +66,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             ? previous.state
             : EMPTY_APP_STATE;
         const nextState = updater(baseState);
-        videoTasksRef.current = nextState.videoTasks;
         return {
           ownerUserId,
           state: nextState,
@@ -152,9 +134,9 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
   }, [hasSession, setOwnedAppState, userId]);
 
-  const fetchVideoTasks = useCallback(async (): Promise<VideoTask[] | null> => {
+  const refreshVideoTasks = useCallback(async () => {
     if (!hasSession) {
-      return null;
+      return;
     }
 
     const requestUserId = userId;
@@ -187,13 +169,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           })
         );
         if (currentUserIdRef.current !== requestUserId) {
-          return null;
+          return;
         }
-
-        setOwnedAppState(requestUserId, (prev) => ({
-          ...prev,
-          videoTasks: formattedTasks,
-        }));
 
         const completedVideos = formattedTasks.filter(
           (task: VideoTask) => task.status === "succeeded" && task.videoUrl
@@ -216,22 +193,15 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           );
           return {
             ...prev,
+            videoTasks: formattedTasks,
             history: [...videoHistory, ...existingNonVideoHistory],
           };
         });
-
-        return formattedTasks;
       }
     } catch (error) {
       console.error("刷新视频任务失败:", error);
     }
-
-    return null;
   }, [hasSession, setOwnedAppState, userId]);
-
-  const refreshVideoTasks = useCallback(async () => {
-    await fetchVideoTasks();
-  }, [fetchVideoTasks]);
 
   const refreshImageTasks = useCallback(async () => {
     if (!hasSession) {
@@ -270,11 +240,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        setOwnedAppState(requestUserId, (prev) => ({
-          ...prev,
-          imageTasks: formattedTasks,
-        }));
-
         const completedImages = formattedTasks.filter(
           (task: ImageTask) => task.status === "succeeded" && task.imageUrl
         );
@@ -296,6 +261,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           );
           return {
             ...prev,
+            imageTasks: formattedTasks,
             history: [...imageHistory, ...existingNonImageHistory],
           };
         });
@@ -327,122 +293,6 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     refreshVideoTasks,
     refreshImageTasks,
   ]);
-
-  const triggerReload = useCallback(() => {
-    if (reloadingRef.current) {
-      return;
-    }
-
-    reloadingRef.current = true;
-    window.location.reload();
-  }, []);
-
-  const handleConfigUpdate = useCallback(async () => {
-    if (reloadingRef.current) {
-      return;
-    }
-
-    const updateUserId = currentUserIdRef.current;
-    if (!updateUserId) {
-      return;
-    }
-
-    const latestTasks = await fetchVideoTasks();
-    if (currentUserIdRef.current !== updateUserId) {
-      return;
-    }
-
-    const tasksToCheck = latestTasks ?? videoTasksRef.current;
-    const hasActiveVideoTasks = tasksToCheck.some(isActiveVideoTask);
-
-    if (hasActiveVideoTasks) {
-      pendingConfigReloadUserRef.current = updateUserId;
-      setPendingConfigReload(true);
-      return;
-    }
-
-    pendingConfigReloadUserRef.current = null;
-    triggerReload();
-  }, [fetchVideoTasks, triggerReload]);
-
-  useEffect(() => {
-    if (!hydrated || !hasSession || sessionPending) {
-      return;
-    }
-
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let eventSource: EventSource | null = null;
-    let stopped = false;
-
-    const connect = () => {
-      if (stopped) {
-        return;
-      }
-
-      eventSource = new EventSource("/api/video/config/stream");
-
-      eventSource.addEventListener("config-updated", () => {
-        void handleConfigUpdate();
-      });
-
-      eventSource.onerror = () => {
-        eventSource?.close();
-
-        if (!stopped) {
-          reconnectTimer = setTimeout(connect, 5000);
-        }
-      };
-    };
-
-    connect();
-
-    return () => {
-      stopped = true;
-      eventSource?.close();
-
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
-    };
-  }, [hydrated, hasSession, sessionPending, handleConfigUpdate]);
-
-  useEffect(() => {
-    if (!pendingConfigReload || reloadingRef.current) {
-      return;
-    }
-
-    if (pendingConfigReloadUserRef.current !== userId) {
-      pendingConfigReloadUserRef.current = null;
-      queueMicrotask(() => {
-        setPendingConfigReload(false);
-      });
-      return;
-    }
-
-    const hasActiveVideoTasks = appState.videoTasks.some(isActiveVideoTask);
-    if (!hasActiveVideoTasks) {
-      pendingConfigReloadUserRef.current = null;
-      triggerReload();
-    }
-  }, [appState.videoTasks, pendingConfigReload, triggerReload, userId]);
-
-  useEffect(() => {
-    if (!pendingConfigReload || reloadingRef.current) {
-      return;
-    }
-
-    if (pendingConfigReloadUserRef.current !== userId) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      void refreshVideoTasks();
-    }, 3000);
-
-    return () => {
-      clearInterval(timer);
-    };
-  }, [pendingConfigReload, refreshVideoTasks, userId]);
 
   const clearLocalView = useCallback(() => {
     setOwnedAppState(userId, (prev) => ({

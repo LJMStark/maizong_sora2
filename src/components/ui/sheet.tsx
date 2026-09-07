@@ -6,7 +6,6 @@ import {
   DialogPanel,
   DialogBackdrop,
   DialogTitle as HeadlessDialogTitle,
-  Description,
   CloseButton,
 } from "@headlessui/react"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -30,44 +29,6 @@ function Sheet({ open, onOpenChange, children }: SheetProps) {
       {children}
     </HeadlessDialog>
   )
-}
-
-function SheetTrigger({
-  children,
-  asChild,
-  ...props
-}: {
-  children: React.ReactNode
-  asChild?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  if (asChild && React.isValidElement(children)) {
-    return children
-  }
-  return <button {...props}>{children}</button>
-}
-
-function SheetClose({
-  children,
-  className,
-  asChild,
-  ...props
-}: {
-  children?: React.ReactNode
-  className?: string
-  asChild?: boolean
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  return (
-    <CloseButton
-      className={className}
-      {...props}
-    >
-      {children}
-    </CloseButton>
-  )
-}
-
-function SheetPortal({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
 }
 
 const SheetOverlay = React.forwardRef<
@@ -132,34 +93,6 @@ const SheetContent = React.forwardRef<HTMLDivElement, SheetContentProps>(
 )
 SheetContent.displayName = "SheetContent"
 
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
-)
-SheetHeader.displayName = "SheetHeader"
-
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className
-    )}
-    {...props}
-  />
-)
-SheetFooter.displayName = "SheetFooter"
-
 const SheetTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
@@ -172,27 +105,9 @@ const SheetTitle = React.forwardRef<
 ))
 SheetTitle.displayName = "SheetTitle"
 
-const SheetDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-SheetDescription.displayName = "SheetDescription"
-
 export {
   Sheet,
-  SheetPortal,
   SheetOverlay,
-  SheetTrigger,
-  SheetClose,
   SheetContent,
-  SheetHeader,
-  SheetFooter,
   SheetTitle,
-  SheetDescription,
 }

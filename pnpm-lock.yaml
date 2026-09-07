@@ -41,9 +41,6 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@upstash/redis@1.36.2)(kysely@0.28.11)(postgres@3.4.8)
-      drizzle-zod:
-        specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.2(@upstash/redis@1.36.2)(kysely@0.28.11)(postgres@3.4.8))(zod@4.3.6)
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
@@ -2028,12 +2025,6 @@ packages:
         optional: true
       sqlite3:
         optional: true
-
-  drizzle-zod@0.8.3:
-    resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
-    peerDependencies:
-      drizzle-orm: '>=0.36.0'
-      zod: ^3.25.0 || ^4.0.0
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -4867,11 +4858,6 @@ snapshots:
       '@upstash/redis': 1.36.2
       kysely: 0.28.11
       postgres: 3.4.8
-
-  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@upstash/redis@1.36.2)(kysely@0.28.11)(postgres@3.4.8))(zod@4.3.6):
-    dependencies:
-      drizzle-orm: 0.45.2(@upstash/redis@1.36.2)(kysely@0.28.11)(postgres@3.4.8)
-      zod: 4.3.6
 
   dunder-proto@1.0.1:
     dependencies:

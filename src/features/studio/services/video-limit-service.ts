@@ -123,36 +123,6 @@ export const videoLimitService = {
   },
 
   /**
-   * 获取视频配置版本（用于前端热更新）
-   */
-  async getConfigVersion(): Promise<string> {
-    const latestConfig = await db
-      .select({
-        latestUpdatedAt: sql<Date | string | null>`max(${systemConfig.updatedAt})`,
-      })
-      .from(systemConfig)
-      .where(
-        sql`${systemConfig.key} IN (
-          'video_fast_provider', 'video_quality_provider',
-          'credit_cost_video_fast', 'credit_cost_video_quality',
-          'daily_fast_video_limit', 'daily_quality_video_limit'
-        )`
-      );
-
-    const latestValue = latestConfig[0]?.latestUpdatedAt;
-    if (!latestValue) {
-      return "0";
-    }
-
-    const latestDate =
-      latestValue instanceof Date ? latestValue : new Date(latestValue);
-
-    return Number.isNaN(latestDate.getTime())
-      ? "0"
-      : latestDate.toISOString();
-  },
-
-  /**
    * 检查用户是否可以生成视频
    */
   async checkLimit(userId: string, videoType: VideoType): Promise<LimitCheckResult> {
@@ -305,31 +275,21 @@ export const videoLimitService = {
     },
     updatedBy: string
   ): Promise<void> {
-    const updates: { key: string; value: string }[] = [];
-
     if (limits.dailyFastVideoLimit !== undefined) {
-      updates.push({
-        key: "daily_fast_video_limit",
-        value: limits.dailyFastVideoLimit.toString(),
-      });
+      await this.upsertConfig(
+        "daily_fast_video_limit",
+        limits.dailyFastVideoLimit.toString(),
+        "每日快速视频生成次数限制",
+        updatedBy
+      );
     }
-
     if (limits.dailyQualityVideoLimit !== undefined) {
-      updates.push({
-        key: "daily_quality_video_limit",
-        value: limits.dailyQualityVideoLimit.toString(),
-      });
-    }
-
-    for (const update of updates) {
-      await db
-        .update(systemConfig)
-        .set({
-          value: update.value,
-          updatedAt: new Date(),
-          updatedBy,
-        })
-        .where(eq(systemConfig.key, update.key));
+      await this.upsertConfig(
+        "daily_quality_video_limit",
+        limits.dailyQualityVideoLimit.toString(),
+        "每日高质量视频生成次数限制",
+        updatedBy
+      );
     }
   },
 
@@ -348,28 +308,6 @@ export const videoLimitService = {
     return {
       fast: { used: fastCheck.used, limit: fastCheck.limit },
       quality: { used: qualityCheck.used, limit: qualityCheck.limit },
-    };
-  },
-
-  /**
-   * 获取模式对应的供应商（使用缓存）
-   */
-  async getProviderForMode(mode: VideoType): Promise<VideoProvider> {
-    const config = await this.getVideoGenerationConfig();
-    return config.providers[mode];
-  },
-
-  /**
-   * 获取所有供应商配置（按模式，使用缓存）
-   */
-  async getProviderSettings(): Promise<{
-    videoFastProvider: VideoProvider;
-    videoQualityProvider: VideoProvider;
-  }> {
-    const config = await this.getVideoGenerationConfig();
-    return {
-      videoFastProvider: config.providers.fast,
-      videoQualityProvider: config.providers.quality,
     };
   },
 
@@ -462,29 +400,15 @@ export const videoLimitService = {
     description: string,
     updatedBy: string
   ): Promise<void> {
-    const existing = await db
-      .select({ id: systemConfig.id })
-      .from(systemConfig)
-      .where(eq(systemConfig.key, key))
-      .limit(1);
-
-    if (existing.length > 0) {
-      await db
-        .update(systemConfig)
-        .set({
-          value,
-          updatedAt: new Date(),
-          updatedBy,
-        })
-        .where(eq(systemConfig.key, key));
-    } else {
-      await db.insert(systemConfig).values({
-        id: crypto.randomUUID(),
-        key,
-        value,
-        description,
-        updatedBy,
-      });
-    }
+    await db.insert(systemConfig).values({
+      id: crypto.randomUUID(),
+      key,
+      value,
+      description,
+      updatedBy,
+    }).onConflictDoUpdate({
+      target: systemConfig.key,
+      set: { value, updatedAt: new Date(), updatedBy },
+    });
   },
 };
