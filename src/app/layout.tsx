@@ -4,7 +4,6 @@ import "./globals.css";
 import Providers from "@/providers";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
-import { defaultLocale } from '@/i18n/config';
 import { APP_BRAND, APP_DESCRIPTION } from "@/lib/brand";
 
 const geistSans = localFont({
@@ -29,27 +28,21 @@ export const metadata: Metadata = {
   creator: APP_BRAND,
   publisher: APP_BRAND,
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'),
+  // openGraph.images / twitter.images 故意不在这里声明：
+  // `src/app/opengraph-image.png` 是 Next.js 的文件约定，会被自动接进两处并带上
+  // 内容哈希。在此显式声明反而会覆盖掉它——早先这里写的 `/og-image.png`
+  // 在 public/ 下并不存在，线上一直是 404。
   openGraph: {
     type: "website",
     locale: "zh_CN",
-    url: "/",
     siteName: APP_BRAND,
     title: APP_BRAND,
     description: APP_DESCRIPTION,
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: APP_BRAND,
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: APP_BRAND,
     description: APP_DESCRIPTION,
-    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -72,7 +65,10 @@ export default async function RootLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={defaultLocale}>
+    // lang 用 zh-Hans（语言 + 字体系统）而不是 next-intl 的 zh-CN：
+    // 内容是简体中文但面向全球用户，zh-CN 会向搜索引擎隐含「定向中国大陆」。
+    // Bing / Baidu 不读 hreflang，只看 html lang，所以这个属性得单独给对。
+    <html lang="zh-Hans">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
