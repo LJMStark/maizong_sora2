@@ -200,7 +200,9 @@ export async function GET(
         progress,
       }));
     } catch (pollError) {
-      const message = pollError instanceof Error ? pollError.message : "获取状态失败";
+      // 必须过脱敏层：provider 轮询失败时原始 message 里会带上游域名、
+      // 模型名或内网地址（ECONNREFUSED 10.x.x.x:443）
+      const message = sanitizeError(pollError);
       const statusStr = task.status as string;
       return NextResponse.json(await buildTaskResponse(task, {
         errorMessage: message,

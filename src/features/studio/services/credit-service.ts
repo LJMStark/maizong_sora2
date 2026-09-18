@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { creditTransaction, user, userSubscription } from "@/db/schema";
 import { and, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
+import { UserFacingError } from "@/lib/security/user-facing-error";
 
 export type CreditOperationType = "deduction" | "addition" | "refund";
 
@@ -39,7 +40,7 @@ export function formatDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export class InsufficientCreditsError extends Error {
+export class InsufficientCreditsError extends UserFacingError {
   constructor(message = "积分不足") {
     super(message);
     this.name = "InsufficientCreditsError";

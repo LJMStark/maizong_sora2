@@ -1,10 +1,11 @@
 import { db } from "@/db";
 import { studioSession, StudioSessionType } from "@/db/schema";
 import { and, desc, eq, ilike } from "drizzle-orm";
+import { UserFacingError } from "@/lib/security/user-facing-error";
 
 export type StudioSessionKind = "image" | "video" | "ppt";
 
-export class StudioSessionAccessError extends Error {
+export class StudioSessionAccessError extends UserFacingError {
   constructor() {
     super("会话不存在或无权访问");
     this.name = "StudioSessionAccessError";

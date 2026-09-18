@@ -3,6 +3,7 @@ import { z } from "zod";
 import { geminiService, GeminiImagePart } from "@/lib/ai/gemini-service";
 import { storageService } from "@/features/studio/services/storage-service";
 import type { PptTemplateProfile } from "@/db/schema";
+import { UserFacingError } from "@/lib/security/user-facing-error";
 
 // 送入视觉分析与作为参考图的模板图片数量上限
 const MAX_REF_IMAGES = 3;
@@ -94,7 +95,7 @@ async function extractFromPptx(pptxBuffer: Buffer): Promise<{
   const zip = await JSZip.loadAsync(pptxBuffer);
 
   if (Object.keys(zip.files).length > MAX_ZIP_ENTRIES) {
-    throw new Error("模板文件条目过多，疑似异常文件");
+    throw new UserFacingError("模板文件条目过多，疑似异常文件");
   }
 
   const images: ExtractedImage[] = [];
@@ -188,7 +189,7 @@ export const pptTemplateService = {
     }
 
     if (candidates.length === 0 && themeColors.length === 0) {
-      throw new Error(
+      throw new UserFacingError(
         "模板中未找到可分析的视觉素材，请改为上传模板页面截图"
       );
     }

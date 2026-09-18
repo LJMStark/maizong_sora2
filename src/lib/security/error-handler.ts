@@ -1,29 +1,23 @@
+import { isUserFacingError } from "./user-facing-error";
+
+/** 非白名单错误统一用这句对外，细节只进日志。 */
+export const GENERIC_ERROR_MESSAGE = "服务暂时不可用，请稍后重试";
 
 /**
- * Sanitizes error messages for public consumption.
- * Hides internal errors while preserving known application errors.
+ * 把错误转成可以安全返回给用户的文案。
+ *
+ * 白名单策略：只有 `UserFacingError` 及其子类放行自己的 message，其余替换。
+ * 早先这里是关键词黑名单（命中 key/token/secret/env 才替换），挡不住
+ * 上游 SDK 的原始错误——那些 message 里有供应商域名、模型名、内网地址。
  */
 export function sanitizeError(error: unknown): string {
-  // Log the full error internally
+  // 完整错误只进服务端日志
   console.error("[Internal Error]:", error);
 
-  if (error instanceof Error) {
-    // If it's a Zod error (usually thrown as a ZodError, but message might be exposed if handled elsewhere)
-    // For now, if the error message is generic "Internal Server Error", we keep it.
-    // If it contains "API key" or sensitive env var names, we definitely want to hide it.
-
-    const message = error.message.toLowerCase();
-
-    // Simple heuristic to redact secrets
-    if (message.includes("key") || message.includes("token") || message.includes("secret") || message.includes("env")) {
-      return "底层服务发生错误，请稍后重试";
-    }
-
-    // Allow Zod-like validation messages or custom app errors to pass through
-    // provided they don't look like code dumps.
-    // This is a permissive strategy; for higher security, we should whitelist error types.
-    return error.message;
+  if (isUserFacingError(error)) {
+    const message = error.message.trim();
+    if (message) return message;
   }
 
-  return "发生意外错误";
+  return GENERIC_ERROR_MESSAGE;
 }
