@@ -1,17 +1,8 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from 'next-intl/plugin';
+import { buildRemoteImagePatterns } from "./src/lib/image-hosts";
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
-
-function supabaseImageHost() {
-  try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "").hostname;
-  } catch {
-    return "";
-  }
-}
-
-const supabaseHost = supabaseImageHost();
 
 const nextConfig: NextConfig = {
   devIndicators: false,
@@ -28,22 +19,14 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     // 灵感库配图等静态图基本不变，优化结果在边缘节点缓存 31 天
     minimumCacheTTL: 2678400,
-    // bucket 已转为私有，作品通过 /object/sign/ 的限时链接访问。
-    // 仍保留 public 前缀以兼容尚未替换完的历史链接。
-    remotePatterns: supabaseHost
-      ? [
-          {
-            protocol: "https",
-            hostname: supabaseHost,
-            pathname: "/storage/v1/object/sign/**",
-          },
-          {
-            protocol: "https",
-            hostname: supabaseHost,
-            pathname: "/storage/v1/object/public/**",
-          },
-        ]
-      : [],
+    // 用户作品桶已转为私有，走 /object/sign/ 的限时链接；灵感库素材在公开桶。
+    // 灵感库的 CDN 地址可以被 NEXT_PUBLIC_XIAOXIAODONG_GALLERY_BASE 覆盖到
+    // 别的域名，所以白名单要一并覆盖它——漏掉的话 next/image 不会降级，
+    // 而是直接报错、图片位置整片空白。推导逻辑见 src/lib/image-hosts.ts。
+    remotePatterns: buildRemoteImagePatterns({
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+      galleryBase: process.env.NEXT_PUBLIC_XIAOXIAODONG_GALLERY_BASE,
+    }),
   },
   async headers() {
     return [

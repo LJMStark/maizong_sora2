@@ -36,6 +36,21 @@ const DEFAULT_INITIAL_COUNT = 23;
 
 const LOAD_MORE_SIZE = 24;
 
+/**
+ * 灵感库卡片缩略图。
+ *
+ * 本地与远程都走 `next/image`：灵感库素材的地址是**稳定的公开链接**
+ * （`/object/public/...`，不带签名），所以优化结果能被正常缓存——
+ * 这一点和用户作品不同，后者的签名 token 每次请求都变，只能改为在签发时
+ * 做变换（见 `components/shared/asset-thumbnail.tsx` 的说明）。
+ *
+ * 发布管线已经把素材压到 640px JPEG（43-110KB），`next/image` 再按实际渲染
+ * 尺寸出 AVIF，可以进一步降到十几 KB 量级。
+ *
+ * `onError` 兜底：远程域名一旦不在 `next.config.ts` 的白名单里，`next/image`
+ * 不会降级而是直接失败、整片空白。白名单已经把 CDN 覆盖地址算进去了，
+ * 这里再留一层回退，避免配置漂移时整个灵感库变白。
+ */
 function GalleryThumb({
   src,
   alt,
@@ -43,16 +58,22 @@ function GalleryThumb({
   src: string;
   alt: string;
 }) {
-  const remote = src.startsWith("http://") || src.startsWith("https://");
+  const [optimizeFailed, setOptimizeFailed] = useState(false);
 
-  if (remote) {
+  const className =
+    "object-cover transition duration-200 group-hover/card:scale-[1.03]";
+  // 卡片在移动端约占三分之一屏宽，桌面端固定 190px
+  const sizes = "(max-width: 640px) 33vw, 190px";
+
+  if (optimizeFailed) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element -- next/image 失败后的兜底，见上方注释
       <img
         src={src}
         alt={alt}
         loading="lazy"
         decoding="async"
-        className="absolute inset-0 size-full object-cover transition duration-200 group-hover/card:scale-[1.03]"
+        className={cn("absolute inset-0 size-full", className)}
       />
     );
   }
@@ -62,8 +83,9 @@ function GalleryThumb({
       src={src}
       alt={alt}
       fill
-      sizes="(max-width: 640px) 33vw, 190px"
-      className="object-cover transition duration-200 group-hover/card:scale-[1.03]"
+      sizes={sizes}
+      className={className}
+      onError={() => setOptimizeFailed(true)}
     />
   );
 }
