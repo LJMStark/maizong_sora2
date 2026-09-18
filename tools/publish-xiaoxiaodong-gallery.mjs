@@ -18,14 +18,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import { config as loadEnv } from "dotenv";
 
 const execFileAsync = promisify(execFile);
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..");
-loadEnv({ path: join(rootDir, ".env.local") });
-loadEnv({ path: join(rootDir, ".env") });
 
 const libraryDir = join(rootDir, "docs/xiaoxiaodong/library/styles");
 const workDir = join(rootDir, ".temp/xiaoxiaodong-cdn");
@@ -39,6 +37,29 @@ const CONVERT_CONCURRENCY = 6;
 const UPLOAD_CONCURRENCY = 6;
 const FEATURED_COUNT = 36;
 const FEATURED_TOPIC_CAP = 2;
+const STYLE_EXAMPLE_LIMIT = 1;
+
+// --- 目录精简 ---
+//
+// 上游 47 个主题按「用途」切得很细，落到界面上并不成立：
+// 海报版式 341 + 数字海报 249 + 活动海报 202 + 电影海报 47 + 音乐海报 31
+// = 870 条（占四成）用户看来都是海报，而尾部九个主题各只有 1-3 条。
+// 结果是翻很久都停在同一类，同时又有一堆点进去只有一张图的入口。
+//
+// 顺带说明：这里**不做按图去重**。对 2201 条算过感知哈希，像素级近重复只有
+// 6 对，放宽到汉明距离 12 也才 14%——重复感来自类目重叠，不是图本身重复。
+export const POSTER_TOPICS = [
+  "海报版式",
+  "数字海报",
+  "活动海报",
+  "电影海报",
+  "音乐海报",
+];
+export const MERGED_TOPIC_LABEL = "海报";
+/** 每个主题保留的条目上限，超出的按 scoreStyle 取高分。 */
+export const TOPIC_ITEM_CAP = 40;
+/** 少于这个数的主题整体去掉——一个只有一张图的筛选入口没有价值。 */
+export const MIN_TOPIC_ITEMS = 5;
 
 const dryRun = process.argv.includes("--dry-run");
 
@@ -112,6 +133,10 @@ function collectPairs(styleDir, prompts, styleName) {
   return pairs;
 }
 
+export function keepRepresentativeStyleExamples(pairs) {
+  return pairs.slice(0, STYLE_EXAMPLE_LIMIT);
+}
+
 function collectItems() {
   const topics = readdirSync(libraryDir, { withFileTypes: true }).filter((d) =>
     d.isDirectory()
@@ -131,7 +156,10 @@ function collectItems() {
       const styleId = list.id || style.name;
       const styleName = list.name || pack?.style?.name || style.name;
       const topicLabel = list.topicName || topic.name;
-      const pairs = collectPairs(styleDir, pack?.prompts, styleName);
+      // 同一风格包里的条目只替换了主题、商品或文案，展示一张即可。
+      const pairs = keepRepresentativeStyleExamples(
+        collectPairs(styleDir, pack?.prompts, styleName)
+      );
 
       for (const pair of pairs) {
         items.push({
@@ -149,6 +177,41 @@ function collectItems() {
   }
 
   return items;
+}
+
+/**
+ * 目录精简：合并海报类 -> 砍掉过小的主题 -> 每主题按分数封顶。
+ *
+ * 顺序有讲究：合并要放在砍长尾之前，否则「音乐海报」这类本身只有几条的
+ * 子类会先被砍掉，而它并进「海报」之后其实是够数的。
+ *
+ * 纯函数，不修改入参，便于单测。
+ */
+export function curateItems(items) {
+  const merged = items.map((item) =>
+    POSTER_TOPICS.includes(item.category)
+      ? { ...item, category: MERGED_TOPIC_LABEL, topicLabel: MERGED_TOPIC_LABEL }
+      : item
+  );
+
+  const byTopic = new Map();
+  for (const item of merged) {
+    const list = byTopic.get(item.category);
+    if (list) list.push(item);
+    else byTopic.set(item.category, [item]);
+  }
+
+  const kept = [];
+  for (const list of byTopic.values()) {
+    if (list.length < MIN_TOPIC_ITEMS) continue;
+    // id 作为次级排序键，保证同分时结果稳定、可复现
+    const ranked = [...list].sort(
+      (a, b) => b.score - a.score || a.id.localeCompare(b.id)
+    );
+    kept.push(...ranked.slice(0, TOPIC_ITEM_CAP));
+  }
+
+  return kept;
 }
 
 function pickFeatured(items) {
@@ -224,8 +287,11 @@ async function convertImage(source, dest) {
 }
 
 async function main() {
+  loadEnv({ path: join(rootDir, ".env.local") });
+  loadEnv({ path: join(rootDir, ".env") });
   mkdirSync(imageWorkDir, { recursive: true });
-  const items = collectItems();
+  // 精简放在 pickFeatured 之前：首屏推荐应当从最终会展示的集合里选
+  const items = curateItems(collectItems());
   const featured = pickFeatured(items);
   const topics = [...new Map(items.map((item) => [item.category, item.topicLabel])).entries()]
     .map(([key, label]) => ({
@@ -365,7 +431,10 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+const entryUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : "";
+if (import.meta.url === entryUrl) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });
+}
