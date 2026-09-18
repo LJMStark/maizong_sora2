@@ -25,10 +25,13 @@ export async function GET() {
       }
     }
 
-    // 私有 bucket：库里存的是路径，输出前批量签发限时链接
-    const coverUrls = await storageService.resolveAssetUrls(
-      tasks.map((t) => coverByTask.get(t.id) ?? null)
-    );
+    // 私有 bucket：库里存的是路径，输出前批量签发限时链接。
+    // 封面只在卡片里显示，走带图片变换的缩略图链接。
+    const coverPaths = tasks.map((t) => coverByTask.get(t.id) ?? null);
+    const [coverUrls, coverThumbnailUrls] = await Promise.all([
+      storageService.resolveAssetUrls(coverPaths),
+      storageService.resolveThumbnailUrls(coverPaths),
+    ]);
 
     return NextResponse.json({
       tasks: tasks.map((task, index) => ({
@@ -40,6 +43,7 @@ export async function GET() {
         styleKey: task.styleKey,
         pageCount: task.pageCount,
         coverImageUrl: coverUrls[index],
+        coverThumbnailUrl: coverThumbnailUrls[index],
         creditCostTotal: task.creditCostTotal,
         refundedCredits: task.refundedCredits,
         createdAt: task.createdAt,

@@ -51,6 +51,8 @@ export interface VideoTask {
   model: string;
   videoUrl?: string;
   sourceImageUrl?: string;
+  /** 源图的变换缩略图，供宫格使用；imgproxy 不可用时为 null，回落 sourceImageUrl */
+  sourceThumbnailUrl?: string | null;
   errorMessage?: string;
   creditCost: number;
   createdAt: Date;
@@ -68,6 +70,10 @@ export interface ImageTask {
   errorMessage?: string;
   sourceImageUrl?: string;
   imageUrl?: string;
+  /** 成品图的变换缩略图，供宫格使用；imgproxy 不可用时为 null，回落 imageUrl */
+  thumbnailUrl?: string | null;
+  /** 输入图的变换缩略图，回落 sourceImageUrl */
+  sourceThumbnailUrl?: string | null;
   creditCost: number;
   createdAt: Date;
   completedAt?: Date;

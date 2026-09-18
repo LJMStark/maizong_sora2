@@ -58,6 +58,7 @@ import {
   notifySessionsChanged,
 } from "../utils/studio-events";
 import { DEFAULT_CREDIT_COSTS } from "../data/credit-defaults";
+import { AssetThumbnail } from "./shared/asset-thumbnail";
 import { cn } from "@/lib/utils";
 import { getSession, useSession } from "@/lib/auth/client";
 import { formatTaskDate } from "@/lib/format";
@@ -90,6 +91,8 @@ interface VideoSessionTask {
   model: string;
   videoUrl?: string | null;
   sourceImageUrl?: string | null;
+  // 源图的变换小图；视频本身 imgproxy 渲染不了，没有对应字段
+  sourceThumbnailUrl?: string | null;
   errorMessage?: string | null;
   creditCost: number;
   createdAt: string;
@@ -1338,11 +1341,10 @@ export default function VideoWorkshop() {
                         </span>
                       </div>
                       {task.sourceImageUrl && (
-                        <img
-                          src={task.sourceImageUrl}
+                        <AssetThumbnail
+                          thumbnailUrl={task.sourceThumbnailUrl}
+                          fullUrl={task.sourceImageUrl}
                           alt="源图像"
-                          width={112}
-                          height={112}
                           className="mb-4 size-28 rounded-2xl object-cover"
                         />
                       )}

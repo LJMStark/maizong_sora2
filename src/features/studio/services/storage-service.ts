@@ -1,5 +1,9 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { fetchPublicResource } from "@/lib/security/ssrf";
+import {
+  isTransformableImagePath,
+  THUMBNAIL_TRANSFORM,
+} from "./storage-transform";
 
 // 用户作品桶：私有，只能通过服务端签发的限时链接访问。
 // 与公开的 studio-assets 分开——后者装的是灵感库等公开素材，
@@ -252,6 +256,60 @@ export const storageService = {
       if (path === null) return value ?? null;
       return signedByPath.get(path) ?? null;
     });
+  },
+
+  /**
+   * 批量签发**缩略图**链接：与 resolveAssetUrls 相同的入参/返回约定，
+   * 区别是把 imgproxy 的变换参数一起签进 token，浏览器拿到的是
+   * 按 Accept 协商出的 WebP 小图（实测 2.6MB PNG -> 62KB，42 倍）。
+   *
+   * 两点与 resolveAssetUrls 不同，都是被迫的：
+   *
+   * 1. **只能逐个签**。批量端点 `createSignedUrls` 只支持 `download` 选项，
+   *    传 transform 会被**静默忽略**并返回普通 `/object/sign/` 链接（已实测），
+   *    所以这里退回单个 `createSignedUrl` 并发调用。去重后并发，
+   *    一屏几十张的开销约等于一次往返。
+   * 2. **非图片一律返回 null**，由调用方回落到原图链接。视频、gif、svg
+   *    imgproxy 渲染不了；宁可多下载一次，也不要给出一个渲染时才报错的地址。
+   */
+  async resolveThumbnailUrls(
+    storedValues: (string | null | undefined)[],
+    ttlSeconds: number = SIGNED_URL_TTL_SECONDS
+  ): Promise<(string | null)[]> {
+    const paths = storedValues.map((value) => {
+      if (!value) return null;
+      const path = toStoragePath(value);
+      return path && isTransformableImagePath(path) ? path : null;
+    });
+
+    const uniquePaths = Array.from(
+      new Set(paths.filter((path): path is string => path !== null))
+    );
+
+    if (uniquePaths.length === 0) {
+      return storedValues.map(() => null);
+    }
+
+    const storage = getSupabase().storage.from(BUCKET_NAME);
+    const signedByPath = new Map<string, string>();
+
+    await Promise.all(
+      uniquePaths.map(async (path) => {
+        const { data, error } = await storage.createSignedUrl(path, ttlSeconds, {
+          transform: { ...THUMBNAIL_TRANSFORM },
+        });
+
+        if (error || !data?.signedUrl) {
+          // 不算失败：调用方回落到原图，只是这一张没省下带宽
+          console.warn("[Storage] 生成缩略图链接失败，回落原图:", { path, error });
+          return;
+        }
+
+        signedByPath.set(path, toBrowserUrl(data.signedUrl));
+      })
+    );
+
+    return paths.map((path) => (path ? signedByPath.get(path) ?? null : null));
   },
 
   async uploadImage(

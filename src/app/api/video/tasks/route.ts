@@ -15,11 +15,14 @@ export async function GET() {
     const tasks = await videoTaskService.getUserTasks(session.user.id);
 
     // 私有 bucket：库里存的是路径，输出前批量签发限时链接
-    const [videoUrls, sourceUrls] = await Promise.all([
+    const [videoUrls, sourceUrls, sourceThumbnailUrls] = await Promise.all([
       storageService.resolveAssetUrls(
         tasks.map((t) => t.finalVideoUrl || t.duomiVideoUrl)
       ),
       storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
+      // 视频本身没法做图片变换（imgproxy 渲染不了 mp4），但源图是图片，
+      // 宫格里那个小预览没必要拉原图
+      storageService.resolveThumbnailUrls(tasks.map((t) => t.sourceImageUrl)),
     ]);
 
     const formattedTasks = tasks.map((task, index) => ({
@@ -33,6 +36,7 @@ export async function GET() {
       model: task.model,
       videoUrl: videoUrls[index],
       sourceImageUrl: sourceUrls[index],
+      sourceThumbnailUrl: sourceThumbnailUrls[index],
       errorMessage: task.errorMessage,
       creditCost: task.creditCost,
       createdAt: task.createdAt,

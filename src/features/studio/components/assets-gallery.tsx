@@ -18,6 +18,7 @@ import { GenerationResult, VideoTask } from "../types";
 import Lightbox from "./lightbox";
 import { useStudio } from "../context/studio-context";
 import { cn } from "@/lib/utils";
+import { AssetThumbnail } from "./shared/asset-thumbnail";
 
 type Tab = "all" | "video" | "image";
 
@@ -192,11 +193,11 @@ function GalleryGrid({
                     className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
                   />
                 ) : (
-                  <img
-                    src={mediaUrl}
-                    loading="lazy"
-                    className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                  <AssetThumbnail
+                    thumbnailUrl={item.thumbnail}
+                    fullUrl={mediaUrl}
                     alt=""
+                    className="size-full object-cover transition duration-300 group-hover:scale-[1.03]"
                   />
                 )}
               </button>

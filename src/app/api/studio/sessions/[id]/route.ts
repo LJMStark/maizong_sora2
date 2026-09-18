@@ -50,10 +50,14 @@ export async function GET(
         studioSession.id
       );
 
-      // 私有 bucket：库里存的是路径，输出前批量签发限时链接
-      const [imageSourceUrls, imageUrls] = await Promise.all([
+      // 私有 bucket：库里存的是路径，输出前批量签发限时链接。
+      // thumbnailUrl 是带图片变换的小图，供宫格使用。
+      const [imageSourceUrls, imageUrls, imageThumbnailUrls, imageSourceThumbnailUrls] =
+        await Promise.all([
         storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
         storageService.resolveAssetUrls(tasks.map((t) => t.finalImageUrl)),
+        storageService.resolveThumbnailUrls(tasks.map((t) => t.finalImageUrl)),
+        storageService.resolveThumbnailUrls(tasks.map((t) => t.sourceImageUrl)),
       ]);
 
       return NextResponse.json({
@@ -76,6 +80,8 @@ export async function GET(
           errorMessage: task.errorMessage,
           sourceImageUrl: imageSourceUrls[index],
           imageUrl: imageUrls[index],
+          thumbnailUrl: imageThumbnailUrls[index],
+          sourceThumbnailUrl: imageSourceThumbnailUrls[index],
           creditCost: task.creditCost,
           createdAt: task.createdAt,
           completedAt: task.completedAt,
@@ -89,11 +95,12 @@ export async function GET(
     );
 
     // 私有 bucket：库里存的是路径，输出前批量签发限时链接
-    const [videoUrls, videoSourceUrls] = await Promise.all([
+    const [videoUrls, videoSourceUrls, videoSourceThumbnailUrls] = await Promise.all([
       storageService.resolveAssetUrls(
         tasks.map((t) => t.finalVideoUrl || t.duomiVideoUrl)
       ),
       storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
+      storageService.resolveThumbnailUrls(tasks.map((t) => t.sourceImageUrl)),
     ]);
 
     return NextResponse.json({
@@ -116,6 +123,7 @@ export async function GET(
         model: task.model,
         videoUrl: videoUrls[index],
         sourceImageUrl: videoSourceUrls[index],
+        sourceThumbnailUrl: videoSourceThumbnailUrls[index],
         errorMessage: task.errorMessage,
         creditCost: task.creditCost,
         createdAt: task.createdAt,

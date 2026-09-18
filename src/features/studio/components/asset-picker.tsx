@@ -4,6 +4,7 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, ImageOff, Search, X } from "lucide-react";
 import { GenerationResult } from "../types";
+import { AssetThumbnail } from "./shared/asset-thumbnail";
 
 interface Props {
   history: GenerationResult[];
@@ -108,8 +109,9 @@ const AssetPicker: React.FC<Props> = ({ history, onSelect, onClose }) => {
                   }}
                   className="group relative aspect-square overflow-hidden rounded-2xl border border-[#e5e5e5] bg-[#f4f4f4] text-left transition hover:border-[#cfcfcf] focus:outline-none focus:ring-4 focus:ring-black/10"
                 >
-                  <img
-                    src={item.url}
+                  <AssetThumbnail
+                    thumbnailUrl={item.thumbnail}
+                    fullUrl={item.url}
                     alt={item.prompt}
                     className="size-full object-cover"
                   />

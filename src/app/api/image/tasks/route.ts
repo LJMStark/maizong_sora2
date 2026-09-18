@@ -14,10 +14,14 @@ export async function GET() {
   try {
     const tasks = await imageTaskService.getUserTasks(session.user.id);
 
-    // 私有 bucket：库里存的是路径，输出前批量签发限时链接
-    const [sourceUrls, imageUrls] = await Promise.all([
+    // 私有 bucket：库里存的是路径，输出前批量签发限时链接。
+    // thumbnailUrl 另外签一份带图片变换的——列表是宫格，拉原图会是
+    // 几十倍的浪费（实测 2.6MB PNG vs 62KB WebP）。
+    const [sourceUrls, imageUrls, thumbnailUrls, sourceThumbnailUrls] = await Promise.all([
       storageService.resolveAssetUrls(tasks.map((t) => t.sourceImageUrl)),
       storageService.resolveAssetUrls(tasks.map((t) => t.finalImageUrl)),
+      storageService.resolveThumbnailUrls(tasks.map((t) => t.finalImageUrl)),
+      storageService.resolveThumbnailUrls(tasks.map((t) => t.sourceImageUrl)),
     ]);
 
     return NextResponse.json({
@@ -33,6 +37,8 @@ export async function GET() {
         errorMessage: task.errorMessage,
         sourceImageUrl: sourceUrls[index],
         imageUrl: imageUrls[index],
+        thumbnailUrl: thumbnailUrls[index],
+        sourceThumbnailUrl: sourceThumbnailUrls[index],
         creditCost: task.creditCost,
         createdAt: task.createdAt,
         completedAt: task.completedAt,

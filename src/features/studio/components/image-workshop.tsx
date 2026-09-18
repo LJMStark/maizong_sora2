@@ -58,6 +58,7 @@ import {
   openLoginDialog,
   notifySessionsChanged,
 } from "../utils/studio-events";
+import { AssetThumbnail } from "./shared/asset-thumbnail";
 import { DEFAULT_CREDIT_COSTS } from "../data/credit-defaults";
 import { cn } from "@/lib/utils";
 import { getSession, useSession } from "@/lib/auth/client";
@@ -77,6 +78,9 @@ interface ImageSessionTask {
   errorMessage?: string | null;
   sourceImageUrl?: string | null;
   imageUrl?: string | null;
+  // 服务端另签的变换小图，供展示；imgproxy 不可用时为 null，回落上面两个原图
+  thumbnailUrl?: string | null;
+  sourceThumbnailUrl?: string | null;
   creditCost: number;
   createdAt: string;
   completedAt?: string | null;
@@ -1127,8 +1131,9 @@ export default function ImageWorkshop() {
                         </span>
                       </div>
                       {task.sourceImageUrl && (
-                        <img
-                          src={task.sourceImageUrl}
+                        <AssetThumbnail
+                          thumbnailUrl={task.sourceThumbnailUrl}
+                          fullUrl={task.sourceImageUrl}
                           alt="输入图像"
                           className="mb-4 size-28 rounded-2xl object-cover"
                         />
@@ -1198,8 +1203,9 @@ export default function ImageWorkshop() {
                             className="overflow-hidden rounded-3xl bg-[#f4f4f4]"
                             style={{ aspectRatio: getResultAspectRatio(task.aspectRatio) }}
                           >
-                            <img
-                              src={imageUrl}
+                            <AssetThumbnail
+                              thumbnailUrl={task.thumbnailUrl}
+                              fullUrl={imageUrl}
                               alt="生成结果"
                               className="size-full object-cover"
                             />

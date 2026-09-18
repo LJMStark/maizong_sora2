@@ -249,6 +249,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
             sessionId: task.sessionId,
             type: "image" as const,
             url: task.imageUrl,
+            // 宫格用变换小图，灯箱仍用 url 的原图
+            thumbnail: task.thumbnailUrl ?? undefined,
             prompt: task.prompt,
             createdAt: task.createdAt,
             status: "completed" as const,
