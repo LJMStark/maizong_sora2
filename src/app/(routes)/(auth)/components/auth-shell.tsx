@@ -45,11 +45,11 @@ export function AuthShell({
         <div className="mt-8 w-full min-w-0">{children}</div>
 
         <div className="mt-auto flex items-center gap-4 pt-8 text-sm text-[#cdd5e0]">
-          <Link href="/" className="hover:underline">
+          <Link href="/terms" className="hover:underline">
             服务条款
           </Link>
           <span>|</span>
-          <Link href="/" className="hover:underline">
+          <Link href="/privacy" className="hover:underline">
             隐私政策
           </Link>
         </div>

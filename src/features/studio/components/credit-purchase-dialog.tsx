@@ -14,6 +14,7 @@ import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { formatYuan } from "@/lib/format";
 import { copyTextToClipboard } from "@/lib/clipboard";
+import { SUPPORT_CHANNELS } from "@/lib/legal-contact";
 
 interface Package {
   id: string;
@@ -98,7 +99,9 @@ export function CreditPurchaseDialog({
         `订单号：${orderId}`,
         `套餐：${selectedPackage.name}`,
         `金额：${formatYuan(selectedPackage.price)}`,
-        "请联系客服完成支付和开通。",
+        "请联系客服完成支付和开通：",
+        // 联系方式一并复制走，用户关掉弹窗后不至于只剩一个订单号
+        ...SUPPORT_CHANNELS.map((c) => `  ${c.label}：${c.value}`),
       ].join("\n")
     : "";
 
@@ -236,9 +239,39 @@ export function CreditPurchaseDialog({
               )}
             </div>
             {orderId && (
-              <p className="mt-3 text-xs leading-5 text-[#777]">
-                订单信息只用于人工确认支付和开通，不会自动扣款。
-              </p>
+              <>
+                {/* 拿到订单号之后必须告诉用户「发给谁」，否则整条付款链路到此为止 */}
+                <div className="mt-3 rounded-2xl border border-[#e5e5e5] bg-white p-3">
+                  <p className="mb-2 text-xs font-medium text-[#777]">联系客服</p>
+                  <ul className="space-y-1.5">
+                    {SUPPORT_CHANNELS.map((channel) => (
+                      <li
+                        key={channel.label}
+                        className="flex items-baseline gap-2 text-sm"
+                      >
+                        <span className="shrink-0 text-xs text-[#999]">
+                          {channel.label}
+                        </span>
+                        {channel.href ? (
+                          <a
+                            href={channel.href}
+                            className="break-all font-medium text-[#0d0d0d] underline underline-offset-2 hover:opacity-70"
+                          >
+                            {channel.value}
+                          </a>
+                        ) : (
+                          <span className="break-all font-medium text-[#0d0d0d]">
+                            {channel.value}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[#777]">
+                  订单信息只用于人工确认支付和开通，不会自动扣款。
+                </p>
+              </>
             )}
           </div>
         </div>
