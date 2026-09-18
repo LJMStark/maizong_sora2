@@ -49,7 +49,7 @@ All failures auto-refund credits.
 ```typescript
 GET/PATCH        /api/admin/settings                  // Global limits
 GET              /api/admin/users                     // User list
-GET/PATCH/DELETE /api/admin/users/[id]                // User detail / update / delete
+GET/PATCH/DELETE /api/admin/users/[id]                // DELETE 实为软禁用（role -> disabled），不删行
 GET/PATCH        /api/admin/users/[id]/limits         // User-level limit overrides
 GET/POST         /api/admin/redemption-codes          // Redemption code management
 PATCH            /api/admin/redemption-codes/[id]     // Update a code
@@ -70,8 +70,26 @@ User-level overrides via `user.dailyFastVideoLimit` and `user.dailyQualityVideoL
 
 ### Redemption Code System
 
-`redemption_code` table fields: `code`, `credits`, `maxUses` (-1 = unlimited), `usedCount`, `expiresAt`.
+**单码单用**的状态机，没有 `maxUses` / `usedCount` 这类计数概念。
+
+`redemption_code` 字段：`code`、`credits`、`status`（`active` / `used` / `expired` /
+`disabled`）、`expiresAt`、`usedBy`、`usedAt`、`createdBy`、`note`。
+
+核销用条件 UPDATE（`WHERE status = 'active' AND 未过期`）+ 与 `credit-service.ts`
+同一把 `credit_wallet` advisory lock，并发重复兑换只有一次能拿到返回行。
 
 Endpoints:
-- `POST /api/credits/redeem` -- Redeem a code
+- `POST /api/redeem` -- Redeem a code（注意不是 `/api/credits/redeem`）
 - `GET/POST /api/admin/redemption-codes` -- Admin CRUD
+
+### 内容安全与法务
+
+- 提示词前置拦截：`src/lib/security/prompt-safety.ts`，经
+  `src/lib/api/prompt-safety-guard.ts` 接入 image/video generate 与 image/edit。
+  **必须在扣积分之前调用**——被拦下不扣费是写进 `/terms` 的承诺。
+- 错误脱敏是**白名单**：只有 `UserFacingError`（`src/lib/security/user-facing-error.ts`）
+  的子类才放行自己的 message。新增业务错误要让用户看到文案时，继承它；
+  文案里**不要**拼接上游错误（会泄露供应商与模型名）。
+- 法务页在 `src/app/(routes)/(legal)/`，联系方式集中在 `src/lib/legal-contact.ts`。
+- 页面门禁看 `authGatedRoutePrefixes`（`src/routes.ts`）；未列出的未知路径会落到
+  真正的 404，不再被 307 到 `/signin`。API 那层仍是默认拒绝。
