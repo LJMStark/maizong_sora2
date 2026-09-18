@@ -13,6 +13,7 @@ import { rateLimiter } from "@/lib/rate-limit";
 import { GenerateImageSchema } from "@/lib/validations/schemas";
 import { studioRouteErrorResponse } from "@/lib/api/studio-route-error";
 import { ensureUserActive } from "@/lib/auth/ensure-active-user";
+import { promptSafetyRejection } from "@/lib/api/prompt-safety-guard";
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession();
@@ -42,6 +43,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
     const { prompt, model, aspectRatio, imageSize, sessionId } = validation.data;
+
+    // 放在扣费之前：被内容安全拦下不该让用户掏积分
+    const rejection = promptSafetyRejection(prompt, {
+      userId,
+      route: "image/generate",
+    });
+    if (rejection) return rejection;
 
     const selectedModel = model || "gemini-2.5-flash-image";
     if (

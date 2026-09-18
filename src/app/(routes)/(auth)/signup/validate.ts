@@ -1,12 +1,21 @@
 import { passwordSchema } from "@/lib/auth/password";
+import {
+  DISPOSABLE_EMAIL_MESSAGE,
+  isDisposableEmail,
+} from "@/lib/auth/disposable-email";
 import { restrictedUsernames } from "@/lib/auth/usernames";
 import { z } from "zod";
 
 export const SignUpSchema = z
   .object({
+    // 一次性邮箱在这里只是**即时反馈**，真正的拦截在
+    // `src/lib/auth/server.ts` 的 databaseHooks——直接 POST 注册端点会绕过本 schema
     email: z
     .email({ message: "邮箱格式不正确" })
-    .min(1, { message: "请输入邮箱" }),
+    .min(1, { message: "请输入邮箱" })
+    .refine((email) => !isDisposableEmail(email), {
+      message: DISPOSABLE_EMAIL_MESSAGE,
+    }),
     name: z.string().min(4, { message: "至少需要 4 个字符" }),
     username: z
     .string()

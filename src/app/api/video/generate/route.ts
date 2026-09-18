@@ -23,6 +23,7 @@ import { ensureUserActive } from "@/lib/auth/ensure-active-user";
 import { getAppBaseUrl } from "@/lib/config";
 import { delay } from "@/lib/utils";
 import type { VideoProvider } from "@/features/studio/services/video-task-service";
+import { promptSafetyRejection } from "@/lib/api/prompt-safety-guard";
 
 const MAX_GENERATE_RETRIES = 3;
 
@@ -107,6 +108,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error.issues[0].message }, { status: 400 });
     }
     const { prompt, mode, aspectRatio, duration, imageBase64, imageMimeType, sessionId } = validation.data;
+
+    // 放在扣费之前：被内容安全拦下不该让用户掏积分
+    const rejection = promptSafetyRejection(prompt, {
+      userId,
+      route: "video/generate",
+    });
+    if (rejection) return rejection;
 
     // 一次查询获取积分和供应商配置（带缓存）
     const generationConfig = await videoLimitService.getVideoGenerationConfig();
