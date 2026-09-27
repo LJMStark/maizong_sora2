@@ -1,0 +1,20 @@
+# Keep the Docker build context to what `pnpm build` needs.
+.git
+.github
+.vscode
+.next
+node_modules
+.env*
+!env.example
+
+# Local-only material (not used by the build or at runtime)
+doc
+docs
+tools
+tests
+test-results
+playwright-report
+coverage
+AGENTS.md
+CLAUDE.md
+README.md

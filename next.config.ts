@@ -5,6 +5,10 @@ import { buildRemoteImagePatterns } from "./src/lib/image-hosts";
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  // The Dockerfile sets NEXT_OUTPUT_STANDALONE=1 so the runtime image only
+  // ships the traced server bundle. Local dev and the zbpack fallback
+  // (ZBPACK_IGNORE_DOCKERFILE=true on Zeabur) keep using `next start`.
+  output: process.env.NEXT_OUTPUT_STANDALONE === "1" ? "standalone" : undefined,
   devIndicators: false,
   env: {
     // 构建时固化，用于确认某次部署是否真的生效（/api/health 会回显）
