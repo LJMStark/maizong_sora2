@@ -65,3 +65,17 @@ test("地址前后的空白不影响解析", () => {
 
   assert.equal(patterns[0]?.hostname, "a.example.com");
 });
+
+test("灵感库在独立 CDN 时按其路径前缀放行，而不是 Supabase 的存储路径", () => {
+  // R2 自定义域名下的对象路径是 /gallery/...，套用 /storage/v1/... 会整片空白
+  const patterns = buildRemoteImagePatterns({
+    supabaseUrl: "https://maizongsora.zeabur.app",
+    galleryBase: "https://assets-sora2.681023.xyz/gallery/xiaoxiaodong/",
+  });
+
+  const cdn = patterns.filter((p) => p.hostname === "assets-sora2.681023.xyz");
+  assert.deepEqual(
+    cdn.map((p) => p.pathname),
+    ["/gallery/xiaoxiaodong/**"]
+  );
+});

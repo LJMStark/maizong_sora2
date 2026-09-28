@@ -1,24 +1,20 @@
 /**
- * Supabase Storage 图片变换（imgproxy）的参数与适用判定。
+ * 用户作品缩略图的参数与适用判定。
  *
- * 单独成文件是为了能在不加载 `@supabase/supabase-js` 与环境变量的前提下测试——
- * `storage-service.ts` 在模块加载期就要求 Supabase 配置齐全。
+ * 单独成文件是为了能在不加载 S3 SDK 与环境变量的前提下测试。
  *
- * ## 为什么用它，而不是 next/image
+ * ## 为什么预生成缩略图
  *
- * 用户作品在私有桶里，对外靠 `createSignedUrl` 签发限时链接，而**签名 token
- * 每次请求都不同**（JWT 里带 exp）。`next/image` 按 URL 做缓存键，URL 每次都变
- * 就意味着每次访问都要重新下载 + 重新编码原图——比直接用 `<img>` 更糟。
- * 这正是这些位置当初写成裸 `<img>` 的原因。
+ * 用户作品在私有桶里，对外靠预签名链接访问，**签名每次都不同**。`next/image`
+ * 按 URL 做缓存键，URL 每次都变就意味着每次访问都要重新下载 + 重新编码原图——
+ * 比直接用 `<img>` 更糟，这正是这些位置写成裸 `<img>` 的原因。
  *
- * 2026-09-18 实测自建实例的 imgproxy 是开着的，且按 `Accept` 做 WebP 协商：
+ * 存储在 Supabase 时，缩略图靠签发链接时签进去的 imgproxy 变换参数实时生成：
  *   原图                              2,647,468 B  image/png
- *   transform w=640                   1,083,306 B  image/png   ← 只缩放，仍是 PNG
  *   transform w=640 + Accept: webp       62,694 B  image/webp  ← 42 倍
- * 浏览器的 `<img>` 会自动带 `Accept: image/avif,image/webp,...`，所以拿到的是 WebP。
- *
- * 于是最省事的做法是**在签发链接时就把变换参数签进去**：不需要代理路由、
- * 不需要预生成缩略图、不需要改表、不需要引 sharp，签名有效期与安全模型完全不变。
+ * 迁到 Cloudflare R2 后没有实时图片变换，于是改为**上传时用 sharp 预生成一份
+ * WebP 缩略图**（参数与之前相同），存在原图旁边（见 `thumbnailPathOf`）。
+ * 缩略图缺失时调用方回落到原图，行为与之前 imgproxy 失败时一致。
  */
 
 /**
@@ -41,9 +37,9 @@ export const THUMBNAIL_TRANSFORM = {
 } as const;
 
 /**
- * imgproxy 只能渲染位图。
+ * 只为位图生成缩略图。
  *
- * 排除 gif（变换会丢掉动画）与 svg（矢量图缩放无意义）。
+ * 排除 gif（转换会丢掉动画）与 svg（矢量图缩放无意义）。
  * 拿不准的一律返回 false——调用方会回落到原始链接，
  * 宁可多下载一次，也不要给出一个渲染时才 4xx 的地址。
  */
@@ -58,4 +54,12 @@ export function isTransformableImagePath(path: string): boolean {
   if (dot <= 0 || dot === filename.length - 1) return false;
 
   return TRANSFORMABLE_EXTENSIONS.has(filename.slice(dot + 1).toLowerCase());
+}
+
+/**
+ * 缩略图在桶内的对象路径：原图路径加 `.thumb.webp` 后缀。
+ * 与原图同目录，删除原图时能一并找到。
+ */
+export function thumbnailPathOf(path: string): string {
+  return `${path}.thumb.webp`;
 }

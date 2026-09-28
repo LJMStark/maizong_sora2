@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   THUMBNAIL_TRANSFORM,
   isTransformableImagePath,
+  thumbnailPathOf,
 } from "../../src/features/studio/services/storage-transform";
 
 test("常见图片扩展名可以走图片变换", () => {
@@ -58,5 +59,12 @@ test("必须显式给 quality，否则 PNG 源只被缩放、体积仍然很大"
   // 实测：只传 width 不传 quality 时返回的仍是 1MB 的 PNG
   assert.ok(
     THUMBNAIL_TRANSFORM.quality > 0 && THUMBNAIL_TRANSFORM.quality <= 100
+  );
+});
+
+test("缩略图与原图同目录，路径可由原图推出", () => {
+  assert.equal(
+    thumbnailPathOf("users/u1/images/1700000000-a.png"),
+    "users/u1/images/1700000000-a.png.thumb.webp"
   );
 });

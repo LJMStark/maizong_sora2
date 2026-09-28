@@ -32,23 +32,34 @@ function hostOf(value: string | undefined): string | null {
 
 /**
  * 由 Supabase 地址与灵感库 CDN 地址推导出 `images.remotePatterns`。
- * 两者通常是同一个域名，去重后只会产生一组规则。
+ *
+ * Supabase 主机放行存储的签名/公开两种路径。灵感库若托管在独立 CDN
+ * （例如 Cloudflare R2 自定义域名），它的路径不是 `/storage/v1/...`，
+ * 所以按灵感库地址本身的路径前缀放行。同一主机只保留一组规则。
  */
 export function buildRemoteImagePatterns(env: {
   supabaseUrl?: string;
   galleryBase?: string;
 }): RemoteImagePattern[] {
-  const hosts = new Set<string>();
-  for (const value of [env.supabaseUrl, env.galleryBase]) {
-    const host = hostOf(value);
-    if (host) hosts.add(host);
+  const patterns: RemoteImagePattern[] = [];
+  const seen = new Set<string>();
+  const add = (hostname: string, pathname: string) => {
+    const key = `${hostname}${pathname}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    patterns.push({ protocol: "https", hostname, pathname });
+  };
+
+  const supabaseHost = hostOf(env.supabaseUrl);
+  if (supabaseHost) {
+    for (const pathname of SUPABASE_PATHNAMES) add(supabaseHost, pathname);
   }
 
-  return [...hosts].flatMap((hostname) =>
-    SUPABASE_PATHNAMES.map((pathname) => ({
-      protocol: "https" as const,
-      hostname,
-      pathname,
-    }))
-  );
+  const galleryHost = hostOf(env.galleryBase);
+  if (galleryHost && galleryHost !== supabaseHost) {
+    const prefix = new URL(env.galleryBase!.trim()).pathname.replace(/\/+$/, "");
+    add(galleryHost, `${prefix}/**`);
+  }
+
+  return patterns;
 }

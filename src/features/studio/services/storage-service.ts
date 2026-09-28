@@ -1,23 +1,34 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import sharp from "sharp";
 import { fetchPublicResource } from "@/lib/security/ssrf";
 import {
   isTransformableImagePath,
   THUMBNAIL_TRANSFORM,
+  thumbnailPathOf,
 } from "./storage-transform";
 
-// 用户作品桶：私有，只能通过服务端签发的限时链接访问。
-// 与公开的 studio-assets 分开——后者装的是灵感库等公开素材，
-// 数量上占绝大多数且本就该匿名可读，两类内容混在一个桶里
-// 无法同时满足「用户作品要私密」和「灵感库要公开」。
-const BUCKET_NAME = "studio-user-assets";
+// 用户作品存放在 Cloudflare R2 的私有桶，只能通过服务端签发的限时链接访问。
+// 灵感库等公开素材在另一个公开桶（见 xiaoxiaodong-cdn.ts），两类内容分桶
+// 才能同时满足「用户作品要私密」和「灵感库要公开」。
+function getUserAssetsBucket(): string {
+  return process.env.R2_USER_ASSETS_BUCKET || "sora2-user-assets";
+}
 
-// 历史上用户作品曾与公开素材同处 studio-assets，库里仍有指向它的
-// 完整 URL，反解路径时需要一并识别。
+// 迁到 R2 之前，对象存放在 Supabase Storage。库里仍有指向那里的完整 URL
+// （studio-user-assets 私有桶，以及更早的公开桶 studio-assets），迁移时对象
+// 已按相同路径复制到 R2，反解路径时需要一并识别。
+const SUPABASE_BUCKET_NAME = "studio-user-assets";
 const LEGACY_BUCKET_NAME = "studio-assets";
 
-// 上传路径都带时间戳/taskId、内容写入后不再变化，
-// 让 Supabase CDN 缓存一年（默认仅 3600 秒）。
-const IMMUTABLE_CACHE_SECONDS = "31536000";
+// 上传路径都带时间戳/taskId、内容写入后不再变化，缓存一年。
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 // Hard ceiling for objects in the shared bucket. Holds both user images and
 // provider-fetched videos, so sized for the larger video case. Per-request
@@ -50,11 +61,7 @@ function imageExtensionOf(contentType: string | null): string {
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 const PROVIDER_SIGNED_URL_TTL_SECONDS = 6 * 60 * 60;
 
-let supabaseClient: SupabaseClient | null = null;
-
-// 进程内只验证一次 bucket 是否存在，避免每次上传都调用 listBuckets()。
-// 仅在创建失败时重置，以便下次上传重新验证。
-let bucketVerified = false;
+let s3Client: S3Client | null = null;
 
 function getSupabaseHost(): string {
   try {
@@ -94,7 +101,7 @@ export function toStoragePath(stored: string | null | undefined): string | null 
   // /storage/v1/object/public/<bucket>/<path> 或 .../object/sign/<bucket>/<path>
   const match = url.pathname.match(
     new RegExp(
-      `/storage/v1/object/(?:public|sign)/(${BUCKET_NAME}|${LEGACY_BUCKET_NAME})/(.+)$`
+      `/storage/v1/object/(?:public|sign)/(${SUPABASE_BUCKET_NAME}|${LEGACY_BUCKET_NAME})/(.+)$`
     )
   );
   if (!match) return null;
@@ -110,76 +117,89 @@ export function toStoragePath(stored: string | null | undefined): string | null 
   return path;
 }
 
-/**
- * 服务端访问 Supabase 用的地址。
- *
- * 应用与 Supabase 同在 Zeabur 上时，容器往往访问不到兄弟服务的**公网**
- * 域名（hairpin），此时需要用内网地址。设置 SUPABASE_INTERNAL_URL 即可。
- * 未设置则回落到公网地址，行为与之前一致。
- */
-function getServerSupabaseUrl(): string {
-  return (
-    process.env.SUPABASE_INTERNAL_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+function getS3(): S3Client {
+  if (!s3Client) {
+    const endpoint = process.env.R2_ENDPOINT;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+    if (!endpoint || !accessKeyId || !secretAccessKey) {
+      throw new Error("R2 环境变量未配置");
+    }
+
+    s3Client = new S3Client({
+      region: "auto",
+      endpoint,
+      credentials: { accessKeyId, secretAccessKey },
+    });
+  }
+  return s3Client;
+}
+
+function signGetUrl(path: string, ttlSeconds: number): Promise<string> {
+  return getSignedUrl(
+    getS3(),
+    new GetObjectCommand({ Bucket: getUserAssetsBucket(), Key: path }),
+    { expiresIn: ttlSeconds }
+  );
+}
+
+async function objectExists(path: string): Promise<boolean> {
+  try {
+    await getS3().send(
+      new HeadObjectCommand({ Bucket: getUserAssetsBucket(), Key: path })
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function putObject(path: string, body: Buffer, contentType: string): Promise<void> {
+  await getS3().send(
+    new PutObjectCommand({
+      Bucket: getUserAssetsBucket(),
+      Key: path,
+      Body: body,
+      ContentType: contentType,
+      CacheControl: IMMUTABLE_CACHE_CONTROL,
+    })
   );
 }
 
 /**
- * 把服务端生成的地址换回浏览器可访问的公网主机。
- * 签名只覆盖路径与 token，不含主机名，所以换主机不会让签名失效。
+ * 为位图生成并上传缩略图（参数见 storage-transform.ts）。
+ * 失败不影响原图：列表接口拿不到缩略图时会回落到原图。
  */
-function toBrowserUrl(url: string): string {
-  const internal = process.env.SUPABASE_INTERNAL_URL;
-  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!internal || !publicUrl || internal === publicUrl) return url;
-
+async function putThumbnail(path: string, image: Buffer): Promise<void> {
+  if (!isTransformableImagePath(path)) return;
   try {
-    const parsed = new URL(url);
-    const internalOrigin = new URL(internal).origin;
-    if (parsed.origin !== internalOrigin) return url;
-    return `${new URL(publicUrl).origin}${parsed.pathname}${parsed.search}`;
-  } catch {
-    return url;
+    const thumbnail = await sharp(image)
+      .rotate()
+      .resize({ width: THUMBNAIL_TRANSFORM.width, withoutEnlargement: true })
+      .webp({ quality: THUMBNAIL_TRANSFORM.quality })
+      .toBuffer();
+    await putObject(thumbnailPathOf(path), thumbnail, "image/webp");
+  } catch (error) {
+    console.warn("[Storage] 生成缩略图失败，列表将回落原图:", { path, error });
   }
 }
 
-function getSupabase(): SupabaseClient {
-  if (!supabaseClient) {
-    const supabaseUrl = getServerSupabaseUrl();
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error("Supabase 环境变量未配置");
-    }
-
-    supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
-  }
-  return supabaseClient;
+async function uploadWithThumbnail(
+  path: string,
+  body: Buffer,
+  contentType: string
+): Promise<void> {
+  await putObject(path, body, contentType);
+  await putThumbnail(path, body);
 }
 
 export const storageService = {
-  async ensureBucketExists(): Promise<void> {
-    if (bucketVerified) return;
-
-    const { data: buckets } = await getSupabase().storage.listBuckets();
-    const bucketExists = buckets?.some((b) => b.name === BUCKET_NAME);
-
-    if (!bucketExists) {
-      // 私有 bucket：用户作品只能通过服务端签发的限时链接访问，
-      // 拿到裸地址无法直接读取
-      const { error } = await getSupabase().storage.createBucket(BUCKET_NAME, {
-        public: false,
-        fileSizeLimit: MAX_UPLOAD_BYTES,
-      });
-
-      if (error) {
-        // 创建失败，保持未验证状态，下次上传时重新检查
-        bucketVerified = false;
-        return;
-      }
-    }
-
-    bucketVerified = true;
-  },
+  /**
+   * 桶由部署时预先创建（Cloudflare R2 控制台），应用令牌只有对象读写权限，
+   * 无权也无须在运行时建桶。保留该方法以兼容调用方。
+   */
+  async ensureBucketExists(): Promise<void> {},
 
   /**
    * 为存储对象签发限时访问链接。
@@ -195,16 +215,12 @@ export const storageService = {
     const path = toStoragePath(stored);
     if (!path) return stored;
 
-    const { data, error } = await getSupabase()
-      .storage.from(BUCKET_NAME)
-      .createSignedUrl(path, ttlSeconds);
-
-    if (error || !data?.signedUrl) {
+    try {
+      return await signGetUrl(path, ttlSeconds);
+    } catch (error) {
       console.error("[Storage] 生成签名链接失败:", { path, error });
       return null;
     }
-
-    return toBrowserUrl(data.signedUrl);
   },
 
   /** 供外部 AI 拉取的源图链接，有效期更长 */
@@ -215,8 +231,7 @@ export const storageService = {
   },
 
   /**
-   * 批量签发。列表接口一次要解析几十个地址，逐个调用会产生同样多次
-   * 网络往返，这里去重后用一次 createSignedUrls 解决。
+   * 批量签发。预签名在本地计算、不产生网络往返，去重后逐个签即可。
    * 返回值与入参一一对应。
    */
   async resolveAssetUrls(
@@ -236,19 +251,15 @@ export const storageService = {
     }
 
     const signedByPath = new Map<string, string>();
-    const { data, error } = await getSupabase()
-      .storage.from(BUCKET_NAME)
-      .createSignedUrls(uniquePaths, ttlSeconds);
-
-    if (error) {
-      console.error("[Storage] 批量生成签名链接失败:", error);
-    }
-
-    for (const item of data ?? []) {
-      if (item.path && item.signedUrl) {
-        signedByPath.set(item.path, toBrowserUrl(item.signedUrl));
-      }
-    }
+    await Promise.all(
+      uniquePaths.map(async (path) => {
+        try {
+          signedByPath.set(path, await signGetUrl(path, ttlSeconds));
+        } catch (error) {
+          console.error("[Storage] 批量生成签名链接失败:", { path, error });
+        }
+      })
+    );
 
     return storedValues.map((value, index) => {
       const path = paths[index];
@@ -260,17 +271,11 @@ export const storageService = {
 
   /**
    * 批量签发**缩略图**链接：与 resolveAssetUrls 相同的入参/返回约定，
-   * 区别是把 imgproxy 的变换参数一起签进 token，浏览器拿到的是
-   * 按 Accept 协商出的 WebP 小图（实测 2.6MB PNG -> 62KB，42 倍）。
+   * 签的是上传时预生成的 WebP 缩略图（见 storage-transform.ts）。
    *
-   * 两点与 resolveAssetUrls 不同，都是被迫的：
-   *
-   * 1. **只能逐个签**。批量端点 `createSignedUrls` 只支持 `download` 选项，
-   *    传 transform 会被**静默忽略**并返回普通 `/object/sign/` 链接（已实测），
-   *    所以这里退回单个 `createSignedUrl` 并发调用。去重后并发，
-   *    一屏几十张的开销约等于一次往返。
-   * 2. **非图片一律返回 null**，由调用方回落到原图链接。视频、gif、svg
-   *    imgproxy 渲染不了；宁可多下载一次，也不要给出一个渲染时才报错的地址。
+   * 非图片、以及缩略图不存在（例如迁移前上传、或当时生成失败）的一律返回
+   * null，由调用方回落到原图链接——宁可多下载一次，也不要给出一个渲染时
+   * 才 404 的地址。存在性检查去重后并发，一屏几十张的开销约等于一次往返。
    */
   async resolveThumbnailUrls(
     storedValues: (string | null | undefined)[],
@@ -290,22 +295,18 @@ export const storageService = {
       return storedValues.map(() => null);
     }
 
-    const storage = getSupabase().storage.from(BUCKET_NAME);
     const signedByPath = new Map<string, string>();
 
     await Promise.all(
       uniquePaths.map(async (path) => {
-        const { data, error } = await storage.createSignedUrl(path, ttlSeconds, {
-          transform: { ...THUMBNAIL_TRANSFORM },
-        });
-
-        if (error || !data?.signedUrl) {
+        const thumbnailPath = thumbnailPathOf(path);
+        try {
+          if (!(await objectExists(thumbnailPath))) return;
+          signedByPath.set(path, await signGetUrl(thumbnailPath, ttlSeconds));
+        } catch (error) {
           // 不算失败：调用方回落到原图，只是这一张没省下带宽
           console.warn("[Storage] 生成缩略图链接失败，回落原图:", { path, error });
-          return;
         }
-
-        signedByPath.set(path, toBrowserUrl(data.signedUrl));
       })
     );
 
@@ -318,21 +319,17 @@ export const storageService = {
     filename: string,
     contentType: string
   ): Promise<string> {
-    await this.ensureBucketExists();
+    if (file.byteLength > MAX_UPLOAD_BYTES) {
+      throw new Error("上传图片失败: 文件超过大小上限");
+    }
 
     const timestamp = Date.now();
     const path = `users/${userId}/images/${timestamp}-${filename}`;
 
-    const { error } = await getSupabase().storage
-      .from(BUCKET_NAME)
-      .upload(path, file, {
-        contentType,
-        upsert: false,
-        cacheControl: IMMUTABLE_CACHE_SECONDS,
-      });
-
-    if (error) {
-      throw new Error(`上传图片失败: ${error.message}`);
+    try {
+      await uploadWithThumbnail(path, file, contentType);
+    } catch (error) {
+      throw new Error(`上传图片失败: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 返回 bucket 内路径而非 URL：bucket 是私有的，访问链接由
@@ -345,8 +342,6 @@ export const storageService = {
     taskId: string,
     videoUrl: string
   ): Promise<string> {
-    await this.ensureBucketExists();
-
     // SSRF/大小/超时受控下载
     const { buffer } = await fetchPublicResource(videoUrl, {
       maxBytes: MAX_REMOTE_VIDEO_BYTES,
@@ -355,16 +350,10 @@ export const storageService = {
 
     const path = `users/${userId}/videos/${taskId}.mp4`;
 
-    const { error } = await getSupabase().storage
-      .from(BUCKET_NAME)
-      .upload(path, buffer, {
-        contentType: "video/mp4",
-        upsert: true,
-        cacheControl: IMMUTABLE_CACHE_SECONDS,
-      });
-
-    if (error) {
-      throw new Error(`上传视频失败: ${error.message}`);
+    try {
+      await putObject(path, buffer, "video/mp4");
+    } catch (error) {
+      throw new Error(`上传视频失败: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 返回 bucket 内路径而非 URL：bucket 是私有的，访问链接由
@@ -377,8 +366,6 @@ export const storageService = {
     taskId: string,
     imageUrl: string
   ): Promise<string> {
-    await this.ensureBucketExists();
-
     // SSRF/大小/超时受控下载
     const { buffer, contentType } = await fetchPublicResource(imageUrl, {
       maxBytes: MAX_REMOTE_IMAGE_BYTES,
@@ -388,16 +375,10 @@ export const storageService = {
     const extension = imageExtensionOf(contentType);
     const path = `users/${userId}/images/${taskId}.${extension}`;
 
-    const { error } = await getSupabase().storage
-      .from(BUCKET_NAME)
-      .upload(path, buffer, {
-        contentType: contentType || "image/png",
-        upsert: true,
-        cacheControl: IMMUTABLE_CACHE_SECONDS,
-      });
-
-    if (error) {
-      throw new Error(`上传图片失败: ${error.message}`);
+    try {
+      await uploadWithThumbnail(path, buffer, contentType || "image/png");
+    } catch (error) {
+      throw new Error(`上传图片失败: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 返回 bucket 内路径而非 URL：bucket 是私有的，访问链接由
@@ -411,8 +392,6 @@ export const storageService = {
     slideIndex: number,
     imageUrl: string
   ): Promise<string> {
-    await this.ensureBucketExists();
-
     // SSRF/大小/超时受控下载
     const { buffer, contentType } = await fetchPublicResource(imageUrl, {
       maxBytes: MAX_REMOTE_IMAGE_BYTES,
@@ -422,16 +401,10 @@ export const storageService = {
     const extension = imageExtensionOf(contentType);
     const path = `users/${userId}/ppt/${taskId}/${slideIndex}.${extension}`;
 
-    const { error } = await getSupabase().storage
-      .from(BUCKET_NAME)
-      .upload(path, buffer, {
-        contentType: contentType || "image/png",
-        upsert: true,
-        cacheControl: IMMUTABLE_CACHE_SECONDS,
-      });
-
-    if (error) {
-      throw new Error(`上传图片失败: ${error.message}`);
+    try {
+      await uploadWithThumbnail(path, buffer, contentType || "image/png");
+    } catch (error) {
+      throw new Error(`上传图片失败: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 返回 bucket 内路径而非 URL：bucket 是私有的，访问链接由
@@ -439,11 +412,20 @@ export const storageService = {
     return path;
   },
 
+  /** 删除对象，连同它的缩略图（不存在时 R2 同样返回成功） */
   async deleteFile(path: string): Promise<void> {
-    const { error } = await getSupabase().storage.from(BUCKET_NAME).remove([path]);
-
-    if (error) {
-      throw new Error(`删除文件失败: ${error.message}`);
+    try {
+      const result = await getS3().send(
+        new DeleteObjectsCommand({
+          Bucket: getUserAssetsBucket(),
+          Delete: { Objects: [{ Key: path }, { Key: thumbnailPathOf(path) }] },
+        })
+      );
+      if (result.Errors?.length) {
+        throw new Error(result.Errors.map((e) => e.Message).join("; "));
+      }
+    } catch (error) {
+      throw new Error(`删除文件失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   },
 };

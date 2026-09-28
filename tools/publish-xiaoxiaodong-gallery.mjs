@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 把小象东全库压成缩略图，上传到 Supabase Storage（站点现成 CDN），
+ * 把小象东全库压成缩略图，上传到 Cloudflare R2 的公开桶（经自定义域名对外），
  * 并写出按栏目拆分的目录 JSON。
  *
  *   node tools/publish-xiaoxiaodong-gallery.mjs --dry-run
@@ -19,7 +19,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createClient } from "@supabase/supabase-js";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { config as loadEnv } from "dotenv";
 
 const execFileAsync = promisify(execFile);
@@ -29,7 +29,7 @@ const libraryDir = join(rootDir, "docs/xiaoxiaodong/library/styles");
 const workDir = join(rootDir, ".temp/xiaoxiaodong-cdn");
 const imageWorkDir = join(workDir, "images");
 const manifestPath = join(workDir, "manifest.json");
-const BUCKET = "studio-assets";
+const BUCKET = process.env.R2_GALLERY_BUCKET || "sora2-gallery";
 const PREFIX = "gallery/xiaoxiaodong";
 const IMAGE_RE = /\.(webp|png|jpe?g)$/i;
 const VARIANT_PREFIX_RE = /^变种[-_]?\d+[-_]?/;
@@ -232,8 +232,8 @@ function pickFeatured(items) {
   return selected;
 }
 
-function publicUrl(supabaseUrl, path) {
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${BUCKET}/${path}`;
+function publicUrl(publicBase, path) {
+  return `${publicBase.replace(/\/$/, "")}/${path}`;
 }
 
 function topicFileName(topicKey) {
@@ -241,13 +241,13 @@ function topicFileName(topicKey) {
   return `${slug || "topic"}.json`;
 }
 
-function toCard(item, supabaseUrl) {
+function toCard(item, publicBase) {
   return {
     id: item.id,
     title: item.title,
     category: item.category,
     prompt: item.prompt,
-    image: publicUrl(supabaseUrl, `${PREFIX}/images/${item.id}.jpg`),
+    image: publicUrl(publicBase, `${PREFIX}/images/${item.id}.jpg`),
   };
 }
 
@@ -317,21 +317,38 @@ async function main() {
 
   if (dryRun) return;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
-    throw new Error("缺少 NEXT_PUBLIC_SUPABASE_URL 或 SUPABASE_SERVICE_ROLE_KEY");
+  // 灵感库托管在 Cloudflare R2 的公开桶，经自定义域名对外（桶在控制台预先建好）
+  const endpoint = process.env.R2_ENDPOINT;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const publicBase = process.env.R2_GALLERY_PUBLIC_URL;
+  if (!endpoint || !accessKeyId || !secretAccessKey || !publicBase) {
+    throw new Error(
+      "缺少 R2_ENDPOINT / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_GALLERY_PUBLIC_URL"
+    );
   }
 
-  const supabase = createClient(supabaseUrl, serviceKey);
-  const { data: buckets } = await supabase.storage.listBuckets();
-  if (!buckets?.some((bucket) => bucket.name === BUCKET)) {
-    const { error } = await supabase.storage.createBucket(BUCKET, {
-      public: true,
-      fileSizeLimit: 100 * 1024 * 1024,
-    });
-    if (error) throw new Error(`创建 bucket 失败: ${error.message}`);
-  }
+  const s3 = new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+  const put = async (path, body, contentType, cacheControl) => {
+    try {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET,
+          Key: path,
+          Body: body,
+          ContentType: contentType,
+          CacheControl: cacheControl,
+        })
+      );
+      return "";
+    } catch (error) {
+      return error instanceof Error ? error.message : String(error);
+    }
+  };
 
   const uploaded = new Set(readJson(manifestPath)?.uploaded || []);
   let converted = 0;
@@ -356,16 +373,17 @@ async function main() {
     const body = readFileSync(local);
     let lastError = "";
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const { error } = await supabase.storage.from(BUCKET).upload(path, body, {
-        contentType: "image/jpeg",
-        upsert: true,
-        cacheControl: "31536000",
-      });
+      const error = await put(
+        path,
+        body,
+        "image/jpeg",
+        "public, max-age=31536000, immutable"
+      );
       if (!error) {
         lastError = "";
         break;
       }
-      lastError = error.message;
+      lastError = error;
       await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
     }
     if (lastError) {
@@ -385,7 +403,7 @@ async function main() {
     version: 1,
     generatedAt: new Date().toISOString(),
     featured: featured.map((item) => ({
-      ...toCard(item, supabaseUrl),
+      ...toCard(item, publicBase),
       category: "featured",
     })),
     topics,
@@ -403,18 +421,19 @@ async function main() {
         label: topic.label,
         items: items
           .filter((item) => item.category === topic.key)
-          .map((item) => toCard(item, supabaseUrl)),
+          .map((item) => toCard(item, publicBase)),
       }),
     })),
   ];
 
   for (const file of jsonFiles) {
-    const { error } = await supabase.storage.from(BUCKET).upload(file.path, file.body, {
-      contentType: "application/json; charset=utf-8",
-      upsert: true,
-      cacheControl: "3600",
-    });
-    if (error) throw new Error(`上传 ${file.path} 失败: ${error.message}`);
+    const error = await put(
+      file.path,
+      file.body,
+      "application/json; charset=utf-8",
+      "public, max-age=3600"
+    );
+    if (error) throw new Error(`上传 ${file.path} 失败: ${error}`);
   }
 
   console.log(
@@ -423,7 +442,7 @@ async function main() {
         uploaded: uploaded.size,
         skipped,
         jsonFiles: jsonFiles.length,
-        index: publicUrl(supabaseUrl, `${PREFIX}/index.json`),
+        index: publicUrl(publicBase, `${PREFIX}/index.json`),
       },
       null,
       2
